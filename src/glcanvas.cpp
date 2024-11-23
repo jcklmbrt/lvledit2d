@@ -55,6 +55,12 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 
 void GLCanvas::OnSize(wxSizeEvent &e)
 {
+	e.Skip();
+
+	if(!IsShownOnScreen()) {
+		return;
+	}
+
 	SetCurrent(*m_context);
 
 	wxSize size = e.GetSize() * GetContentScaleFactor();
@@ -76,7 +82,8 @@ void GLCanvas::OnMouse(wxMouseEvent &e)
 {
 	wxPoint pos = e.GetPosition();
 
-	wxString s = wxString::Format("Mouse Position: %i %i", pos.x, pos.y);
+	wxString s;
+	s.Printf("Mouse Postition: %d %d", pos.x, pos.y);
 
 	if(m_parent != nullptr) {
 		m_parent->SetStatusText(s);
