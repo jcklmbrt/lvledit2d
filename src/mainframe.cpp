@@ -19,6 +19,8 @@ MainFrame::MainFrame()
 {
 	SetIcon(icon_xpm);
 
+	Maximize(true);
+
 	wxMenu *file = new wxMenu;
 	file->Append(wxID_EXIT);
 
@@ -39,6 +41,8 @@ MainFrame::MainFrame()
 	}
 
 	wxToolBar *toolbar = CreateToolBar();
+	toolbar->SetWindowStyleFlag(wxTB_LEFT | wxTB_VERTICAL);
+
 	toolbar->AddTool(1000, "Select", hand_xpm);
 	toolbar->AddTool(1001, "Line", line_xpm);
 	toolbar->AddTool(1002, "Quad", quad_xpm);
