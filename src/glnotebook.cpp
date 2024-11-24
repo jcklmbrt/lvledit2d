@@ -23,9 +23,6 @@ bool GLNoteBook::AddCanvas(const wxString &name)
 	attrs.PlatformDefaults().Defaults().EndList();
 	bool accepted = wxGLCanvas::IsDisplaySupported(attrs);
 
-	wxGLContextAttrs ctxattrs;
-	ctxattrs.PlatformDefaults().CoreProfile().OGLVersion(2, 0).EndList();
-
 	GLCanvas *canvas = new GLCanvas(this, attrs);
 
 	if(m_context == nullptr) {

@@ -45,15 +45,22 @@ MainFrame::MainFrame()
 	toolbar->AddTool(wxID_ANY, "Reset", reset_xpm);
 	toolbar->Realize();
 
-	GLNoteBook *notebook = new GLNoteBook(this, wxID_ANY);
+	wxPanel    *panel    = new wxPanel(this);
+	GLNoteBook *notebook = new GLNoteBook(panel, wxID_ANY);
+
+	wxBoxSizer *sizer;
+
+	sizer = new wxBoxSizer(wxVERTICAL);
+	sizer->Add(notebook, 1, wxEXPAND);
+	panel->SetSizer(sizer);
 
 	for(int i = 0; i < 10; i++) {
 		wxString name = wxString::Format("Page %d", i + 1);
 		notebook->AddCanvas(name);
 	}
 
-	wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
-	sizer->Add(notebook, 1, wxEXPAND);
+	sizer = new wxBoxSizer(wxVERTICAL);
+	sizer->Add(panel, 1, wxEXPAND);
 	SetSizer(sizer);
 
 	Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
