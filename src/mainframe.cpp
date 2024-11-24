@@ -33,8 +33,7 @@ MainFrame::MainFrame()
 
 	wxStatusBar *status = CreateStatusBar();
 
-	wxToolBar *toolbar = CreateToolBar();
-	toolbar->SetWindowStyleFlag(wxTB_LEFT | wxTB_VERTICAL);
+	wxToolBar *toolbar = CreateToolBar(wxTB_LEFT | wxTB_VERTICAL);
 
 	toolbar->AddTool(wxID_ANY, "Select", hand_xpm);
 	toolbar->AddTool(wxID_ANY, "Line", line_xpm);
