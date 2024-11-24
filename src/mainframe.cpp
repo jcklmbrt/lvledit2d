@@ -1,9 +1,11 @@
 
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
+#include <wx/notebook.h>
 
 #include "src/mainframe.hpp"
 #include "src/glcanvas.hpp"
+#include "src/glnotebook.hpp"
 
 #include "res/icon.xpm"
 #include "res/line.xpm"
@@ -14,11 +16,12 @@
 #include "res/hand.xpm"
 #include "res/save.xpm"
 
+
+
 MainFrame::MainFrame()
 	: wxFrame(nullptr, wxID_ANY, "lvledit2d")
 {
 	SetIcon(icon_xpm);
-
 	Maximize(true);
 
 	wxMenu *file = new wxMenu;
@@ -26,32 +29,32 @@ MainFrame::MainFrame()
 
 	wxMenuBar *menubar = new wxMenuBar;
 	menubar->Append(file, "&File");
-
 	SetMenuBar(menubar);
 
 	wxStatusBar *status = CreateStatusBar();
 
-	m_canvas = nullptr;
-	wxGLAttributes attrs;
-	attrs.PlatformDefaults().Defaults().EndList();
-	bool accepted = wxGLCanvas::IsDisplaySupported(attrs);
-
-	if(accepted) {
-		m_canvas = new GLCanvas(this, attrs);
-	}
-
 	wxToolBar *toolbar = CreateToolBar();
 	toolbar->SetWindowStyleFlag(wxTB_LEFT | wxTB_VERTICAL);
 
-	toolbar->AddTool(1000, "Select", hand_xpm);
-	toolbar->AddTool(1001, "Line", line_xpm);
-	toolbar->AddTool(1002, "Quad", quad_xpm);
-	toolbar->AddTool(1003, "Texture", texture_xpm);
-	toolbar->AddTool(1004, "Entity", pawn_xpm);
-	toolbar->AddTool(1005, "Save", save_xpm);
-	toolbar->AddTool(1005, "Reset", reset_xpm);
+	toolbar->AddTool(wxID_ANY, "Select", hand_xpm);
+	toolbar->AddTool(wxID_ANY, "Line", line_xpm);
+	toolbar->AddTool(wxID_ANY, "Quad", quad_xpm);
+	toolbar->AddTool(wxID_ANY, "Texture", texture_xpm);
+	toolbar->AddTool(wxID_ANY, "Entity", pawn_xpm);
+	toolbar->AddTool(wxID_ANY, "Save", save_xpm);
+	toolbar->AddTool(wxID_ANY, "Reset", reset_xpm);
 	toolbar->Realize();
 
+	GLNoteBook *notebook = new GLNoteBook(this, wxID_ANY);
+
+	for(int i = 0; i < 10; i++) {
+		wxString name = wxString::Format("Page %d", i + 1);
+		notebook->AddCanvas(name);
+	}
+
+	wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+	sizer->Add(notebook, 1, wxEXPAND);
+	SetSizer(sizer);
 
 	Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
 }

@@ -18,7 +18,6 @@ bool LvlEdit2D::OnInit()
 
 int LvlEdit2D::OnExit()
 {
-	//delete m_mainframe;	
 	return wxApp::OnExit();
 }
 

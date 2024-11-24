@@ -31,4 +31,4 @@ endif()
 target_include_directories(lvledit2d PUBLIC "3rdparty/glm")
 
 target_include_directories(lvledit2d PUBLIC .)
-target_sources(lvledit2d PRIVATE "src/lvledit2d.cpp" "src/lvledit2d.hpp" "src/mainframe.cpp" "src/glcanvas.cpp" )
+target_sources(lvledit2d PRIVATE "src/lvledit2d.cpp" "src/lvledit2d.hpp" "src/mainframe.cpp" "src/glcanvas.cpp"  "src/glnotebook.cpp")

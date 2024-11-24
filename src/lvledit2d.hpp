@@ -12,4 +12,6 @@ private:
 	wxFrame *m_mainframe = nullptr;
 };
 
+DECLARE_APP(LvlEdit2D)
+
 #endif

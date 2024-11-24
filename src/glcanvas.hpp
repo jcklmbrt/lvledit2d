@@ -3,7 +3,10 @@
 
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
+#include <wx/notebook.h>
 #include <glm/glm.hpp>
+
+#include "src/glnotebook.hpp"
 
 class GLCanvas : public wxGLCanvas
 {
@@ -12,31 +15,28 @@ class GLCanvas : public wxGLCanvas
 	static constexpr float MAX_ZOOM = 10.0;
 	static constexpr float MIN_ZOOM = 0.01;
 public:
-	GLCanvas(wxFrame *parent, const wxGLAttributes &attrs);
+	GLCanvas(GLNoteBook *parent, const wxGLAttributes &attrs);
 private:
 	/* Events */
 	void OnPaint(wxPaintEvent &e);
 	void OnMouse(wxMouseEvent &e);
-	void OnScroll(wxScrollEvent &e);
 	void OnSize(wxSizeEvent &e);
 	void OnKeyDown(wxKeyEvent &e);
 
-	wxFrame     *m_parent  = nullptr;
-	wxGLContext *m_context = nullptr;
+	static glm::mat4 SetupView(glm::vec2 pan, float zoom);
 
-	glm::vec2 m_pan { 0, 0 };
-	float     m_zoom = 1.0;
+	GLNoteBook *m_parent  = nullptr;
+
+	float m_zoom = 1.0;
+	glm::vec2 m_pan  = { 0.0, 0.0 };
+
+	glm::mat4 m_proj;
+	glm::mat4 m_view;
 
 	void Pan(glm::vec2 delta);
-	void Zoom(float factor);
-	void ZoomAt(glm::vec2 p, float factor);
+	void Zoom(glm::vec2 p, float factor);
 
 	wxDECLARE_EVENT_TABLE();
-private:
-	void AdjustScale(glm::vec2 mpos, float fraction);
-private:
-	/* Draw Routines */
-	void FillRect(float x, float y, float w, float h, glm::u8vec4 color);
 };
 
 #endif

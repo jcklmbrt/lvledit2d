@@ -1,11 +1,13 @@
-#include <algorithm>
-
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
+#include "src/glnotebook.hpp"
 #include "src/glcanvas.hpp"
 
+using namespace glm;
 
 wxBEGIN_EVENT_TABLE(GLCanvas, wxGLCanvas)
 	EVT_PAINT(GLCanvas::OnPaint)
@@ -15,38 +17,55 @@ wxBEGIN_EVENT_TABLE(GLCanvas, wxGLCanvas)
 wxEND_EVENT_TABLE()
 
 
-GLCanvas::GLCanvas(wxFrame *parent, const wxGLAttributes &attrs)
+GLCanvas::GLCanvas(GLNoteBook *parent, const wxGLAttributes &attrs)
 	: wxGLCanvas(parent, attrs),
 	  m_parent(parent)
 {
-	wxGLContextAttrs ctx_attrs;
-	ctx_attrs.PlatformDefaults().CoreProfile().OGLVersion(3, 0).EndList();
-	m_context = new wxGLContext(this, 0, &ctx_attrs);
+	wxSize size = GetSize() * GetContentScaleFactor();
+	double width = static_cast<double>(size.x);
+	double height = static_cast<double>(size.y);
 
-	if(!m_context->IsOK()) {
-		wxMessageBox("OpenGL Version Error");
-		delete m_context;
-		m_context = nullptr;
-	}
-
-
+	m_proj = ortho(0.0, width, height, 0.0);
+	m_view = identity<mat4>();
 }
-
 
 void GLCanvas::OnPaint(wxPaintEvent &e)
 {
 	wxPaintDC dc(this);
 
-	SetCurrent(*m_context);
+	m_parent->SetCurrent(this);
 
-	glClearColor(0.7f, 0.7f, 0.7f, 1.0f);
+	wxSize size = GetSize() * GetContentScaleFactor();
+	double width  = static_cast<double>(size.x);
+	double height = static_cast<double>(size.y);
+
+	m_proj = ortho(0.0, width, height, 0.0);
+	m_view = SetupView(m_pan, m_zoom);
+
+	glViewport(0, 0, width, height);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadMatrixf(value_ptr(m_proj));
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(value_ptr(m_view));
+
+	glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
+	glBegin(GL_LINES);
+	glColor4f(0.7f,0.7f,0.7f,1.0f);
 
-	glScalef(m_zoom, m_zoom, 1.0f);
-	glTranslatef(m_pan.x, m_pan.y, 0.0);
+	int spacing = 100;
+
+	for(int i = (MIN_PAN.x/spacing); i < (MAX_PAN.x/spacing); i++) {
+		glVertex2i(i * spacing, MIN_PAN.y);
+		glVertex2i(i * spacing, MAX_PAN.y);
+
+		glVertex2i(MIN_PAN.x, i * spacing);
+		glVertex2i(MAX_PAN.x, i * spacing);
+	}
+
+	glEnd();
 
 	/* red quad */
 	glBegin(GL_QUADS);
@@ -57,10 +76,18 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 		glVertex2f(200, 100);
 	glEnd();
 
-	glPopMatrix();
-
 	SwapBuffers();
 }
+
+
+mat4 GLCanvas::SetupView(vec2 pan, float zoom)
+{
+	mat4 view = identity<mat4>();
+	view = scale(view, vec3(zoom, zoom, 1.0));
+	view = translate(view, vec3(pan, 0.0));
+	return view;
+}
+
 
 
 void GLCanvas::OnSize(wxSizeEvent &e)
@@ -71,52 +98,35 @@ void GLCanvas::OnSize(wxSizeEvent &e)
 		return;
 	}
 
-	SetCurrent(*m_context);
-
-	wxSize size = e.GetSize() * GetContentScaleFactor();
-	int width  = size.x;
-	int height = size.y;
-
-	glViewport(0, 0, width, height);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0, (GLdouble)width, (GLdouble)height, 0, -1.0, 1.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	m_parent->SetCurrent(this);
 
 	Refresh(false);
 }
 
 
-void GLCanvas::Zoom(float factor)
-{
-	m_zoom *= factor;
-	m_zoom = std::clamp(m_zoom, MIN_ZOOM, MAX_ZOOM);
-}
-
-void GLCanvas::ZoomAt(glm::vec2 p, float factor)
+void GLCanvas::Zoom(vec2 p, float factor)
 {
 	float zoom = m_zoom * factor;
 	if(zoom > MAX_ZOOM || zoom < MIN_ZOOM) {
 		return;
 	}
 
-	glm::vec2 pan = (m_pan - p / m_zoom) + p / zoom;
+	vec2 pan = (m_pan - p / m_zoom) + p / zoom;
 
 	if(pan.x > MAX_PAN.x || pan.x < MIN_PAN.x ||
-	   pan.y > MAX_PAN.y || pan.y < MIN_PAN.y) {
+		pan.y > MAX_PAN.y || pan.y < MIN_PAN.y) {
 		return;
 	}
 
 	m_zoom = zoom;
-	m_pan  = pan;
+	m_pan = pan;
 }
 
-void GLCanvas::Pan(glm::vec2 delta)
+void GLCanvas::Pan(vec2 delta)
 {
 	m_pan += delta / m_zoom;
-	m_pan.x = std::clamp(m_pan.x, MIN_PAN.x, MAX_PAN.x);
-	m_pan.y = std::clamp(m_pan.y, MIN_PAN.y, MAX_PAN.y);
+	m_pan.x = clamp(m_pan.x, MIN_PAN.x, MAX_PAN.x);
+	m_pan.y = clamp(m_pan.y, MIN_PAN.y, MAX_PAN.y);
 }
 
 void GLCanvas::OnMouse(wxMouseEvent &e)
@@ -125,16 +135,19 @@ void GLCanvas::OnMouse(wxMouseEvent &e)
 
 	wxPoint pos = e.GetPosition();
 
-	wxString s;
-	s.Printf("Mouse Postition: %d %d", pos.x, pos.y);
-
-	if(m_parent != nullptr) {
-		m_parent->SetStatusText(s);
-	}
-
 	glm::vec2 fpos;
 	fpos.x = static_cast<float>(pos.x);
 	fpos.y = static_cast<float>(pos.y);
+
+	//glm::vec2 spos = ScreenToWorld(fpos);
+
+	wxString s;
+	s.Printf("Mouse Postition: %f %f", fpos.x, fpos.y);
+
+	wxFrame *mainframe = dynamic_cast<wxFrame *>(m_parent->GetParent());
+	if(mainframe) {
+		mainframe->SetStatusText(s);
+	}
 
 	if(e.GetWheelAxis() == wxMOUSE_WHEEL_VERTICAL) {
 
@@ -143,9 +156,9 @@ void GLCanvas::OnMouse(wxMouseEvent &e)
 		if(rot == 0) { 
 			/* no scroll */
 		} else if(rot > 0) { /* scroll up */
-			ZoomAt(fpos, 1.1f);
+			Zoom(fpos, 1.1f);
 		} else { /* scroll down */
-			ZoomAt(fpos, 0.9f);
+			Zoom(fpos, 0.9f);
 		}
 	}
 
