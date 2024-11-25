@@ -29,6 +29,7 @@ GLCanvas::GLCanvas(GLNoteBook *parent, const wxGLAttributes &attrs)
 	m_view = identity<mat4>();
 }
 
+
 void GLCanvas::OnPaint(wxPaintEvent &e)
 {
 	wxPaintDC dc(this);
@@ -70,10 +71,13 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 	/* red quad */
 	glBegin(GL_QUADS);
 		glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
-		glVertex2f(100, 100);
-		glVertex2f(100, 200);
-		glVertex2f(200, 200);
-		glVertex2f(200, 100);
+
+		for(glm::vec2 sq : m_squares) {
+			glVertex2f(sq.x, sq.y);
+			glVertex2f(sq.x, sq.y + 100);
+			glVertex2f(sq.x + 100, sq.y + 100);
+			glVertex2f(sq.x + 100, sq.y);
+		}
 	glEnd();
 
 	SwapBuffers();
@@ -135,11 +139,12 @@ void GLCanvas::OnMouse(wxMouseEvent &e)
 
 	wxPoint pos = e.GetPosition();
 
-	glm::vec2 fpos;
+	vec2 fpos;
 	fpos.x = static_cast<float>(pos.x);
 	fpos.y = static_cast<float>(pos.y);
 
-	//glm::vec2 spos = ScreenToWorld(fpos);
+	m_view = SetupView(m_pan, m_zoom);
+	vec2 spos = inverse(m_view) * vec4(fpos, 1.0, 1.0);
 
 	wxString s;
 	s.Printf("Mouse Postition: %f %f", fpos.x, fpos.y);
@@ -162,13 +167,17 @@ void GLCanvas::OnMouse(wxMouseEvent &e)
 		}
 	}
 
-	if(e.ButtonDown(wxMOUSE_BTN_LEFT)) {
+	if(e.ButtonDown(wxMOUSE_BTN_MIDDLE)) {
 		last_fpos = fpos;
 	}
 	
-	if(e.ButtonIsDown(wxMOUSE_BTN_LEFT)) {
+	if(e.ButtonIsDown(wxMOUSE_BTN_MIDDLE)) {
 		Pan(fpos - last_fpos);
 		last_fpos = fpos;
+	}
+
+	if(e.ButtonDown(wxMOUSE_BTN_LEFT)) {
+		m_squares.push_back(spos);
 	}
 
 

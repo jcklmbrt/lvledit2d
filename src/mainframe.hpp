@@ -4,14 +4,18 @@
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 
+#include "src/glnotebook.hpp"
+
 class MainFrame : public wxFrame
 {
 public:
 	MainFrame();
 private:
+	void OnNew(wxCommandEvent &e);
+	void OnOpen(wxCommandEvent &e);
+	void OnSave(wxCommandEvent &e);
 	void OnExit(wxCommandEvent &e);
-
-	wxGLCanvas *m_canvas = nullptr;
+	GLNoteBook *m_notebook = nullptr;
 };
 
 #endif

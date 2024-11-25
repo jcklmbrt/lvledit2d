@@ -33,6 +33,8 @@ private:
 	glm::mat4 m_proj;
 	glm::mat4 m_view;
 
+	std::vector<glm::vec2> m_squares;
+
 	void Pan(glm::vec2 delta);
 	void Zoom(glm::vec2 p, float factor);
 

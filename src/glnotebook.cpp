@@ -6,7 +6,7 @@
 
 
 GLNoteBook::GLNoteBook(wxWindow *parent, wxWindowID id)
-	: wxNotebook(parent, id)
+	: wxAuiNotebook(parent, id)
 {
 }
 
@@ -37,5 +37,5 @@ bool GLNoteBook::AddCanvas(const wxString &name)
 		m_context = nullptr;
 	}
 
-	return AddPage(canvas, name);
+	return AddPage(canvas, name, true);
 }

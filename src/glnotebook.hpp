@@ -4,9 +4,11 @@
 #include <wx/wx.h>
 #include <wx/notebook.h>
 
+#include <wx/aui/aui.h>
+
 class wxGLContext;
 
-class GLNoteBook : public wxNotebook
+class GLNoteBook : public wxAuiNotebook
 {
 public:
 	GLNoteBook(wxWindow *parent, wxWindowID id = wxID_ANY);

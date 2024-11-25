@@ -16,7 +16,7 @@ if(WIN32)
 
 	add_subdirectory(${wxWidgets_DIR})
 	target_include_directories(lvledit2d PUBLIC ${wxWidgets_USE_FILE})
-	target_link_libraries(lvledit2d wx::core wx::base wx::gl)
+	target_link_libraries(lvledit2d wx::core wx::base wx::gl wx::aui)
 else()
 	add_executable(lvledit2d)
 	set(OpenGL_GL_PREFERENCE "GLVND")
