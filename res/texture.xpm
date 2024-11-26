@@ -1,5 +1,5 @@
 /* XPM */
-static char * texture_xpm[] = {
+static const char * texture_xpm[] = {
 "24 24 4 1",
 " 	c None",
 ".	c #000000",

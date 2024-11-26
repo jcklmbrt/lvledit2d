@@ -6,7 +6,14 @@
 #include <wx/notebook.h>
 #include <glm/glm.hpp>
 
+#include "glm/fwd.hpp"
 #include "src/glnotebook.hpp"
+
+struct aabb_t
+{
+	glm::vec2 mins, maxs;
+};
+
 
 class GLCanvas : public wxGLCanvas
 {
@@ -23,17 +30,19 @@ private:
 	void OnSize(wxSizeEvent &e);
 	void OnKeyDown(wxKeyEvent &e);
 
-	static glm::mat4 SetupView(glm::vec2 pan, float zoom);
+	void SetupView();
+	glm::vec2 WorldToScreen(glm::vec2 world);
+	glm::vec2 ScreenToWorld(glm::vec2 screen);
 
 	GLNoteBook *m_parent  = nullptr;
 
-	float m_zoom = 1.0;
+	float     m_zoom = 1.0;
 	glm::vec2 m_pan  = { 0.0, 0.0 };
 
 	glm::mat4 m_proj;
 	glm::mat4 m_view;
 
-	std::vector<glm::vec2> m_squares;
+	std::vector<aabb_t> m_squares;
 
 	void Pan(glm::vec2 delta);
 	void Zoom(glm::vec2 p, float factor);

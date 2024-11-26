@@ -4,6 +4,7 @@
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 
+#include "src/toolbar.hpp"
 #include "src/glnotebook.hpp"
 
 class MainFrame : public wxFrame

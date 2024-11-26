@@ -1,23 +1,17 @@
 
+#include <wx/event.h>
+#include <wx/gdicmn.h>
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <wx/notebook.h>
 #include <wx/wfstream.h>
 
+#include "src/toolbar.hpp"
 #include "src/mainframe.hpp"
-#include "src/glcanvas.hpp"
-#include "src/glnotebook.hpp"
 
-#include "res/icon.xpm"
-#include "res/line.xpm"
-#include "res/quad.xpm"
-#include "res/texture.xpm"
 #include "res/reset.xpm"
-#include "res/pawn.xpm"
-#include "res/hand.xpm"
 #include "res/save.xpm"
-
-
+#include "res/icon.xpm"
 
 MainFrame::MainFrame()
 	: wxFrame(nullptr, wxID_ANY, "LvlEdit2d")
@@ -42,16 +36,9 @@ MainFrame::MainFrame()
 	SetMenuBar(menubar);
 
 	wxStatusBar *status  = CreateStatusBar();
-	wxToolBar   *toolbar = CreateToolBar(wxTB_LEFT | wxTB_VERTICAL);
 
-	toolbar->AddRadioTool(wxID_ANY, "Select", hand_xpm);
-	toolbar->AddRadioTool(wxID_ANY, "Line", line_xpm);
-	toolbar->AddRadioTool(wxID_ANY, "Quad", quad_xpm);
-	toolbar->AddRadioTool(wxID_ANY, "Texture", texture_xpm);
-	toolbar->AddRadioTool(wxID_ANY, "Entity", pawn_xpm);
-	//toolbar->AddRadioTool(wxID_ANY, "Save", save_xpm);
-	//toolbar->AddRadioTool(wxID_ANY, "Reset", reset_xpm);
-	toolbar->Realize();
+	wxToolBar *toolbar = new ToolBar(this, wxID_ANY);
+	SetToolBar(toolbar);
 
 	wxPanel    *panel    = new wxPanel(this);
 	GLNoteBook *notebook = new GLNoteBook(panel, wxID_ANY);
@@ -61,7 +48,6 @@ MainFrame::MainFrame()
 	sizer = new wxBoxSizer(wxVERTICAL);
 	sizer->Add(notebook, 1, wxEXPAND);
 	panel->SetSizer(sizer);
-
 
 	sizer = new wxBoxSizer(wxVERTICAL);
 	sizer->Add(panel, 1, wxEXPAND);
