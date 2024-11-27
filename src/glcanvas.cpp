@@ -1,4 +1,3 @@
-#include <GL/gl.h>
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <glm/glm.hpp>
@@ -52,10 +51,7 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glShadeModel(GL_SMOOTH);
+	glDisable(GL_POINT_SMOOTH);
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 
@@ -67,7 +63,7 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 	glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glLineWidth(0.5f);
+	glLineWidth(1.0f);
 	glBegin(GL_LINES);
 		glColor4f(0.7f,0.7f,0.7f,1.0f);
 
@@ -81,7 +77,7 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 		}
 	glEnd();
 
-	glLineWidth(4.0f);
+	glLineWidth(3.0f);
 	glColor4f(0.0f,0.0f,0.0f,1.0f);
 
 	glBegin(GL_LINES);
@@ -115,7 +111,7 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 	glEnd();
 	
 	glLineWidth(1.0f);
-	glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+	glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
 
 	glBegin(GL_LINES);
 		for(aabb_t b : m_squares) {
@@ -147,7 +143,7 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 		}
 	glEnd();
 
-	glPointSize(8.0f);
+	glPointSize(6.0f);
 	glColor4f(0.0f,0.0f,0.0f,1.0f);
 	glBegin(GL_POINTS);
 		for(aabb_t b : m_squares) {
