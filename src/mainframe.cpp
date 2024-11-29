@@ -6,6 +6,7 @@
 #include <wx/notebook.h>
 #include <wx/wfstream.h>
 
+#include "src/drawpanel.hpp"
 #include "src/toolbar.hpp"
 #include "src/mainframe.hpp"
 
@@ -40,8 +41,8 @@ MainFrame::MainFrame()
 	wxToolBar *toolbar = new ToolBar(this, wxID_ANY);
 	SetToolBar(toolbar);
 
-	wxPanel    *panel    = new wxPanel(this);
-	GLNoteBook *notebook = new GLNoteBook(panel, wxID_ANY);
+	wxPanel       *panel    = new wxPanel(this);
+	wxAuiNotebook *notebook = new wxAuiNotebook(panel, wxID_ANY);
 
 	wxBoxSizer *sizer;
 
@@ -69,7 +70,8 @@ void MainFrame::OnOpen(wxCommandEvent &e)
 		return;
 	}
 
-	m_notebook->AddCanvas(dialog.GetFilename());
+	DrawPanel *dp = new DrawPanel(m_notebook);
+	m_notebook->AddPage(dp, dialog.GetFilename(), true);
 }
 
 void MainFrame::OnSave(wxCommandEvent &e)
@@ -90,7 +92,8 @@ void MainFrame::OnNew(wxCommandEvent &e)
 	static int n = 0;
 	wxString s;
 	s.Printf("Page:%d", n++);
-	m_notebook->AddCanvas(s);
+	DrawPanel *dp = new DrawPanel(m_notebook);
+	m_notebook->AddPage(dp, s, true);
 }
 
 void MainFrame::OnExit(wxCommandEvent &e)

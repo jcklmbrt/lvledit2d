@@ -2,10 +2,9 @@
 #define _MAINFRAME_HPP
 
 #include <wx/wx.h>
-#include <wx/glcanvas.h>
+#include <wx/aui/aui.h>
 
 #include "src/toolbar.hpp"
-#include "src/glnotebook.hpp"
 
 class MainFrame : public wxFrame
 {
@@ -16,7 +15,7 @@ private:
 	void OnOpen(wxCommandEvent &e);
 	void OnSave(wxCommandEvent &e);
 	void OnExit(wxCommandEvent &e);
-	GLNoteBook *m_notebook = nullptr;
+	wxAuiNotebook *m_notebook = nullptr;
 };
 
 #endif

@@ -17,24 +17,19 @@ if(WIN32)
 
 	add_subdirectory(${wxWidgets_DIR})
 	target_include_directories(lvledit2d PUBLIC ${wxWidgets_USE_FILE})
-	target_link_libraries(lvledit2d wx::core wx::base wx::gl wx::aui)
+	target_link_libraries(lvledit2d wx::core wx::base wx::aui)
 else()
 	add_executable(lvledit2d)
-	set(OpenGL_GL_PREFERENCE "GLVND")
-	find_package(wxWidgets COMPONENTS gl core base aui)
-	find_package(OpenGL REQUIRED)
+	find_package(wxWidgets COMPONENTS core base aui)
 	if(wxWidgets_FOUND)
 	  include(${wxWidgets_USE_FILE})
-	  target_link_libraries(lvledit2d ${wxWidgets_LIBRARIES} OpenGL::GL)
+	  target_link_libraries(lvledit2d ${wxWidgets_LIBRARIES})
 	endif()	
 endif()
-
-target_include_directories(lvledit2d PUBLIC "3rdparty/glm")
 
 target_include_directories(lvledit2d PUBLIC .)
 target_sources(lvledit2d PRIVATE
 	"src/lvledit2d.cpp"
 	"src/mainframe.cpp"
-	"src/glcanvas.cpp"
-	"src/glnotebook.cpp"
-	"src/toolbar.cpp")
+	"src/toolbar.cpp"
+	"src/drawpanel.cpp")
