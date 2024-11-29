@@ -2,6 +2,7 @@
 #ifndef _DRAWPANEL_HPP
 #define _DRAWPANEL_HPP
 
+#include <wx/geometry.h>
 #include <wx/wx.h>
 
 class DrawPanel : public wxPanel

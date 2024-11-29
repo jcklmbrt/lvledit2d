@@ -1,6 +1,12 @@
+#include <wx/gdicmn.h>
+#include <wx/geometry.h>
+#include <wx/wx.h>
+#include <wx/pen.h>
+
 #include "src/lvledit2d.hpp"
 #include "src/toolbar.hpp"
 #include "src/drawpanel.hpp"
+
 
 wxBEGIN_EVENT_TABLE(DrawPanel, wxPanel)
 	EVT_PAINT(DrawPanel::OnPaint)
@@ -69,22 +75,48 @@ DrawPanel::DrawPanel(wxWindow *parent)
 	SetBackgroundColour(wxColour(77, 77, 77));
 }
 
+
 void DrawPanel::OnPaint(wxPaintEvent &e)
 {
 	wxPaintDC dc(this);
 	SetupView();
-	dc.SetTransformMatrix(m_view);
+
+	wxPen pen(*wxBLACK, 1);
+	dc.SetPen(pen);
+	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 	static int spacing = 100;
 	for(int i = MIN_PAN_X / spacing; i < MAX_PAN_X / spacing; i++) {
-		dc.DrawLine(i * spacing, MIN_PAN_Y,
-		            i * spacing, MAX_PAN_Y);
-		dc.DrawLine(MIN_PAN_X, i * spacing,
-		            MAX_PAN_X, i * spacing);
+		wxPoint wa,wb;
+		double  space = static_cast<double>(i * spacing);
+		WorldToScreen({space, MIN_PAN_Y}, wa);
+		WorldToScreen({space, MAX_PAN_Y}, wb);
+		dc.DrawLine(wa, wb);
+		WorldToScreen({MIN_PAN_X, space}, wa);
+		WorldToScreen({MAX_PAN_Y, space}, wb);
+		dc.DrawLine(wa, wb);
 	}
 
-	for(wxRect r : m_rects) {
-		dc.DrawRectangle(r);
+	wxPen pens[2] = { wxPen(*wxBLACK, 3), wxPen(*wxRED, 1) };
+	for(wxPen pen : pens) {
+		dc.SetPen(pen);
+		for(wxRect r : m_rects) {
+			wxPoint2DDouble lt, rb;
+			lt.m_x = r.GetLeft();
+			lt.m_y = r.GetTop();
+			rb.m_x = r.GetRight();
+			rb.m_y = r.GetBottom();
+
+			wxPoint slt,srb;
+			WorldToScreen(lt, slt);
+			WorldToScreen(rb, srb);
+
+			wxSize size;
+			size.x = srb.x - slt.x;
+			size.y = srb.y - slt.y;
+
+			dc.DrawRectangle(slt, size);
+		}
 	}
 }
 
