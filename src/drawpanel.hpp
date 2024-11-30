@@ -5,6 +5,12 @@
 #include <wx/geometry.h>
 #include <wx/wx.h>
 
+class ConnectLine
+{
+	int rect; /* index into m_rects */
+	wxOutCode outcode;
+};
+
 class DrawPanel : public wxPanel
 {
 	static constexpr wxDouble MAX_PAN_X = 10000.0;
@@ -31,6 +37,7 @@ private:
 	wxDouble         m_zoom = 1.0;
 
 	wxVector<wxRect2DDouble> m_rects;
+	wxVector<ConnectLine>    m_lines;
 
 	wxDECLARE_EVENT_TABLE();
 };
