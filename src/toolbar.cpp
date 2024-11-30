@@ -44,4 +44,5 @@ void ToolBar::OnSelect(wxCommandEvent &e)
 {
 	int id = e.GetId();
 	m_selected = static_cast<ID>(id);
+	
 }
