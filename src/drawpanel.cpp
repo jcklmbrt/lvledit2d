@@ -73,6 +73,31 @@ DrawPanel::DrawPanel(wxWindow *parent)
 	SetBackgroundColour(wxColour(0xFF, 0xFF, 0xEA));
 }
 
+static bool LineLine(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
+{
+	double a = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+	double b = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+
+	if(a > 0 && a < 1 && b > 0 && b < 1) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+static bool LineRect(float x0, float y0, float x1, float y1, wxRect2DDouble rect)
+{
+	wxPoint2DDouble lt = rect.GetLeftTop();
+	wxPoint2DDouble rt = rect.GetRightTop();
+	wxPoint2DDouble lb = rect.GetLeftBottom();
+	wxPoint2DDouble rb = rect.GetRightBottom();
+
+	return  LineLine(lt.m_x, lt.m_y, rt.m_x, rt.m_y, x0, y0, x1, y1) || /* top */
+		LineLine(lb.m_x, lb.m_y, rb.m_x, rb.m_y, x0, y0, x1, y1) || /* bottom */
+		LineLine(lt.m_x, lt.m_y, lb.m_x, lb.m_y, x0, y0, x1, y1) || /* left */
+		LineLine(rt.m_x, rt.m_y, rb.m_x, rb.m_y, x0, y0, x1, y1);   /* right */
+}
+
 static wxRect RectAroundPoint(double x, double y, double size)
 {
 	wxRect r;
@@ -136,7 +161,6 @@ void DrawPanel::DrawRect(wxPaintDC &dc, wxRect2DDouble r, wxColour color, bool t
 		6, 4, 2
 	};
 
-
 	// highlight corners
 	for(int i = 0; i < 3; i++) {
 		dc.SetBrush(brushes[i]);
@@ -193,16 +217,9 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 	for(const ConnectLine line : m_lines) {
 		wxPoint2DDouble p[2];
 		wxPoint         s[2];
-		for(int i = 0; i < 2; i++) {
-			wxRect2DDouble &r = m_rects[line.rect[i]];
-			switch(line.outcode[i]) {
-			case wxOutLeft  + wxOutTop:    p[i] = r.GetLeftTop();     break;
-			case wxOutRight + wxOutTop:    p[i] = r.GetRightTop();    break;
-			case wxOutLeft  + wxOutBottom: p[i] = r.GetLeftBottom();  break;
-			case wxOutRight + wxOutBottom: p[i] = r.GetRightBottom(); break;
-			}
-			WorldToScreen(p[i], s[i]);
-		}
+		line.GetPoints(m_rects, p);
+		WorldToScreen(p[0], s[0]);
+		WorldToScreen(p[1], s[1]);
 
 		dc.SetPen(wxPen(*wxBLACK, 3));
 		dc.SetBrush(*wxTRANSPARENT_BRUSH);
@@ -223,16 +240,48 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 		wxPoint2DDouble closest_point = m_mousepos;
 		if(FindClosestRectCorner(closest_point, corner, rect)) {
 			if(rect != m_tmpline.rect[0]) {
-				wxPoint a, b;
-				WorldToScreen(closest_point, a);
-				WorldToScreen(m_editstart, b);
-				dc.SetPen(wxPen(*wxBLACK, 3));
-				dc.SetBrush(*wxTRANSPARENT_BRUSH);
-				dc.DrawLine(a, b);
-				dc.SetPen(wxPen(*wxWHITE, 1));
-				dc.SetBrush(*wxTRANSPARENT_BRUSH);
-				dc.DrawLine(a, b);
-				good = true;
+
+				bool intersect = false;
+				for(wxRect2DDouble &rect : m_rects) {
+					if(LineRect(m_editstart.m_x,
+						    m_editstart.m_y,
+						    closest_point.m_x,
+						    closest_point.m_y,
+						    rect)) {
+						intersect = true;
+						break;
+					}
+				}
+
+				for(ConnectLine &line : m_lines) {
+					wxPoint2DDouble p[2];
+					if(line.GetPoints(m_rects, p)) {
+						if(LineLine(p[0].m_x,
+							    p[0].m_y,
+							    p[1].m_x,
+							    p[1].m_y,
+							    m_editstart.m_x,
+							    m_editstart.m_y,
+							    closest_point.m_x,
+							    closest_point.m_y)) {
+							intersect = true;
+							break;
+						}
+					}
+				}
+
+				if(!intersect) {
+					wxPoint a, b;
+					WorldToScreen(closest_point, a);
+					WorldToScreen(m_editstart,   b);
+					dc.SetPen(wxPen(*wxBLACK, 3));
+					dc.SetBrush(*wxTRANSPARENT_BRUSH);
+					dc.DrawLine(a, b);
+					dc.SetPen(wxPen(*wxWHITE, 1));
+					dc.SetBrush(*wxTRANSPARENT_BRUSH);
+					dc.DrawLine(a, b);
+					good = true;
+				}
 			}
 		}
 		if(good == false) {

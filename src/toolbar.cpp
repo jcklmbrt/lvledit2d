@@ -1,7 +1,9 @@
+#include <wx/aui/auibook.h>
 #include <wx/event.h>
 #include <wx/wx.h>
 #include "src/toolbar.hpp"
 #include "src/lvledit2d.hpp"
+#include "src/drawpanel.hpp"
 
 #include "res/line.xpm"
 #include "res/quad.xpm"
@@ -45,4 +47,15 @@ void ToolBar::OnSelect(wxCommandEvent &e)
 	int id = e.GetId();
 	m_selected = static_cast<ID>(id);
 	
+	MainFrame     *mainframe = wxGetApp().GetMainFrame();
+	wxAuiNotebook *notebook  = mainframe->GetNotebook();
+
+	int sel = notebook->GetSelection();
+	wxWindow *page = notebook->GetPage(sel);
+
+	DrawPanel *dp = dynamic_cast<DrawPanel *>(page);
+	if(dp != nullptr) {
+		dp->FinishEdit();
+		dp->Refresh(false);
+	}
 }

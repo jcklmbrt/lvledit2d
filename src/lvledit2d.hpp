@@ -2,15 +2,18 @@
 #define _LVLEDIT2D_HPP
 
 #include <wx/wx.h>
+#include "src/mainframe.hpp"
 
 class LvlEdit2D : public wxApp
 {
 public:
 	virtual bool OnInit();
 	virtual int  OnExit();
-	wxFrame *GetMainFrame();
+	inline MainFrame *GetMainFrame() {
+		return m_mainframe;
+	}
 private:
-	wxFrame *m_mainframe = nullptr;
+	MainFrame *m_mainframe = nullptr;
 };
 
 DECLARE_APP(LvlEdit2D)

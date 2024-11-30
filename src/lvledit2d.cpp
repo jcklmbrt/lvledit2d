@@ -22,9 +22,4 @@ int LvlEdit2D::OnExit()
 }
 
 
-wxFrame *LvlEdit2D::GetMainFrame()
-{
-	return m_mainframe;
-}
-
 wxIMPLEMENT_APP(LvlEdit2D);
