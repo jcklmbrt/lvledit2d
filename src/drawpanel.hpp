@@ -30,7 +30,7 @@ private:
 	wxPoint2DDouble  m_pan  = { 0.0, 0.0 };
 	wxDouble         m_zoom = 1.0;
 
-	wxVector<wxRect> m_rects;
+	wxVector<wxRect2DDouble> m_rects;
 
 	wxDECLARE_EVENT_TABLE();
 };

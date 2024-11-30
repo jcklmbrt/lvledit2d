@@ -100,7 +100,7 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 	wxPen pens[2] = { wxPen(*wxBLACK, 3), wxPen(*wxRED, 1) };
 	for(wxPen pen : pens) {
 		dc.SetPen(pen);
-		for(wxRect r : m_rects) {
+		for(wxRect2DDouble r : m_rects) {
 			wxPoint2DDouble lt, rb;
 			lt.m_x = r.GetLeft();
 			lt.m_y = r.GetTop();
@@ -138,30 +138,39 @@ void DrawPanel::OnMouse(wxMouseEvent &e)
 	ToolBar *toolbar = dynamic_cast<ToolBar *>(mainframe->GetToolBar());
 	wxToolBarToolBase *tool = toolbar->GetSelected();
 
-	static wxRect *cur_rect = nullptr;
+	static wxRect2DDouble *cur_rect = nullptr;
+	static wxPoint2DDouble start;
 
 	switch(tool->GetId())
 	{
 	case ToolBar::ID::QUAD:
 		if(e.ButtonDown(wxMOUSE_BTN_LEFT)) {
-
 			if(cur_rect == nullptr) {
-				wxRect r;
-				r.SetX(world_pos.m_x);
-				r.SetY(world_pos.m_y);
-
+				wxRect2DDouble r;
+				r.SetCentre(world_pos);
 				m_rects.push_back(r);
+				start    = world_pos;
 				cur_rect = &m_rects.back();
 			}
 			else {
-				cur_rect->SetRight(world_pos.m_x);
-				cur_rect->SetBottom(world_pos.m_y);
+				wxSize size = cur_rect->GetSize();
+				wxASSERT(size.x > 0 && size.y > 0);
 				cur_rect = nullptr;
 			}
 		}
 		else if(cur_rect != nullptr) {
-			cur_rect->SetRight(world_pos.m_x);
-			cur_rect->SetBottom(world_pos.m_y);
+			double x = world_pos.m_x;
+			double y = world_pos.m_y;
+			if(x > start.m_x) {
+				cur_rect->SetRight(x);
+			} else {
+				cur_rect->SetLeft(x);
+			} if(y > start.m_y) {
+				cur_rect->SetBottom(y);
+			} else {
+				cur_rect->SetTop(y);
+			}
+			
 		}
 		break;
 	default:
