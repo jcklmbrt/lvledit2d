@@ -9,8 +9,9 @@ class MainFrame : public wxFrame
 {
 public:
 	MainFrame();
-	inline wxAuiNotebook *GetNotebook() {
-		return m_notebook;
+	inline wxAuiNotebook *GetNotebook() 
+	{ 
+		return m_notebook; 
 	}
 private:
 	void OnNew(wxCommandEvent &e);

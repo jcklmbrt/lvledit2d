@@ -6,27 +6,65 @@
 #include <wx/vector.h>
 #include <wx/wx.h>
 
-struct ConnectLine
-{
-	int rect[2]; /* index into m_rects */
-	int outcode[2];
 
-	inline bool GetPoints(const wxVector<wxRect2DDouble> &rects,
-	              wxPoint2DDouble p[2]) const 
+class ConvexPolygon
+{
+public:
+	ConvexPolygon(const wxRect2DDouble &rect)
 	{
-		for(int i = 0; i < 2; i++) {
-			wxRect2DDouble r = rects[rect[i]];
-			switch(outcode[i]) {
-			case wxOutLeft  + wxOutTop:    p[i] = r.GetLeftTop();     break;
-			case wxOutRight + wxOutTop:    p[i] = r.GetRightTop();    break;
-			case wxOutLeft  + wxOutBottom: p[i] = r.GetLeftBottom();  break;
-			case wxOutRight + wxOutBottom: p[i] = r.GetRightBottom(); break;
-			default: return false;
+		m_center = rect.GetCentre();
+
+		m_points.push_back(m_center - rect.GetLeftTop());
+		m_points.push_back(m_center - rect.GetRightTop());
+		m_points.push_back(m_center - rect.GetRightBottom());
+		m_points.push_back(m_center - rect.GetLeftBottom());
+	}
+
+	inline bool ContainsPoint(wxPoint2DDouble pt) const
+	{
+		bool res = false;
+		size_t num_points = NumPoints();
+		for(size_t i = 0; i < num_points; i++) {
+			wxPoint2DDouble cp = GetPoint(i);
+			wxPoint2DDouble np = GetPoint((i + 1) % num_points);
+
+			if(((cp.m_y >= pt.m_y && np.m_y  < pt.m_y) || (cp.m_y  < pt.m_y && np.m_y >= pt.m_y)) &&
+			    (pt.m_x < (np.m_x - cp.m_x) * (pt.m_y - cp.m_y) / (np.m_y - cp.m_y) + cp.m_x)) {
+				res = !res;
 			}
 		}
-		return true;
+		return res;
 	}
+
+	inline void MoveBy(wxPoint2DDouble delta)
+	{
+		m_center += delta;
+	}
+
+	inline wxPoint2DDouble GetCenter() const
+	{
+		return m_center;
+	}
+
+	inline size_t NumPoints() const
+	{
+		return m_points.size();
+	}
+
+	inline wxPoint2DDouble GetPoint(size_t i) const
+	{
+		return m_points[i] + m_center;
+	}
+
+	inline void SetPoint(size_t i, wxPoint2DDouble pt)
+	{
+		m_points[i] = m_center - pt;
+	}
+private:
+	wxPoint2DDouble           m_center;
+	wxVector<wxPoint2DDouble> m_points;
 };
+
 
 class DrawPanel : public wxPanel
 {
@@ -50,8 +88,8 @@ private:
 	void WorldToScreen(wxPoint2DDouble world, wxPoint &screen);
 	void ScreenToWorld(wxPoint screen, wxPoint2DDouble &world);
 
-	bool FindClosestRectCorner(wxPoint2DDouble &pt, int &corner, int &rect);
 	void DrawRect(wxPaintDC &dc, wxRect2DDouble rect, wxColour color, bool tmp);
+	void DrawGrid(wxPaintDC &dc);
 
 	wxAffineMatrix2D m_view;
 	wxPoint2DDouble  m_pan  = { 0.0, 0.0 };
@@ -59,15 +97,14 @@ private:
 
 	wxPoint2DDouble  m_mousepos;
 
-	wxVector<wxRect2DDouble> m_rects;
-	wxVector<ConnectLine>    m_lines;
+	wxVector<ConvexPolygon> m_polys = {};
 
 	/* editing context */
-	int             m_inedit = 0;
+	int m_inedit = 0;
 
 	wxRect2DDouble  m_tmprect;
 	wxPoint2DDouble m_editstart;
-	ConnectLine     m_tmpline;
+	int m_selectedpoly;
 
 	int  m_gridspacing = 100;
 	bool m_snaptogrid  = false;

@@ -1,3 +1,5 @@
+#include <array>
+
 #include <wx/gdicmn.h>
 #include <wx/geometry.h>
 #include <wx/wx.h>
@@ -13,6 +15,7 @@ wxBEGIN_EVENT_TABLE(DrawPanel, wxPanel)
 	EVT_MOUSE_EVENTS(DrawPanel::OnMouse)
 	EVT_KEY_DOWN(DrawPanel::OnKeyDown)
 wxEND_EVENT_TABLE()
+
 
 void DrawPanel::WorldToScreen(wxPoint2DDouble world, wxPoint &screen)
 {
@@ -70,10 +73,9 @@ DrawPanel::DrawPanel(wxWindow *parent)
 	: wxPanel(parent)
 {
 	wxASSERT(m_view.IsIdentity() == true);
-	SetBackgroundColour(wxColour(0xFF, 0xFF, 0xEA));
 }
 
-static bool LineLine(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4)
+static bool LineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4)
 {
 	double a = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
 	double b = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
@@ -85,7 +87,7 @@ static bool LineLine(float x1, float y1, float x2, float y2, float x3, float y3,
 	}
 }
 
-static bool LineRect(float x0, float y0, float x1, float y1, wxRect2DDouble rect)
+static bool LineRect(double x0, double y0, double x1, double y1, wxRect2DDouble rect)
 {
 	wxPoint2DDouble lt = rect.GetLeftTop();
 	wxPoint2DDouble rt = rect.GetRightTop();
@@ -113,7 +115,6 @@ static wxRect RectAroundPoint(double x, double y, double size)
 void DrawPanel::DrawRect(wxPaintDC &dc, wxRect2DDouble r, wxColour color, bool tmp)
 {
 	wxPen pens[2] = { wxPen(*wxBLACK, 3), wxPen(color, 1) };
-
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 	for(wxPen pen : pens) {
@@ -129,17 +130,8 @@ void DrawPanel::DrawRect(wxPaintDC &dc, wxRect2DDouble r, wxColour color, bool t
 
 		dc.SetPen(pen);
 
-		if(tmp) {
-			bool intersects = false;
-			for(const wxRect2DDouble &rect : m_rects) {
-				if(rect.Intersects(r)) {
-					intersects = true;
-					break;
-				}
-			}
-			if(intersects && pen.GetColour() == color) {
-				dc.SetPen(wxPen(*wxRED, 1));
-			}
+		if(tmp && pen.GetColour() == color) {
+			dc.SetPen(wxPen(*wxRED, 1));
 		}
 
 		wxSize size;
@@ -148,57 +140,16 @@ void DrawPanel::DrawRect(wxPaintDC &dc, wxRect2DDouble r, wxColour color, bool t
 
 		dc.DrawRectangle(slt, size);
 	}
-
-	dc.SetPen(*wxTRANSPARENT_PEN);
-
-	wxBrush brushes[] = {
-		*wxBLACK_BRUSH,
-		*wxRED_BRUSH,
-		*wxBLACK_BRUSH
-	};
-
-	int sizes[] = {
-		6, 4, 2
-	};
-
-	// highlight corners
-	for(int i = 0; i < 3; i++) {
-		dc.SetBrush(brushes[i]);
-		wxPoint2DDouble lt, rb;
-		lt.m_x = r.GetLeft();
-		lt.m_y = r.GetTop();
-		rb.m_x = r.GetRight();
-		rb.m_y = r.GetBottom();
-
-		wxPoint slt, srb;
-		WorldToScreen(lt, slt);
-		WorldToScreen(rb, srb);
-
-		int size = sizes[i];
-
-		wxRect corners[] = {
-			RectAroundPoint(srb.x, slt.y, size),
-			RectAroundPoint(slt.x, srb.y, size),
-			RectAroundPoint(srb.x, srb.y, size),
-			RectAroundPoint(slt.x, slt.y, size),
-		};
-
-		for(wxRect corner : corners) {
-			dc.DrawRectangle(corner);
-		}
-	}
 }
 
 
-void DrawPanel::OnPaint(wxPaintEvent &e)
+void DrawPanel::DrawGrid(wxPaintDC &dc)
 {
-	wxPaintDC dc(this);
-	SetupView();
-
 	dc.SetPen(wxPen(wxColour(220, 220, 220), 1));
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 	int spacing = m_gridspacing;
+
 	for(int i = MIN_PAN_X / spacing; i < MAX_PAN_X / spacing; i++) {
 		wxPoint wa, wb;
 		double  space = static_cast<double>(i * spacing);
@@ -209,140 +160,68 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 		WorldToScreen({ MAX_PAN_Y, space }, wb);
 		dc.DrawLine(wa, wb);
 	}
+}
 
-	for(const wxRect2DDouble &r : m_rects) {
-		DrawRect(dc, r, *wxGREEN, false);
-	}
 
-	for(const ConnectLine line : m_lines) {
-		wxPoint2DDouble p[2];
-		wxPoint         s[2];
-		line.GetPoints(m_rects, p);
-		WorldToScreen(p[0], s[0]);
-		WorldToScreen(p[1], s[1]);
+void DrawPanel::OnPaint(wxPaintEvent &e)
+{
+	wxPaintDC dc(this);
+	SetupView();
+	DrawGrid(dc);
+
+	wxVector<wxPoint> s_points;
+	
+	for(const ConvexPolygon &p : m_polys) {
+		
+		dc.SetBrush(*wxTRANSPARENT_BRUSH);
+
+		for(int i = 0; i < p.NumPoints(); i++) {
+			wxPoint s_point;
+			WorldToScreen(p.GetPoint(i), s_point);
+			s_points.push_back(s_point);
+		}
 
 		dc.SetPen(wxPen(*wxBLACK, 3));
-		dc.SetBrush(*wxTRANSPARENT_BRUSH);
-		dc.DrawLine(s[0], s[1]);
-		dc.SetPen(wxPen(*wxGREEN, 1));
-		dc.SetBrush(*wxTRANSPARENT_BRUSH);
-		dc.DrawLine(s[0], s[1]);
+		dc.DrawPolygon(s_points.size(), s_points.data());
 
+		if(p.ContainsPoint(m_mousepos)) {
+			dc.SetPen(wxPen(*wxGREEN, 1));
+		} else {
+			dc.SetPen(wxPen(*wxWHITE, 1));
+		}
+
+		dc.DrawPolygon(s_points.size(), s_points.data());
+
+		for(wxPoint s_point : s_points) {
+			dc.SetPen(*wxTRANSPARENT_PEN);
+
+			wxBrush brushes[] = {
+				*wxBLACK_BRUSH,
+				wxBrush(*wxWHITE),
+				*wxBLACK_BRUSH
+			};
+
+			int sizes[] = {
+				6, 4, 2
+			};
+
+			// highlight corners
+			for(int i = 0; i < 3; i++) {
+				dc.SetBrush(brushes[i]);
+				int size = sizes[i];
+				wxRect cr = RectAroundPoint(s_point.x, s_point.y, size);
+				dc.DrawRectangle(cr);
+			}
+		}
+
+		s_points.clear();
 	}
 
 	if(m_inedit == ToolBar::ID::QUAD) {
 		DrawRect(dc, m_tmprect, *wxWHITE, true);
 	}
-
-	if(m_inedit == ToolBar::ID::LINE) {
-		int corner, rect;
-		bool good = false;
-		wxPoint2DDouble closest_point = m_mousepos;
-		if(FindClosestRectCorner(closest_point, corner, rect)) {
-			if(rect != m_tmpline.rect[0]) {
-
-				bool intersect = false;
-				for(wxRect2DDouble &rect : m_rects) {
-					if(LineRect(m_editstart.m_x,
-						    m_editstart.m_y,
-						    closest_point.m_x,
-						    closest_point.m_y,
-						    rect)) {
-						intersect = true;
-						break;
-					}
-				}
-
-				for(ConnectLine &line : m_lines) {
-					wxPoint2DDouble p[2];
-					if(line.GetPoints(m_rects, p)) {
-						if(LineLine(p[0].m_x,
-							    p[0].m_y,
-							    p[1].m_x,
-							    p[1].m_y,
-							    m_editstart.m_x,
-							    m_editstart.m_y,
-							    closest_point.m_x,
-							    closest_point.m_y)) {
-							intersect = true;
-							break;
-						}
-					}
-				}
-
-				if(!intersect) {
-					wxPoint a, b;
-					WorldToScreen(closest_point, a);
-					WorldToScreen(m_editstart,   b);
-					dc.SetPen(wxPen(*wxBLACK, 3));
-					dc.SetBrush(*wxTRANSPARENT_BRUSH);
-					dc.DrawLine(a, b);
-					dc.SetPen(wxPen(*wxWHITE, 1));
-					dc.SetBrush(*wxTRANSPARENT_BRUSH);
-					dc.DrawLine(a, b);
-					good = true;
-				}
-			}
-		}
-		if(good == false) {
-			wxPoint a, b;
-			WorldToScreen(m_mousepos, a);
-			WorldToScreen(m_editstart, b);
-			dc.SetPen(wxPen(*wxBLACK, 3));
-			dc.SetBrush(*wxTRANSPARENT_BRUSH);
-			dc.DrawLine(a, b);
-			dc.SetPen(wxPen(*wxRED, 1));
-			dc.SetBrush(*wxTRANSPARENT_BRUSH);
-			dc.DrawLine(a, b);
-		}
-	}
 }
 
-bool DrawPanel::FindClosestRectCorner(wxPoint2DDouble &pt, int &corner, int &rect)
-{
-	int    closest_rect   = 0;
-	int    closest_corner = wxInside;
-	double closest_dist   = m_gridspacing * m_gridspacing;
-	wxPoint2DDouble closest_point;
-
-	int num_rects = m_rects.size();
-	for(int i = 0; i < num_rects; i++) {
-
-		int corners[] = {
-			wxOutLeft  + wxOutTop,
-			wxOutRight + wxOutTop,
-			wxOutLeft  + wxOutBottom,
-			wxOutRight + wxOutBottom
-		};
-
-		wxPoint2DDouble points[] = {
-			m_rects[i].GetLeftTop(),
-			m_rects[i].GetRightTop(),
-			m_rects[i].GetLeftBottom(),
-			m_rects[i].GetRightBottom()
-		};
-
-		/* for each corner */
-		for(int j = 0; j < 4; j++) {
-			double dist = pt.GetDistanceSquare(points[j]);
-			if(dist < closest_dist) {
-				closest_point  = points[j];
-				closest_corner = corners[j];
-				closest_rect = i;
-				closest_dist = dist;
-			}
-		}
-	}
-
-	if(closest_corner != wxInside) {
-		corner = closest_corner;
-		rect   = closest_rect;
-		pt     = closest_point;
-		return true;
-	} else {
-		return false;
-	}
-}
 
 void DrawPanel::OnMouse(wxMouseEvent &e)
 {
@@ -360,77 +239,54 @@ void DrawPanel::OnMouse(wxMouseEvent &e)
 
 	m_mousepos = world_pos;
 
-	wxFrame *mainframe = wxGetApp().GetMainFrame();
-	ToolBar *toolbar = dynamic_cast<ToolBar *>(mainframe->GetToolBar());
+	MainFrame *mainframe = wxGetApp().GetMainFrame();
+	ToolBar   *toolbar   = dynamic_cast<ToolBar *>(mainframe->GetToolBar());
 	wxToolBarToolBase *tool = toolbar->GetSelected();
 
 	switch(tool->GetId())
 	{
-	case ToolBar::ID::LINE:
-		if(e.ButtonDown(wxMOUSE_BTN_LEFT)) {
-			if(m_inedit != ToolBar::ID::LINE) {
-				int corner, rect;
-				wxPoint2DDouble closest_point = world_pos;
-				if(FindClosestRectCorner(closest_point, corner, rect)) {
-					m_inedit = ToolBar::ID::LINE;
-					m_editstart = closest_point;
-					m_tmpline.outcode[0] = corner;
-					m_tmpline.rect[0]    = rect;
-				}
-			} else {
-				int corner, rect;
-				wxPoint2DDouble closest_point = world_pos;
-				if(FindClosestRectCorner(closest_point, corner, rect)) {
-					if(rect != m_tmpline.rect[0]) {
-						m_editstart = closest_point;
-						m_tmpline.outcode[1] = corner;
-						m_tmpline.rect[1]    = rect;
-						m_lines.push_back(m_tmpline);
-						FinishEdit();
+	case ToolBar::ID::SELECT:
+		if(e.ButtonIsDown(wxMOUSE_BTN_LEFT)) {
+			if(m_inedit != ToolBar::ID::SELECT) {
+				for(size_t i = 0; i < m_polys.size(); i++) {
+					if(m_polys[i].ContainsPoint(world_pos)) {
+						m_inedit = ToolBar::ID::SELECT;
+						m_selectedpoly = i;
+						m_editstart = world_pos;
 					}
 				}
 			}
+			else {
+				wxPoint2DDouble delta = world_pos - m_editstart;
+				m_editstart = world_pos;
+				m_polys[m_selectedpoly].MoveBy(delta);
+			}
+		}
+		else if(m_inedit == ToolBar::ID::SELECT) {
+			FinishEdit();
 		}
 		break;
 	case ToolBar::ID::QUAD:
 		if(e.ButtonDown(wxMOUSE_BTN_LEFT)) {
 			if(m_inedit != ToolBar::ID::QUAD) {
-				bool intersects = false;
-				for(const wxRect2DDouble &rect : m_rects) {
-					if(rect.Contains(world_pos)) {
-						intersects = true;
-						break;
-					}
+				m_editstart = world_pos;
+
+				if(m_snaptogrid) {
+					double spacing = static_cast<double>(m_gridspacing);
+					m_editstart.m_x -= fmodl(m_editstart.m_x, spacing);
+					m_editstart.m_y -= fmodl(m_editstart.m_y, spacing);
 				}
-				if(!intersects) {
 
-					m_editstart = world_pos;
-
-					if(m_snaptogrid) {
-						double spacing = static_cast<double>(m_gridspacing);
-						m_editstart.m_x -= fmodl(m_editstart.m_x, spacing);
-						m_editstart.m_y -= fmodl(m_editstart.m_y, spacing);
-					}
-
-					m_tmprect = wxRect2DDouble();
-					m_tmprect.SetCentre(m_editstart);
-					m_inedit = ToolBar::ID::QUAD;
-				}
+				m_tmprect = wxRect2DDouble();
+				m_tmprect.SetCentre(m_editstart);
+				m_inedit = ToolBar::ID::QUAD;
 			}
 			else {
 				wxSize size = m_tmprect.GetSize();
 				wxASSERT(size.x >= 0 && size.y >= 0);
-				bool intersects = false;
-				for(const wxRect2DDouble &rect : m_rects) {
-					if(rect.Intersects(m_tmprect)) {
-						intersects = true;
-						break;
-					}
-				}
-				if(!intersects) {
-					m_rects.push_back(m_tmprect);
-					FinishEdit();
-				}
+
+				m_polys.push_back(m_tmprect);
+				FinishEdit();
 			}
 		}
 		else if(m_inedit == ToolBar::ID::QUAD) {
@@ -453,11 +309,6 @@ void DrawPanel::OnMouse(wxMouseEvent &e)
 			} else {
 				m_tmprect.SetTop(y);
 			}
-		}
-		break;
-	default:
-		if(m_inedit != 0) {
-			FinishEdit();
 		}
 		break;
 	}

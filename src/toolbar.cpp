@@ -50,12 +50,14 @@ void ToolBar::OnSelect(wxCommandEvent &e)
 	MainFrame     *mainframe = wxGetApp().GetMainFrame();
 	wxAuiNotebook *notebook  = mainframe->GetNotebook();
 
-	int sel = notebook->GetSelection();
-	wxWindow *page = notebook->GetPage(sel);
+	if(notebook->GetPageCount() > 0) {
+		int sel = notebook->GetSelection();
+		wxWindow *page = notebook->GetPage(sel);
 
-	DrawPanel *dp = dynamic_cast<DrawPanel *>(page);
-	if(dp != nullptr) {
-		dp->FinishEdit();
-		dp->Refresh(false);
+		DrawPanel *dp = dynamic_cast<DrawPanel *>(page);
+		if(dp != nullptr) {
+			dp->FinishEdit();
+			dp->Refresh(false);
+		}
 	}
 }
