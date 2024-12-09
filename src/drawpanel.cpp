@@ -1,4 +1,3 @@
-#include <array>
 
 #include <wx/gdicmn.h>
 #include <wx/geometry.h>
@@ -169,7 +168,7 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 	SetupView();
 	DrawGrid(dc);
 
-	wxVector<wxPoint> s_points;
+	std::vector<wxPoint> s_points;
 	
 	for(const ConvexPolygon &p : m_polys) {
 		

@@ -2,10 +2,9 @@
 #ifndef _DRAWPANEL_HPP
 #define _DRAWPANEL_HPP
 
+#include <vector>
 #include <wx/geometry.h>
-#include <wx/vector.h>
 #include <wx/wx.h>
-
 
 class ConvexPolygon
 {
