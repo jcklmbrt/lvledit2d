@@ -1,4 +1,5 @@
 
+#include <cmath>
 #include <wx/gdicmn.h>
 #include <wx/geometry.h>
 #include <wx/wx.h>
@@ -144,19 +145,33 @@ void DrawPanel::DrawRect(wxPaintDC &dc, wxRect2DDouble r, wxColour color, bool t
 
 void DrawPanel::DrawGrid(wxPaintDC &dc)
 {
-	dc.SetPen(wxPen(wxColour(220, 220, 220), 1));
+	dc.SetPen(wxPen(wxColour(0, 0, 0), 1));
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 	int spacing = m_gridspacing;
 
-	for(int i = MIN_PAN_X / spacing; i < MAX_PAN_X / spacing; i++) {
+	wxSize size = GetSize();
+	wxPoint s_mins = { 0, 0 };
+	wxPoint s_maxs = { size.x, size.y };
+
+	wxPoint2DDouble mins, maxs;
+	ScreenToWorld(s_mins, mins);
+	ScreenToWorld(s_maxs, maxs);
+
+	mins.m_x -= m_gridspacing + std::remainder(mins.m_x, (double)m_gridspacing);
+	mins.m_y -= m_gridspacing + std::remainder(mins.m_y, (double)m_gridspacing);
+
+	for(double x = mins.m_x; x < maxs.m_x; x += m_gridspacing) {
 		wxPoint wa, wb;
-		double  space = static_cast<double>(i * spacing);
-		WorldToScreen({ space, MIN_PAN_Y }, wa);
-		WorldToScreen({ space, MAX_PAN_Y }, wb);
+		WorldToScreen({ x, mins.m_y }, wa);
+		WorldToScreen({ x, maxs.m_y }, wb);
 		dc.DrawLine(wa, wb);
-		WorldToScreen({ MIN_PAN_X, space }, wa);
-		WorldToScreen({ MAX_PAN_Y, space }, wb);
+	}
+
+	for(double y = mins.m_y; y < maxs.m_y; y += m_gridspacing) {
+		wxPoint wa, wb;
+		WorldToScreen({ mins.m_x, y }, wa);
+		WorldToScreen({ maxs.m_x, y }, wb);
 		dc.DrawLine(wa, wb);
 	}
 }
