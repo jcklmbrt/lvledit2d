@@ -32,4 +32,5 @@ target_sources(lvledit2d PRIVATE
 	"src/lvledit2d.cpp"
 	"src/mainframe.cpp"
 	"src/toolbar.cpp"
-	"src/drawpanel.cpp")
+	"src/drawpanel.cpp"
+	"src/viewmatrix.cpp")

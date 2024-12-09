@@ -1,5 +1,7 @@
 
 #include <cmath>
+#include <wx/debug.h>
+#include <wx/event.h>
 #include <wx/gdicmn.h>
 #include <wx/geometry.h>
 #include <wx/wx.h>
@@ -8,6 +10,7 @@
 #include "src/lvledit2d.hpp"
 #include "src/toolbar.hpp"
 #include "src/drawpanel.hpp"
+#include "src/viewmatrix.hpp"
 
 
 wxBEGIN_EVENT_TABLE(DrawPanel, wxPanel)
@@ -17,62 +20,9 @@ wxBEGIN_EVENT_TABLE(DrawPanel, wxPanel)
 wxEND_EVENT_TABLE()
 
 
-void DrawPanel::WorldToScreen(wxPoint2DDouble world, wxPoint &screen)
-{
-	world = m_view.TransformPoint(world);
-	screen.x = static_cast<int>(world.m_x);
-	screen.y = static_cast<int>(world.m_y);
-}
-
-void DrawPanel::ScreenToWorld(wxPoint screen, wxPoint2DDouble &world)
-{
-	world.m_x = static_cast<wxDouble>(screen.x);
-	world.m_y = static_cast<wxDouble>(screen.y);
-
-	wxAffineMatrix2D inv = m_view;
-	inv.Invert();
-	world = inv.TransformPoint(world);
-}
-
-void DrawPanel::SetupView()
-{
-	m_view = wxAffineMatrix2D();
-	m_view.Scale(m_zoom, m_zoom);
-	m_view.Translate(m_pan.m_x, m_pan.m_y);
-}
-
-void DrawPanel::Zoom(wxPoint2DDouble p, wxDouble factor)
-{
-	float zoom = m_zoom * factor;
-	if(zoom > MAX_ZOOM || zoom < MIN_ZOOM) {
-		return;
-	}
-
-	auto pan = (m_pan - p / m_zoom) + p / zoom;
-
-	if(pan.m_x > MAX_PAN_X || pan.m_x < MIN_PAN_X ||
-	   pan.m_y > MAX_PAN_Y || pan.m_y < MIN_PAN_Y) {
-		return;
-	}
-
-	m_zoom = zoom;
-	m_pan = pan;
-}
-
-void DrawPanel::Pan(wxPoint2DDouble delta)
-{
-	wxPoint2DDouble pan = m_pan + delta / m_zoom;
-	if(pan.m_x > MAX_PAN_X || pan.m_x < MIN_PAN_X ||
-	   pan.m_y > MAX_PAN_Y || pan.m_y < MIN_PAN_Y) {
-		return;
-	}
-	m_pan = pan;
-}
-
 DrawPanel::DrawPanel(wxWindow *parent)
 	: wxPanel(parent)
 {
-	wxASSERT(m_view.IsIdentity() == true);
 }
 
 static bool LineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4)
@@ -125,8 +75,8 @@ void DrawPanel::DrawRect(wxPaintDC &dc, wxRect2DDouble r, wxColour color, bool t
 		rb.m_y = r.GetBottom();
 
 		wxPoint slt, srb;
-		WorldToScreen(lt, slt);
-		WorldToScreen(rb, srb);
+		slt = m_view.WorldToScreen(lt);
+		srb = m_view.WorldToScreen(rb);
 
 		dc.SetPen(pen);
 
@@ -145,7 +95,8 @@ void DrawPanel::DrawRect(wxPaintDC &dc, wxRect2DDouble r, wxColour color, bool t
 
 void DrawPanel::DrawGrid(wxPaintDC &dc)
 {
-	dc.SetPen(wxPen(wxColour(0, 0, 0), 1));
+	/* TODO: find a better color */
+	dc.SetPen(wxPen(wxColour(200, 200, 200), 1));
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 	int spacing = m_gridspacing;
@@ -155,23 +106,21 @@ void DrawPanel::DrawGrid(wxPaintDC &dc)
 	wxPoint s_maxs = { size.x, size.y };
 
 	wxPoint2DDouble mins, maxs;
-	ScreenToWorld(s_mins, mins);
-	ScreenToWorld(s_maxs, maxs);
+	mins = m_view.ScreenToWorld(s_mins);
+	maxs = m_view.ScreenToWorld(s_maxs);
 
 	mins.m_x -= m_gridspacing + std::remainder(mins.m_x, (double)m_gridspacing);
 	mins.m_y -= m_gridspacing + std::remainder(mins.m_y, (double)m_gridspacing);
 
 	for(double x = mins.m_x; x < maxs.m_x; x += m_gridspacing) {
-		wxPoint wa, wb;
-		WorldToScreen({ x, mins.m_y }, wa);
-		WorldToScreen({ x, maxs.m_y }, wb);
+		wxPoint wa = m_view.WorldToScreen({ x, mins.m_y });
+		wxPoint wb = m_view.WorldToScreen({ x, maxs.m_y });
 		dc.DrawLine(wa, wb);
 	}
 
 	for(double y = mins.m_y; y < maxs.m_y; y += m_gridspacing) {
-		wxPoint wa, wb;
-		WorldToScreen({ mins.m_x, y }, wa);
-		WorldToScreen({ maxs.m_x, y }, wb);
+		wxPoint wa = m_view.WorldToScreen({ mins.m_x, y });
+		wxPoint wb = m_view.WorldToScreen({ maxs.m_x, y });
 		dc.DrawLine(wa, wb);
 	}
 }
@@ -180,7 +129,9 @@ void DrawPanel::DrawGrid(wxPaintDC &dc)
 void DrawPanel::OnPaint(wxPaintEvent &e)
 {
 	wxPaintDC dc(this);
-	SetupView();
+
+	m_view.SetupMatrix();
+
 	DrawGrid(dc);
 
 	std::vector<wxPoint> s_points;
@@ -190,8 +141,7 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 		dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 		for(int i = 0; i < p.NumPoints(); i++) {
-			wxPoint s_point;
-			WorldToScreen(p.GetPoint(i), s_point);
+			wxPoint s_point = m_view.WorldToScreen(p.GetPoint(i));
 			s_points.push_back(s_point);
 		}
 
@@ -247,9 +197,9 @@ void DrawPanel::OnMouse(wxMouseEvent &e)
 	pos.m_x = static_cast<float>(wxpos.x);
 	pos.m_y = static_cast<float>(wxpos.y);
 
-	SetupView();
+	m_view.SetupMatrix();
 	wxPoint2DDouble world_pos;
-	ScreenToWorld(wxpos, world_pos);
+	world_pos = m_view.ScreenToWorld(wxpos);
 
 	m_mousepos = world_pos;
 
@@ -338,10 +288,10 @@ void DrawPanel::OnMouse(wxMouseEvent &e)
 			/* no scroll */
 		}
 		else if(rot > 0) { /* scroll up */
-			Zoom(pos, 1.1f);
+			m_view.Zoom(pos, 1.1f);
 		}
 		else { /* scroll down */
-			Zoom(pos, 0.9f);
+			m_view.Zoom(pos, 0.9f);
 		}
 	}
 
@@ -350,7 +300,7 @@ void DrawPanel::OnMouse(wxMouseEvent &e)
 	}
 
 	if(e.ButtonIsDown(wxMOUSE_BTN_MIDDLE)) {
-		Pan(pos - last_pos);
+		m_view.Pan(pos - last_pos);
 		last_pos = pos;
 	}
 
