@@ -11,13 +11,6 @@
 #include "res/pawn.xpm"
 #include "res/hand.xpm"
 
-wxBEGIN_EVENT_TABLE(ToolBar, wxToolBar)
-	EVT_TOOL(ToolBar::ID::SELECT, ToolBar::OnSelect)
-	EVT_TOOL(ToolBar::ID::LINE, ToolBar::OnSelect)
-	EVT_TOOL(ToolBar::ID::QUAD, ToolBar::OnSelect)
-	EVT_TOOL(ToolBar::ID::TEXTURE, ToolBar::OnSelect)
-	EVT_TOOL(ToolBar::ID::ENTITY, ToolBar::OnSelect)
-wxEND_EVENT_TABLE()
 
 ToolBar::ToolBar(wxWindow *parent, wxWindowID id)
 	: wxToolBar(parent, id, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL | wxTB_LEFT)
@@ -33,6 +26,12 @@ ToolBar::ToolBar(wxWindow *parent, wxWindowID id)
 	m_selected = ID::SELECT;
 	/* make select tool default, wont call events */
 	ToggleTool(m_selected, true);
+
+	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::SELECT);
+	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::LINE);
+	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::QUAD);
+	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::TEXTURE);
+	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::ENTITY);
 }
 
 wxToolBarToolBase *ToolBar::GetSelected()

@@ -22,7 +22,6 @@ public:
 private:
 	void OnSelect(wxCommandEvent &e);
         ID m_selected = ID::SELECT;
-	wxDECLARE_EVENT_TABLE();
 };
 
 

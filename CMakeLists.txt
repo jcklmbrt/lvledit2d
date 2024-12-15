@@ -33,4 +33,4 @@ target_sources(lvledit2d PRIVATE
 	"src/mainframe.cpp"
 	"src/toolbar.cpp"
 	"src/drawpanel.cpp"
-	"src/viewmatrix.cpp")
+	"src/viewmatrix.cpp" "src/convexpolygon.cpp" "src/edit/rectangle.cpp" "src/edit/selection.cpp")

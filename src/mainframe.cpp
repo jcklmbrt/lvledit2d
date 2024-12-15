@@ -21,6 +21,7 @@ MainFrame::MainFrame()
 	Maximize(true);
 
 	wxMenu *file = new wxMenu;
+	wxMenu *edit = new wxMenu;
 
 	wxMenuItem *save = new wxMenuItem(file, wxID_SAVE);
 	save->SetBitmap(save_xpm);
@@ -34,6 +35,7 @@ MainFrame::MainFrame()
 
 	wxMenuBar *menubar = new wxMenuBar;
 	menubar->Append(file, "&File");
+	menubar->Append(edit, "&Edit");
 	SetMenuBar(menubar);
 
 	wxStatusBar *status  = CreateStatusBar();

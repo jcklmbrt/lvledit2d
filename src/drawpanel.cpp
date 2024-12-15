@@ -12,17 +12,34 @@
 #include "src/drawpanel.hpp"
 #include "src/viewmatrix.hpp"
 
-
-wxBEGIN_EVENT_TABLE(DrawPanel, wxPanel)
-	EVT_PAINT(DrawPanel::OnPaint)
-	EVT_MOUSE_EVENTS(DrawPanel::OnMouse)
-	EVT_KEY_DOWN(DrawPanel::OnKeyDown)
-wxEND_EVENT_TABLE()
-
+#include "src/edit/ibaseedit.hpp"
+#include "src/edit/rectangle.hpp"
+#include "src/edit/selection.hpp"
 
 DrawPanel::DrawPanel(wxWindow *parent)
 	: wxPanel(parent)
 {
+	Bind(wxEVT_PAINT,    &DrawPanel::OnPaint, this, wxID_ANY);
+	Bind(wxEVT_KEY_DOWN, &DrawPanel::OnKeyDown, this, wxID_ANY);
+
+	Bind(wxEVT_LEFT_DOWN, &DrawPanel::OnMouseLeftDown, this, wxID_ANY);
+	Bind(wxEVT_LEFT_UP, &DrawPanel::OnMouseLeftUp, this, wxID_ANY);
+
+	Bind(wxEVT_MOTION, &DrawPanel::OnMouseMotion, this, wxID_ANY);
+
+	/* Zoom/Pan ctrl */
+	Bind(wxEVT_MIDDLE_DOWN, &DrawPanel::OnMouseMiddleDown, this, wxID_ANY);
+	Bind(wxEVT_MIDDLE_UP,   &DrawPanel::OnMouseMiddleUp, this, wxID_ANY);
+	Bind(wxEVT_MOUSEWHEEL,  &DrawPanel::OnMouseWheel, this, wxID_ANY);
+}
+
+void DrawPanel::FinishEdit()
+{
+	if(m_edit != nullptr) {
+		delete m_edit;
+	}
+
+	m_edit = nullptr;
 }
 
 static bool LineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4)
@@ -62,65 +79,31 @@ static wxRect RectAroundPoint(double x, double y, double size)
 }
 
 
-void DrawPanel::DrawRect(wxPaintDC &dc, wxRect2DDouble r, wxColour color, bool tmp)
-{
-	wxPen pens[2] = { wxPen(*wxBLACK, 3), wxPen(color, 1) };
-	dc.SetBrush(*wxTRANSPARENT_BRUSH);
-
-	for(wxPen pen : pens) {
-		wxPoint2DDouble lt, rb;
-		lt.m_x = r.GetLeft();
-		lt.m_y = r.GetTop();
-		rb.m_x = r.GetRight();
-		rb.m_y = r.GetBottom();
-
-		wxPoint slt, srb;
-		slt = m_view.WorldToScreen(lt);
-		srb = m_view.WorldToScreen(rb);
-
-		dc.SetPen(pen);
-
-		if(tmp && pen.GetColour() == color) {
-			dc.SetPen(wxPen(*wxRED, 1));
-		}
-
-		wxSize size;
-		size.x = srb.x - slt.x;
-		size.y = srb.y - slt.y;
-
-		dc.DrawRectangle(slt, size);
-	}
-}
-
-
-void DrawPanel::DrawGrid(wxPaintDC &dc)
+static void DrawGrid(wxPaintDC &dc, ViewMatrix &view, int spacing, wxSize size)
 {
 	/* TODO: find a better color */
 	dc.SetPen(wxPen(wxColour(200, 200, 200), 1));
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
-	int spacing = m_gridspacing;
-
-	wxSize size = GetSize();
 	wxPoint s_mins = { 0, 0 };
 	wxPoint s_maxs = { size.x, size.y };
 
 	wxPoint2DDouble mins, maxs;
-	mins = m_view.ScreenToWorld(s_mins);
-	maxs = m_view.ScreenToWorld(s_maxs);
+	mins = view.ScreenToWorld(s_mins);
+	maxs = view.ScreenToWorld(s_maxs);
 
-	mins.m_x -= m_gridspacing + std::remainder(mins.m_x, (double)m_gridspacing);
-	mins.m_y -= m_gridspacing + std::remainder(mins.m_y, (double)m_gridspacing);
+	mins.m_x -= spacing + std::remainder(mins.m_x, (double)spacing);
+	mins.m_y -= spacing + std::remainder(mins.m_y, (double)spacing);
 
-	for(double x = mins.m_x; x < maxs.m_x; x += m_gridspacing) {
-		wxPoint wa = m_view.WorldToScreen({ x, mins.m_y });
-		wxPoint wb = m_view.WorldToScreen({ x, maxs.m_y });
+	for(double x = mins.m_x; x < maxs.m_x; x += spacing) {
+		wxPoint wa = view.WorldToScreen({ x, mins.m_y });
+		wxPoint wb = view.WorldToScreen({ x, maxs.m_y });
 		dc.DrawLine(wa, wb);
 	}
 
-	for(double y = mins.m_y; y < maxs.m_y; y += m_gridspacing) {
-		wxPoint wa = m_view.WorldToScreen({ mins.m_x, y });
-		wxPoint wb = m_view.WorldToScreen({ maxs.m_x, y });
+	for(double y = mins.m_y; y < maxs.m_y; y += spacing) {
+		wxPoint wa = view.WorldToScreen({ mins.m_x, y });
+		wxPoint wb = view.WorldToScreen({ maxs.m_x, y });
 		dc.DrawLine(wa, wb);
 	}
 }
@@ -130,18 +113,18 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 {
 	wxPaintDC dc(this);
 
-	m_view.SetupMatrix();
+	SetupMatrix();
 
-	DrawGrid(dc);
+	DrawGrid(dc, *dynamic_cast<ViewMatrix *>(this), m_gridspacing, GetSize());
 
 	std::vector<wxPoint> s_points;
 	
-	for(const ConvexPolygon &p : m_polys) {
+	for(const ConvexPolygon &p : *this) {
 		
 		dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 		for(int i = 0; i < p.NumPoints(); i++) {
-			wxPoint s_point = m_view.WorldToScreen(p.GetPoint(i));
+			wxPoint s_point = WorldToScreen(p.GetPoint(i));
 			s_points.push_back(s_point);
 		}
 
@@ -181,106 +164,76 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 		s_points.clear();
 	}
 
-	if(m_inedit == ToolBar::ID::QUAD) {
-		DrawRect(dc, m_tmprect, *wxWHITE, true);
+	if(m_edit != nullptr) {
+		m_edit->OnPaint(dc);
 	}
 }
 
-
-void DrawPanel::OnMouse(wxMouseEvent &e)
+void DrawPanel::OnMouseLeftDown(wxMouseEvent &e)
 {
-	static wxPoint2DDouble last_pos;
+	if(m_edit == nullptr) {
+		MainFrame *mainframe = wxGetApp().GetMainFrame();
+		ToolBar *toolbar = dynamic_cast<ToolBar *>(mainframe->GetToolBar());
+		wxToolBarToolBase *tool = toolbar->GetSelected();
 
+		switch(tool->GetId()) {
+		case ToolBar::ID::SELECT:
+			m_edit = new SelectionEdit(this);
+			break;
+		case ToolBar::ID::QUAD:
+			m_edit = new RectangleEdit(this);
+			break;
+		default:
+			FinishEdit();
+			break;
+		}
+	}
+		
+	if(m_edit != nullptr) {
+		m_edit->OnMouseLeftDown(e);
+	}
+}
+
+void DrawPanel::OnMouseLeftUp(wxMouseEvent &e)
+{
+	if(m_edit != nullptr) {
+		m_edit->OnMouseLeftUp(e);
+	}
+}
+
+void DrawPanel::OnMouseMotion(wxMouseEvent &e)
+{
 	wxPoint wxpos = e.GetPosition();
 
 	wxPoint2DDouble pos;
 	pos.m_x = static_cast<float>(wxpos.x);
 	pos.m_y = static_cast<float>(wxpos.y);
 
-	m_view.SetupMatrix();
-	wxPoint2DDouble world_pos;
-	world_pos = m_view.ScreenToWorld(wxpos);
+	wxPoint2DDouble wpos = ScreenToWorld(wxpos);
+	m_mousepos = wpos;
 
-	m_mousepos = world_pos;
-
-	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	ToolBar   *toolbar   = dynamic_cast<ToolBar *>(mainframe->GetToolBar());
-	wxToolBarToolBase *tool = toolbar->GetSelected();
-
-	switch(tool->GetId())
-	{
-	case ToolBar::ID::SELECT:
-		if(e.ButtonIsDown(wxMOUSE_BTN_LEFT)) {
-			if(m_inedit != ToolBar::ID::SELECT) {
-				for(size_t i = 0; i < m_polys.size(); i++) {
-					if(m_polys[i].ContainsPoint(world_pos)) {
-						m_inedit = ToolBar::ID::SELECT;
-						m_selectedpoly = i;
-						m_editstart = world_pos;
-					}
-				}
-			}
-			else {
-				wxPoint2DDouble delta = world_pos - m_editstart;
-				m_editstart = world_pos;
-				m_polys[m_selectedpoly].MoveBy(delta);
-			}
-		}
-		else if(m_inedit == ToolBar::ID::SELECT) {
-			FinishEdit();
-		}
-		break;
-	case ToolBar::ID::QUAD:
-		if(e.ButtonDown(wxMOUSE_BTN_LEFT)) {
-			if(m_inedit != ToolBar::ID::QUAD) {
-				m_editstart = world_pos;
-
-				if(m_snaptogrid) {
-					double spacing = static_cast<double>(m_gridspacing);
-					m_editstart.m_x -= fmodl(m_editstart.m_x, spacing);
-					m_editstart.m_y -= fmodl(m_editstart.m_y, spacing);
-				}
-
-				m_tmprect = wxRect2DDouble();
-				m_tmprect.SetCentre(m_editstart);
-				m_inedit = ToolBar::ID::QUAD;
-			}
-			else {
-				wxSize size = m_tmprect.GetSize();
-				wxASSERT(size.x >= 0 && size.y >= 0);
-
-				m_polys.push_back(m_tmprect);
-				FinishEdit();
-			}
-		}
-		else if(m_inedit == ToolBar::ID::QUAD) {
-			double x = world_pos.m_x;
-			double y = world_pos.m_y;
-
-			if(m_snaptogrid) {
-				double spacing = static_cast<double>(m_gridspacing);
-				x -= fmodl(x, spacing);
-				y -= fmodl(y, spacing);
-			}
-
-			if(x > m_editstart.m_x) {
-				m_tmprect.SetRight(x);
-			} else {
-				m_tmprect.SetLeft(x);
-			} 
-			if(y > m_editstart.m_y) {
-				m_tmprect.SetBottom(y);
-			} else {
-				m_tmprect.SetTop(y);
-			}
-		}
-		break;
+	if(m_edit != nullptr) {
+		m_edit->OnMouseMotion(e);
 	}
 
-	wxString s;
-	s.Printf("%s (%f,%f)", tool->GetLabel(), world_pos.m_x, world_pos.m_y);
+	if(m_inpan && !e.ButtonIsDown(wxMOUSE_BTN_MIDDLE)) {
+		m_inpan = false;
+	}
 
-	mainframe->SetStatusText(s);
+	if(m_inpan) {
+		Pan(pos - m_lastmousepos);
+		m_lastmousepos = pos;
+	}
+
+	Refresh(false);
+}
+
+void DrawPanel::OnMouseWheel(wxMouseEvent &e)
+{
+	wxPoint wxpos = e.GetPosition();
+	wxPoint2DDouble pos;
+	pos.m_x = static_cast<float>(wxpos.x);
+	pos.m_y = static_cast<float>(wxpos.y);
 
 	if(e.GetWheelAxis() == wxMOUSE_WHEEL_VERTICAL) {
 		int rot = e.GetWheelRotation();
@@ -288,23 +241,31 @@ void DrawPanel::OnMouse(wxMouseEvent &e)
 			/* no scroll */
 		}
 		else if(rot > 0) { /* scroll up */
-			m_view.Zoom(pos, 1.1f);
+			Zoom(pos, 1.1f);
 		}
 		else { /* scroll down */
-			m_view.Zoom(pos, 0.9f);
+			Zoom(pos, 0.9f);
 		}
-	}
-
-	if(e.ButtonDown(wxMOUSE_BTN_MIDDLE)) {
-		last_pos = pos;
-	}
-
-	if(e.ButtonIsDown(wxMOUSE_BTN_MIDDLE)) {
-		m_view.Pan(pos - last_pos);
-		last_pos = pos;
 	}
 
 	Refresh(false);
+}
+
+void DrawPanel::OnMouseMiddleDown(wxMouseEvent &e) 
+{
+	wxPoint wxpos = e.GetPosition();
+
+	wxPoint2DDouble pos;
+	pos.m_x = static_cast<float>(wxpos.x);
+	pos.m_y = static_cast<float>(wxpos.y);
+
+	m_lastmousepos = pos;
+	m_inpan = true;
+}
+
+void DrawPanel::OnMouseMiddleUp(wxMouseEvent &e)
+{
+	m_inpan = false;
 }
 
 void DrawPanel::OnKeyDown(wxKeyEvent &e)

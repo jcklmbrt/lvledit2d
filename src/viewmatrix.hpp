@@ -3,6 +3,7 @@
 #define _VIEWMATRIX_HPP
 
 #include <wx/affinematrix2d.h>
+#include <wx/event.h>
 
 #define MAX_PAN_X  10000.0
 #define MIN_PAN_X -10000.0
