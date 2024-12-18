@@ -1,4 +1,3 @@
-
 #include <cmath>
 #include <wx/debug.h>
 #include <wx/event.h>
@@ -7,6 +6,8 @@
 #include <wx/wx.h>
 #include <wx/pen.h>
 
+#include "box2d/collision.h"
+#include "box2d/math_functions.h"
 #include "src/lvledit2d.hpp"
 #include "src/toolbar.hpp"
 #include "src/drawpanel.hpp"
@@ -15,6 +16,7 @@
 #include "src/edit/ibaseedit.hpp"
 #include "src/edit/rectangle.hpp"
 #include "src/edit/selection.hpp"
+#include "src/edit/line.hpp"
 
 DrawPanel::DrawPanel(wxWindow *parent)
 	: wxPanel(parent)
@@ -42,68 +44,56 @@ void DrawPanel::FinishEdit()
 	m_edit = nullptr;
 }
 
-static bool LineLine(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4)
+static bool wxPointInPolygon(wxPoint2DDouble wxpoint, b2Polygon &poly)
 {
-	double a = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
-	double b = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+	b2Vec2 b2pos;
+	b2pos.x = static_cast<float>(wxpoint.m_x);
+	b2pos.y = static_cast<float>(wxpoint.m_y);
+	return b2PointInPolygon(b2pos, &poly);
+}
 
-	if(a > 0 && a < 1 && b > 0 && b < 1) {
-		return true;
-	} else {
-		return false;
+bool DrawPanel::SelectPoly(wxPoint2DDouble wpos, size_t &idx)
+{
+	size_t num_polys = size();
+	for(size_t i = 0; i < num_polys; i++) {
+		b2Polygon &p = at(i);
+		if(wxPointInPolygon(wpos, p)) {
+			idx = i;
+			return true;
+		}
 	}
+
+	return false;
 }
 
-static bool LineRect(double x0, double y0, double x1, double y1, wxRect2DDouble rect)
-{
-	wxPoint2DDouble lt = rect.GetLeftTop();
-	wxPoint2DDouble rt = rect.GetRightTop();
-	wxPoint2DDouble lb = rect.GetLeftBottom();
-	wxPoint2DDouble rb = rect.GetRightBottom();
-
-	return  LineLine(lt.m_x, lt.m_y, rt.m_x, rt.m_y, x0, y0, x1, y1) || /* top */
-		LineLine(lb.m_x, lb.m_y, rb.m_x, rb.m_y, x0, y0, x1, y1) || /* bottom */
-		LineLine(lt.m_x, lt.m_y, lb.m_x, lb.m_y, x0, y0, x1, y1) || /* left */
-		LineLine(rt.m_x, rt.m_y, rb.m_x, rb.m_y, x0, y0, x1, y1);   /* right */
-}
-
-static wxRect RectAroundPoint(double x, double y, double size)
-{
-	wxRect r;
-	double size_2 = size / 2.0;
-	r.x = x - size_2;
-	r.y = y - size_2;
-	r.width  = size;
-	r.height = size;
-	return r;
-}
-
-
-static void DrawGrid(wxPaintDC &dc, ViewMatrix &view, int spacing, wxSize size)
+void DrawPanel::DrawGrid(wxPaintDC &dc)
 {
 	/* TODO: find a better color */
 	dc.SetPen(wxPen(wxColour(200, 200, 200), 1));
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
+	wxSize  size   = GetSize();
 	wxPoint s_mins = { 0, 0 };
 	wxPoint s_maxs = { size.x, size.y };
 
 	wxPoint2DDouble mins, maxs;
-	mins = view.ScreenToWorld(s_mins);
-	maxs = view.ScreenToWorld(s_maxs);
+	mins = ScreenToWorld(s_mins);
+	maxs = ScreenToWorld(s_maxs);
+
+	int spacing = m_gridspacing;
 
 	mins.m_x -= spacing + std::remainder(mins.m_x, (double)spacing);
 	mins.m_y -= spacing + std::remainder(mins.m_y, (double)spacing);
 
 	for(double x = mins.m_x; x < maxs.m_x; x += spacing) {
-		wxPoint wa = view.WorldToScreen({ x, mins.m_y });
-		wxPoint wb = view.WorldToScreen({ x, maxs.m_y });
+		wxPoint wa = WorldToScreen({ x, mins.m_y });
+		wxPoint wb = WorldToScreen({ x, maxs.m_y });
 		dc.DrawLine(wa, wb);
 	}
 
 	for(double y = mins.m_y; y < maxs.m_y; y += spacing) {
-		wxPoint wa = view.WorldToScreen({ mins.m_x, y });
-		wxPoint wb = view.WorldToScreen({ maxs.m_x, y });
+		wxPoint wa = WorldToScreen({ mins.m_x, y });
+		wxPoint wb = WorldToScreen({ maxs.m_x, y });
 		dc.DrawLine(wa, wb);
 	}
 }
@@ -114,24 +104,24 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 	wxPaintDC dc(this);
 
 	SetupMatrix();
-
-	DrawGrid(dc, *dynamic_cast<ViewMatrix *>(this), m_gridspacing, GetSize());
+	DrawGrid(dc);
 
 	std::vector<wxPoint> s_points;
 	
-	for(const ConvexPolygon &p : *this) {
+	for(b2Polygon &p : *this) {
 		
 		dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
-		for(int i = 0; i < p.NumPoints(); i++) {
-			wxPoint s_point = WorldToScreen(p.GetPoint(i));
+		for(int i = 0; i < p.count; i++) {
+			wxPoint2DDouble point = { p.vertices[i].x, p.vertices[i].y };
+			wxPoint s_point = WorldToScreen(point);
 			s_points.push_back(s_point);
 		}
 
 		dc.SetPen(wxPen(*wxBLACK, 3));
 		dc.DrawPolygon(s_points.size(), s_points.data());
 
-		if(p.ContainsPoint(m_mousepos)) {
+		if(wxPointInPolygon(m_mousepos, p)) {
 			dc.SetPen(wxPen(*wxGREEN, 1));
 		} else {
 			dc.SetPen(wxPen(*wxWHITE, 1));
@@ -155,8 +145,14 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 			// highlight corners
 			for(int i = 0; i < 3; i++) {
 				dc.SetBrush(brushes[i]);
-				int size = sizes[i];
-				wxRect cr = RectAroundPoint(s_point.x, s_point.y, size);
+				int size   = sizes[i];
+				int size_2 = size / 2;
+
+				wxRect cr;
+				cr.SetWidth(size);
+				cr.SetHeight(size);
+				cr.SetX(s_point.x - size_2);
+				cr.SetY(s_point.y - size_2);
 				dc.DrawRectangle(cr);
 			}
 		}
@@ -183,6 +179,9 @@ void DrawPanel::OnMouseLeftDown(wxMouseEvent &e)
 		case ToolBar::ID::QUAD:
 			m_edit = new RectangleEdit(this);
 			break;
+		case ToolBar::ID::LINE:
+			m_edit = new LineEdit(this);
+			break;
 		default:
 			FinishEdit();
 			break;
@@ -192,6 +191,8 @@ void DrawPanel::OnMouseLeftDown(wxMouseEvent &e)
 	if(m_edit != nullptr) {
 		m_edit->OnMouseLeftDown(e);
 	}
+
+	Refresh(false);
 }
 
 void DrawPanel::OnMouseLeftUp(wxMouseEvent &e)

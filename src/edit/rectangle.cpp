@@ -1,5 +1,8 @@
 
 #include "src/edit/rectangle.hpp"
+#include "box2d/collision.h"
+#include "box2d/math_functions.h"
+#include <wx/geometry.h>
 
 
 void RectangleEdit::StartEdit(wxPoint2DDouble wpos)
@@ -18,6 +21,20 @@ void RectangleEdit::StartEdit(wxPoint2DDouble wpos)
 }
 
 
+static b2Polygon wxRectToPolygon(wxRect2DDouble rect)
+{
+	b2Vec2 b2center; 
+	float hx = static_cast<float>(rect.m_width) / 2.0f;
+	float hy = static_cast<float>(rect.m_height) / 2.0f;
+
+	wxPoint2DDouble center = rect.GetCentre();
+	b2center.x = static_cast<float>(center.m_x);
+	b2center.y = static_cast<float>(center.m_y);
+
+	return b2MakeOffsetBox(hx, hy, b2center, b2Rot_identity);
+}
+
+
 void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	wxPoint mpos = e.GetPosition();
@@ -25,7 +42,9 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 	if(m_inedit) {
 		/* 2nd left click */
-		m_parent->push_back(m_tmprect);
+		b2Polygon newpoly;
+		newpoly = wxRectToPolygon(m_tmprect);
+		m_parent->push_back(newpoly);
 		m_parent->FinishEdit();
 	} else {
 		/* 1st left click*/

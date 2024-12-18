@@ -3,25 +3,33 @@
 #define _DRAWPANEL_HPP
 
 #include <vector>
+#include <wx/dcclient.h>
 #include <wx/geometry.h>
 #include <wx/wx.h>
 
-#include "src/convexpolygon.hpp"
+#include <box2d/collision.h>
+
 #include "src/viewmatrix.hpp"
 
 class IBaseEdit;
 
 class DrawPanel : public wxPanel,
                   public ViewMatrix,
-                  public std::vector<ConvexPolygon>
+                  public std::vector<b2Polygon>
 {
 public:
 	DrawPanel(wxWindow *parent);
-	void FinishEdit();
+	/* Editor helpers */
 	int  GetGridSpacing() { return m_gridspacing; }
 	bool IsSnapToGrid()   { return m_snaptogrid; }
+	wxPoint2DDouble GetMousePos() { return m_mousepos; }
+	void FinishEdit();
+	bool SelectPoly(wxPoint2DDouble wpos, size_t &idx);
 private:
+	/* Drawing */
 	void OnPaint(wxPaintEvent &e);
+	void DrawGrid(wxPaintDC &dc);
+	/* Mouse events */
 	void OnMouseLeftDown(wxMouseEvent &e);
 	void OnMouseLeftUp(wxMouseEvent &e);
 	void OnMouseMotion(wxMouseEvent &e);

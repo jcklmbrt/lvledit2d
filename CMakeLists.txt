@@ -27,10 +27,17 @@ else()
 	endif()	
 endif()
 
+add_subdirectory(3rdparty/box2d)
+target_include_directories(lvledit2d PUBLIC 3rdparty/box2d/include)
+target_link_libraries(lvledit2d box2d)
+
 target_include_directories(lvledit2d PUBLIC .)
 target_sources(lvledit2d PRIVATE
 	"src/lvledit2d.cpp"
 	"src/mainframe.cpp"
 	"src/toolbar.cpp"
 	"src/drawpanel.cpp"
-	"src/viewmatrix.cpp" "src/convexpolygon.cpp" "src/edit/rectangle.cpp" "src/edit/selection.cpp")
+	"src/viewmatrix.cpp"
+	"src/edit/rectangle.cpp"
+	"src/edit/selection.cpp"
+	"src/edit/line.cpp")
