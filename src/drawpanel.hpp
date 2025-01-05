@@ -7,24 +7,27 @@
 #include <wx/geometry.h>
 #include <wx/wx.h>
 
-#include <box2d/collision.h>
-
+#include "src/toolbar.hpp"
+#include "src/convexpolygon.hpp"
 #include "src/viewmatrix.hpp"
 
 class IBaseEdit;
 
 class DrawPanel : public wxPanel,
                   public ViewMatrix,
-                  public std::vector<b2Polygon>
+                  public std::vector<ConvexPolygon>
 {
 public:
 	DrawPanel(wxWindow *parent);
 	/* Editor helpers */
 	int  GetGridSpacing() { return m_gridspacing; }
-	bool IsSnapToGrid()   { return m_snaptogrid; }
+	bool IsSnapToGrid() { return m_snaptogrid; }
 	wxPoint2DDouble GetMousePos() { return m_mousepos; }
 	void FinishEdit();
-	bool SelectPoly(wxPoint2DDouble wpos, size_t &idx);
+	void OnToolSelect(ToolBar::ID id);
+	ConvexPolygon *SelectPoly(wxPoint2DDouble wpos);
+	ConvexPolygon *ClosestPoly(wxPoint2DDouble wpos, double threshold);
+	static void DrawPoint(wxPaintDC &dc, wxPoint point, const wxColor *color);
 private:
 	/* Drawing */
 	void OnPaint(wxPaintEvent &e);
@@ -43,13 +46,13 @@ private:
 	wxPoint2DDouble m_mousepos;
 
 	/* Zoom/Pan ctrl */
-	bool            m_inpan;
+	bool m_inpan;
 	wxPoint2DDouble m_lastmousepos;
 
 	/* editing context */
 	IBaseEdit *m_edit = nullptr;
 
-	int  m_gridspacing = 50;
+	int m_gridspacing = 50;
 	bool m_snaptogrid  = true;
 };
 

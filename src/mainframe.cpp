@@ -6,13 +6,16 @@
 #include <wx/notebook.h>
 #include <wx/wfstream.h>
 
+
 #include "src/drawpanel.hpp"
 #include "src/toolbar.hpp"
 #include "src/mainframe.hpp"
 
+
 #include "res/reset.xpm"
 #include "res/save.xpm"
 #include "res/icon.xpm"
+
 
 MainFrame::MainFrame()
 	: wxFrame(nullptr, wxID_ANY, "LvlEdit2d")
@@ -64,6 +67,7 @@ MainFrame::MainFrame()
 	Bind(wxEVT_MENU, &MainFrame::OnNew,  this, wxID_NEW);
 }
 
+
 void MainFrame::OnOpen(wxCommandEvent &e)
 {
 	wxFileDialog dialog(this);
@@ -75,6 +79,7 @@ void MainFrame::OnOpen(wxCommandEvent &e)
 	DrawPanel *dp = new DrawPanel(m_notebook);
 	m_notebook->AddPage(dp, dialog.GetFilename(), true);
 }
+
 
 void MainFrame::OnSave(wxCommandEvent &e)
 {
@@ -89,6 +94,7 @@ void MainFrame::OnSave(wxCommandEvent &e)
 	m_notebook->DeletePage(sel);
 }
 
+
 void MainFrame::OnNew(wxCommandEvent &e)
 {
 	static int n = 0;
@@ -97,6 +103,7 @@ void MainFrame::OnNew(wxCommandEvent &e)
 	DrawPanel *dp = new DrawPanel(m_notebook);
 	m_notebook->AddPage(dp, s, true);
 }
+
 
 void MainFrame::OnExit(wxCommandEvent &e)
 {

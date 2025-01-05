@@ -27,6 +27,12 @@ wxPoint2DDouble ViewMatrix::ScreenToWorld(wxPoint screen)
 	return inv.TransformPoint(world);
 }
 
+wxPoint2DDouble ViewMatrix::MouseToWorld(wxMouseEvent &e)
+{
+	wxPoint mpos = e.GetPosition();
+	return ScreenToWorld(e.GetPosition());
+}
+
 void ViewMatrix::SetupMatrix()
 {
 	m_matrix = wxAffineMatrix2D();

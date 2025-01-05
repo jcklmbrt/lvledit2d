@@ -6,17 +6,15 @@
 #include <wx/wx.h>
 #include <wx/pen.h>
 
-#include "box2d/collision.h"
-#include "box2d/math_functions.h"
 #include "src/lvledit2d.hpp"
 #include "src/toolbar.hpp"
 #include "src/drawpanel.hpp"
 #include "src/viewmatrix.hpp"
 
 #include "src/edit/ibaseedit.hpp"
-#include "src/edit/rectangle.hpp"
-#include "src/edit/selection.hpp"
-#include "src/edit/line.hpp"
+#include "src/edit/rectangleedit.hpp"
+#include "src/edit/selectionedit.hpp"
+#include "src/edit/lineedit.hpp"
 
 DrawPanel::DrawPanel(wxWindow *parent)
 	: wxPanel(parent)
@@ -44,27 +42,38 @@ void DrawPanel::FinishEdit()
 	m_edit = nullptr;
 }
 
-static bool wxPointInPolygon(wxPoint2DDouble wxpoint, b2Polygon &poly)
-{
-	b2Vec2 b2pos;
-	b2pos.x = static_cast<float>(wxpoint.m_x);
-	b2pos.y = static_cast<float>(wxpoint.m_y);
-	return b2PointInPolygon(b2pos, &poly);
-}
-
-bool DrawPanel::SelectPoly(wxPoint2DDouble wpos, size_t &idx)
+ConvexPolygon *DrawPanel::SelectPoly(wxPoint2DDouble wpos)
 {
 	size_t num_polys = size();
 	for(size_t i = 0; i < num_polys; i++) {
-		b2Polygon &p = at(i);
-		if(wxPointInPolygon(wpos, p)) {
-			idx = i;
-			return true;
+		ConvexPolygon &p = at(i);
+		if(p.ContainsPoint(wpos)) {
+			return &p;
 		}
 	}
 
 	return false;
 }
+
+
+ConvexPolygon *DrawPanel::ClosestPoly(wxPoint2DDouble wpos, double threshold)
+{
+	ConvexPolygon *poly = nullptr;
+	double min_dist = threshold;
+	size_t num_polys = size();
+	for(size_t i = 0; i < num_polys; i++) {
+		ConvexPolygon &p = at(i);
+		wxPoint2DDouble d = p.GetCenter() - wpos;
+		double dist = d.GetVectorLength();
+		if(dist < min_dist) {
+			min_dist = dist;
+			poly = &p;
+		}
+	}
+
+	return poly;
+}
+
 
 void DrawPanel::DrawGrid(wxPaintDC &dc)
 {
@@ -98,6 +107,35 @@ void DrawPanel::DrawGrid(wxPaintDC &dc)
 	}
 }
 
+void DrawPanel::DrawPoint(wxPaintDC &dc, wxPoint point, const wxColor *color)
+{
+	wxBrush brushes[] = {
+		*wxBLACK_BRUSH,
+		wxBrush(*color),
+		*wxBLACK_BRUSH
+	};
+
+	int sizes[] = {
+		6, 4, 2
+	};
+
+	dc.SetPen(*wxTRANSPARENT_PEN);
+
+	// highlight corners
+	for(int i = 0; i < 3; i++) {
+		dc.SetBrush(brushes[i]);
+		int size = sizes[i];
+		int size_2 = size / 2;
+
+		wxRect cr;
+		cr.SetWidth(size);
+		cr.SetHeight(size);
+		cr.SetX(point.x - size_2);
+		cr.SetY(point.y - size_2);
+		dc.DrawRectangle(cr);
+	}
+}
+
 
 void DrawPanel::OnPaint(wxPaintEvent &e)
 {
@@ -107,13 +145,13 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 	DrawGrid(dc);
 
 	std::vector<wxPoint> s_points;
-	
-	for(b2Polygon &p : *this) {
-		
+
+	for(ConvexPolygon &p : *this) {
+
 		dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
-		for(int i = 0; i < p.count; i++) {
-			wxPoint2DDouble point = { p.vertices[i].x, p.vertices[i].y };
+		for(int i = 0; i < p.NumPoints(); i++) {
+			wxPoint2DDouble point = p.GetPoint(i);
 			wxPoint s_point = WorldToScreen(point);
 			s_points.push_back(s_point);
 		}
@@ -121,41 +159,23 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 		dc.SetPen(wxPen(*wxBLACK, 3));
 		dc.DrawPolygon(s_points.size(), s_points.data());
 
-		if(wxPointInPolygon(m_mousepos, p)) {
+		if(p.ContainsPoint(m_mousepos)) {
 			dc.SetPen(wxPen(*wxGREEN, 1));
-		} else {
+		}
+		else {
 			dc.SetPen(wxPen(*wxWHITE, 1));
 		}
 
 		dc.DrawPolygon(s_points.size(), s_points.data());
 
 		for(wxPoint s_point : s_points) {
-			dc.SetPen(*wxTRANSPARENT_PEN);
-
-			wxBrush brushes[] = {
-				*wxBLACK_BRUSH,
-				wxBrush(*wxWHITE),
-				*wxBLACK_BRUSH
-			};
-
-			int sizes[] = {
-				6, 4, 2
-			};
-
-			// highlight corners
-			for(int i = 0; i < 3; i++) {
-				dc.SetBrush(brushes[i]);
-				int size   = sizes[i];
-				int size_2 = size / 2;
-
-				wxRect cr;
-				cr.SetWidth(size);
-				cr.SetHeight(size);
-				cr.SetX(s_point.x - size_2);
-				cr.SetY(s_point.y - size_2);
-				dc.DrawRectangle(cr);
-			}
+			DrawPoint(dc, s_point, wxWHITE);
 		}
+
+		wxPoint2DDouble center = p.GetCenter();
+		wxPoint s_center = WorldToScreen(center);
+
+		DrawPoint(dc, s_center, wxYELLOW);
 
 		s_points.clear();
 	}
@@ -165,8 +185,13 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 	}
 }
 
-void DrawPanel::OnMouseLeftDown(wxMouseEvent &e)
+void DrawPanel::OnToolSelect(ToolBar::ID id)
 {
+	if(m_edit != nullptr) {
+		FinishEdit();
+		Refresh(false);
+	}
+
 	if(m_edit == nullptr) {
 		MainFrame *mainframe = wxGetApp().GetMainFrame();
 		ToolBar *toolbar = dynamic_cast<ToolBar *>(mainframe->GetToolBar());
@@ -183,11 +208,14 @@ void DrawPanel::OnMouseLeftDown(wxMouseEvent &e)
 			m_edit = new LineEdit(this);
 			break;
 		default:
-			FinishEdit();
 			break;
 		}
 	}
-		
+}
+
+
+void DrawPanel::OnMouseLeftDown(wxMouseEvent &e)
+{		
 	if(m_edit != nullptr) {
 		m_edit->OnMouseLeftDown(e);
 	}

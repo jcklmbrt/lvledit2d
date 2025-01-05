@@ -14,6 +14,7 @@ if(WIN32)
 	set(wxWidgets_DIR         "3rdparty/wxWidgets")
 	set(wxWidgets_LIB_DIR     "3rdparty/wxWidgets/lib")
 	set(wxWidgets_INCLUDE_DIR "3rdparty/wxWidgets/include")
+	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
 	add_subdirectory(${wxWidgets_DIR})
 	target_include_directories(lvledit2d PUBLIC ${wxWidgets_USE_FILE})
@@ -27,10 +28,7 @@ else()
 	endif()	
 endif()
 
-add_subdirectory(3rdparty/box2d)
-target_include_directories(lvledit2d PUBLIC 3rdparty/box2d/include)
-target_link_libraries(lvledit2d box2d)
-
+target_include_directories(lvledit2d PUBLIC "3rdparty/glm")
 target_include_directories(lvledit2d PUBLIC .)
 target_sources(lvledit2d PRIVATE
 	"src/lvledit2d.cpp"
@@ -38,6 +36,7 @@ target_sources(lvledit2d PRIVATE
 	"src/toolbar.cpp"
 	"src/drawpanel.cpp"
 	"src/viewmatrix.cpp"
-	"src/edit/rectangle.cpp"
-	"src/edit/selection.cpp"
-	"src/edit/line.cpp")
+	"src/convexpolygon.cpp"
+	"src/edit/rectangleedit.cpp"
+	"src/edit/selectionedit.cpp"
+	"src/edit/lineedit.cpp" )

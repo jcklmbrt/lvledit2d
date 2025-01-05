@@ -21,6 +21,7 @@ public:
 	void Zoom(wxPoint2DDouble point, double factor);
 	wxPoint WorldToScreen(wxPoint2DDouble world);
 	wxPoint2DDouble ScreenToWorld(wxPoint screen);
+	wxPoint2DDouble MouseToWorld(wxMouseEvent &e);
 private:
 	wxAffineMatrix2D m_matrix;
 	double m_zoom  = 1.0;

@@ -1,29 +1,29 @@
-#include <box2d/collision.h>
+
 #include <cmath>
-#include "box2d/math_functions.h"
-#include "src/edit/selection.hpp"
+#include "src/edit/selectionedit.hpp"
 
 
 void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	wxPoint mpos = e.GetPosition();
-	wxPoint2DDouble world_pos = m_parent->ScreenToWorld(mpos);
+	wxPoint2DDouble world_pos = m_parent->MouseToWorld(e);
 
-	if(m_parent->SelectPoly(world_pos, m_selectedpoly)) {
-		/* start edit */
-		m_editstart = world_pos;
-	} else {
-		/* don't bother */
+	m_poly = m_parent->SelectPoly(world_pos);
+
+	if(m_poly == nullptr) {
 		m_parent->FinishEdit();
+	} else {
+		m_editstart = world_pos;
 	}
 }
 
 
 void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 {
-	wxPoint mpos = e.GetPosition();
-	wxPoint2DDouble world_pos = m_parent->ScreenToWorld(mpos);
+	if(m_poly == nullptr) {
+		return;
+	}
 
+	wxPoint2DDouble world_pos = m_parent->MouseToWorld(e);
 	wxPoint2DDouble delta = world_pos - m_editstart;
 
 	if(m_parent->IsSnapToGrid()) {
@@ -47,13 +47,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		m_editstart = world_pos;
 	}
 
-	b2Vec2 b2delta;
-	b2delta.x = static_cast<float>(delta.m_x);
-	b2delta.y = static_cast<float>(delta.m_y);
-	b2Transform trans = { b2delta, b2Rot_identity };
-
-	b2Polygon &selected = m_parent->at(m_selectedpoly);
-	selected = b2TransformPolygon(trans, &selected);
+	m_poly->MoveBy(delta);
 }
 
 

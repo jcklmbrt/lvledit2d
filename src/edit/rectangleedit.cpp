@@ -1,7 +1,5 @@
 
-#include "src/edit/rectangle.hpp"
-#include "box2d/collision.h"
-#include "box2d/math_functions.h"
+#include "src/edit/rectangleedit.hpp"
 #include <wx/geometry.h>
 
 
@@ -21,20 +19,6 @@ void RectangleEdit::StartEdit(wxPoint2DDouble wpos)
 }
 
 
-static b2Polygon wxRectToPolygon(wxRect2DDouble rect)
-{
-	b2Vec2 b2center; 
-	float hx = static_cast<float>(rect.m_width) / 2.0f;
-	float hy = static_cast<float>(rect.m_height) / 2.0f;
-
-	wxPoint2DDouble center = rect.GetCentre();
-	b2center.x = static_cast<float>(center.m_x);
-	b2center.y = static_cast<float>(center.m_y);
-
-	return b2MakeOffsetBox(hx, hy, b2center, b2Rot_identity);
-}
-
-
 void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	wxPoint mpos = e.GetPosition();
@@ -42,9 +26,7 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 	if(m_inedit) {
 		/* 2nd left click */
-		b2Polygon newpoly;
-		newpoly = wxRectToPolygon(m_tmprect);
-		m_parent->push_back(newpoly);
+		m_parent->push_back(m_tmprect);
 		m_parent->FinishEdit();
 	} else {
 		/* 1st left click*/
@@ -56,6 +38,10 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 {
+	if(!m_inedit) {
+		return;
+	}
+
 	wxPoint mpos = e.GetPosition();
 	wxPoint2DDouble world_pos = m_parent->ScreenToWorld(mpos);
 
@@ -91,6 +77,10 @@ void RectangleEdit::OnMouseLeftUp(wxMouseEvent &e)
 
 void RectangleEdit::OnPaint(wxPaintDC &dc)
 {
+	if(!m_inedit) {
+		return;
+	}
+
 	wxPen pens[2] = { wxPen(*wxBLACK, 3), wxPen(*wxWHITE, 1) };
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 

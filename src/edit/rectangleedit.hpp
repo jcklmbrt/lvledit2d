@@ -16,7 +16,7 @@ public:
 private:
 	void StartEdit(wxPoint2DDouble wpos);
 	bool m_inedit = false;
-	wxRect2DDouble  m_tmprect;
+	wxRect2DDouble m_tmprect;
 	wxPoint2DDouble m_editstart;
 };
 

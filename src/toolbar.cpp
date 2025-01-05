@@ -54,9 +54,9 @@ void ToolBar::OnSelect(wxCommandEvent &e)
 		wxWindow *page = notebook->GetPage(sel);
 
 		DrawPanel *dp = dynamic_cast<DrawPanel *>(page);
+
 		if(dp != nullptr) {
-			dp->FinishEdit();
-			dp->Refresh(false);
+			dp->OnToolSelect(m_selected);
 		}
 	}
 }
