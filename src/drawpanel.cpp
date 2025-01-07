@@ -148,6 +148,8 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 
 	for(ConvexPolygon &p : *this) {
 
+		p.SetupPoints();
+
 		dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 		for(int i = 0; i < p.NumPoints(); i++) {

@@ -11,10 +11,33 @@ struct plane_t
 public:
 	plane_t() = default;
 	plane_t(const wxPoint2DDouble &start, const wxPoint2DDouble &end);
+	double SignedDistance(const wxPoint2DDouble &p);
+	bool Line(const wxPoint2DDouble &a, const wxPoint2DDouble &b, wxPoint2DDouble &out);
 private:
 	/* Ax + By + C = 0 */
 	double A, B, C;
 };
+
+inline bool plane_t::Line(const wxPoint2DDouble &a, const wxPoint2DDouble &b, wxPoint2DDouble &out)
+{
+	wxPoint2DDouble dir = b - a;
+
+	double denom = A * dir.m_x + B * dir.m_y;
+
+	if(denom == 0) {
+		return false;
+	}
+
+	double t = -(A * a.m_x + B * a.m_y + C) / denom;
+
+	out = a + t * dir;
+	return true;
+}
+
+inline double plane_t::SignedDistance(const wxPoint2DDouble &p)
+{
+	return A * p.m_x + B * p.m_y + C;
+}
 
 inline plane_t::plane_t(const wxPoint2DDouble &start,
                  const wxPoint2DDouble &end)
@@ -39,8 +62,8 @@ public:
 	bool ContainsPoint(wxPoint2DDouble pt) const;
 	bool ClosestPoint(wxPoint2DDouble mpos, double threshold, wxPoint2DDouble &pt, edge_t *edge = nullptr, edge_t *exclude = nullptr);
 	void MoveBy(wxPoint2DDouble delta);
+	void SetupPoints();
 	bool Slice(plane_t plane);
-	bool ImposePlane(plane_t plane);
 	wxRect2DDouble GetAABB() const;
 	wxPoint2DDouble GetCenter() const;
 	size_t NumPoints() const;

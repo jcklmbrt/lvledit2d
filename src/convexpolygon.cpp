@@ -1,5 +1,5 @@
 
-
+#include <array>
 #include "src/convexpolygon.hpp"
 
 
@@ -7,11 +7,7 @@ ConvexPolygon::ConvexPolygon(const wxRect2DDouble &rect)
 {
 	m_center = rect.GetCentre();
 	m_aabb   = rect;
-
-	m_points.push_back(rect.GetLeftTop());
-	m_points.push_back(rect.GetRightTop());
-	m_points.push_back(rect.GetRightBottom());
-	m_points.push_back(rect.GetLeftBottom());
+	m_points.clear();
 }
 
 
@@ -73,24 +69,57 @@ bool ConvexPolygon::ClosestPoint(wxPoint2DDouble mpos, double threshold, wxPoint
 }
 
 
-
-/*
-bool ConvexPolygon::ImposePlane(plane_t p, 
-	std::vector<wxPoint2DDouble>   &pos,
-	std::vector<wxPoint2DDouble>   &neg,
-	std::array<wxPoint2DDouble, 2> &intersection)
+void ConvexPolygon::SetupPoints()
 {
+	m_points.clear();
+	/* Start off with our bounding box */
+	m_points.push_back(m_aabb.GetLeftTop());
+	m_points.push_back(m_aabb.GetRightTop());
+	m_points.push_back(m_aabb.GetRightBottom());
+	m_points.push_back(m_aabb.GetLeftBottom());
 
+	for(plane_t plane : m_planes) {
+		
+		std::vector<wxPoint2DDouble> pos;
+		std::vector<wxPoint2DDouble> neg;
+
+		size_t npoints = m_points.size();
+
+		pos.clear();
+		neg.clear();
+
+		for(size_t i = 0; i < npoints; i++) {
+			wxPoint2DDouble a = m_points[i];
+			wxPoint2DDouble b = m_points[(i + 1) % npoints];
+
+			double da = plane.SignedDistance(a);
+			double db = plane.SignedDistance(b);
+
+			if(da >= 0) {
+				pos.push_back(a);
+			}
+			if(da <= 0) {
+				neg.push_back(a);
+			}
+
+			if(da * db < 0) {
+				wxPoint2DDouble isect;
+				if(plane.Line(a, b, isect)) {
+					pos.push_back(isect);
+					neg.push_back(isect);
+				}
+			}
+		}
+
+		m_points = neg;
+
+	}
 }
-*/
+
 
 
 bool ConvexPolygon::ContainsPoint(wxPoint2DDouble pt) const
 {
-	//if(!m_aabb.Contains(pt)) {
-	//	return false;
-	//}
-
 	bool res = false;
 	size_t num_points = NumPoints();
 	for(size_t i = 0; i < num_points; i++) {
