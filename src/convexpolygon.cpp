@@ -1,5 +1,7 @@
 
 #include <array>
+#include <vector>
+#include <wx/geometry.h>
 #include "src/convexpolygon.hpp"
 
 
@@ -7,15 +9,13 @@ ConvexPolygon::ConvexPolygon(const wxRect2DDouble &rect)
 {
 	m_center = rect.GetCentre();
 	m_aabb   = rect;
+
 	m_points.clear();
-}
-
-
-
-bool ConvexPolygon::Slice(plane_t plane)
-{
-	m_planes.push_back(plane);
-	return true;
+	/* Start off with our bounding box */
+	m_points.push_back(m_aabb.GetLeftTop());
+	m_points.push_back(m_aabb.GetRightTop());
+	m_points.push_back(m_aabb.GetRightBottom());
+	m_points.push_back(m_aabb.GetLeftBottom());
 }
 
 static
@@ -68,55 +68,20 @@ bool ConvexPolygon::ClosestPoint(wxPoint2DDouble mpos, double threshold, wxPoint
 	return res;
 }
 
-
-void ConvexPolygon::SetupPoints()
+void ConvexPolygon::Slice(plane_t plane)
 {
-	m_points.clear();
-	/* Start off with our bounding box */
-	m_points.push_back(m_aabb.GetLeftTop());
-	m_points.push_back(m_aabb.GetRightTop());
-	m_points.push_back(m_aabb.GetRightBottom());
-	m_points.push_back(m_aabb.GetLeftBottom());
+	m_planes.push_back(plane);
 
-	for(plane_t plane : m_planes) {
-		
-		std::vector<wxPoint2DDouble> pos;
-		std::vector<wxPoint2DDouble> neg;
+	std::vector<wxPoint2DDouble> new_points;
+	ImposePlane(plane, new_points);
 
-		size_t npoints = m_points.size();
-
-		pos.clear();
-		neg.clear();
-
-		for(size_t i = 0; i < npoints; i++) {
-			wxPoint2DDouble a = m_points[i];
-			wxPoint2DDouble b = m_points[(i + 1) % npoints];
-
-			double da = plane.SignedDistance(a);
-			double db = plane.SignedDistance(b);
-
-			if(da >= 0) {
-				pos.push_back(a);
-			}
-			if(da <= 0) {
-				neg.push_back(a);
-			}
-
-			if(da * db < 0) {
-				wxPoint2DDouble isect;
-				if(plane.Line(a, b, isect)) {
-					pos.push_back(isect);
-					neg.push_back(isect);
-				}
-			}
-		}
-
-		m_points = neg;
-
-	}
+	m_points = new_points;
 }
 
-
+void ConvexPolygon::ImposePlane(plane_t plane, std::vector<wxPoint2DDouble> &out)
+{
+	plane.Polygon(m_points, true, out);
+}
 
 bool ConvexPolygon::ContainsPoint(wxPoint2DDouble pt) const
 {

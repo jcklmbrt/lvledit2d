@@ -19,6 +19,7 @@ class DrawPanel : public wxPanel,
 {
 public:
 	DrawPanel(wxWindow *parent);
+	~DrawPanel();
 	/* Editor helpers */
 	int  GetGridSpacing() { return m_gridspacing; }
 	bool IsSnapToGrid() { return m_snaptogrid; }

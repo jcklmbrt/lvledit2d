@@ -1,7 +1,14 @@
 
 #include "src/edit/rectangleedit.hpp"
-#include <wx/geometry.h>
+#include <wx/event.h>
 
+RectangleEdit::RectangleEdit(DrawPanel *panel)
+	: IBaseEdit(panel)
+{
+	Bind(wxEVT_PAINT, &RectangleEdit::OnPaint, this, wxID_ANY);
+	Bind(wxEVT_LEFT_DOWN, &RectangleEdit::OnMouseLeftDown, this, wxID_ANY);
+	Bind(wxEVT_MOTION, &RectangleEdit::OnMouseMotion, this, wxID_ANY);
+}
 
 void RectangleEdit::StartEdit(wxPoint2DDouble wpos)
 {
@@ -24,10 +31,12 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 	wxPoint mpos = e.GetPosition();
 	wxPoint2DDouble world_pos = m_parent->ScreenToWorld(mpos);
 
+	e.Skip(true);
+
 	if(m_inedit) {
 		/* 2nd left click */
 		m_parent->push_back(m_tmprect);
-		m_parent->FinishEdit();
+		m_inedit = false;
 	} else {
 		/* 1st left click*/
 		StartEdit(world_pos);
@@ -38,6 +47,7 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 {
+	e.Skip(true);
 	if(!m_inedit) {
 		return;
 	}
@@ -68,18 +78,14 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 	}
 }
 
-
-void RectangleEdit::OnMouseLeftUp(wxMouseEvent &e)
+void RectangleEdit::OnPaint(wxPaintEvent &e)
 {
-	/* no-op */
-}
-
-
-void RectangleEdit::OnPaint(wxPaintDC &dc)
-{
+	e.Skip(true);
 	if(!m_inedit) {
 		return;
 	}
+
+	wxPaintDC dc(m_parent);
 
 	wxPen pens[2] = { wxPen(*wxBLACK, 3), wxPen(*wxWHITE, 1) };
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);

@@ -1,7 +1,16 @@
 
 #include <cmath>
+#include <wx/event.h>
 #include "src/edit/selectionedit.hpp"
 
+SelectionEdit::SelectionEdit(DrawPanel *panel)
+	: IBaseEdit(panel),
+	  m_poly(nullptr)
+{
+	Bind(wxEVT_LEFT_DOWN, &SelectionEdit::OnMouseLeftDown, this, wxID_ANY);
+	Bind(wxEVT_MOTION, &SelectionEdit::OnMouseMotion, this, wxID_ANY);
+	Bind(wxEVT_LEFT_UP, &SelectionEdit::OnMouseLeftUp, this, wxID_ANY);
+};
 
 void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
@@ -9,16 +18,18 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 	m_poly = m_parent->SelectPoly(world_pos);
 
-	if(m_poly == nullptr) {
-		m_parent->FinishEdit();
-	} else {
+	if(m_poly != nullptr) {
 		m_editstart = world_pos;
 	}
+
+	e.Skip(true);
 }
 
 
 void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 {
+	e.Skip(true);
+
 	if(m_poly == nullptr) {
 		return;
 	}
@@ -53,12 +64,6 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 
 void SelectionEdit::OnMouseLeftUp(wxMouseEvent &e)
 {
-	/* kill me */
-	m_parent->FinishEdit();
-}
-
-
-void SelectionEdit::OnPaint(wxPaintDC &dc)
-{
-	/* noop */
+	m_poly = nullptr;
+	e.Skip(true);
 }

@@ -33,9 +33,15 @@ DrawPanel::DrawPanel(wxWindow *parent)
 	Bind(wxEVT_MOUSEWHEEL,  &DrawPanel::OnMouseWheel, this, wxID_ANY);
 }
 
+DrawPanel::~DrawPanel()
+{
+	FinishEdit();
+}
+
 void DrawPanel::FinishEdit()
 {
 	if(m_edit != nullptr) {
+		RemoveEventHandler(m_edit);
 		delete m_edit;
 	}
 
@@ -52,7 +58,7 @@ ConvexPolygon *DrawPanel::SelectPoly(wxPoint2DDouble wpos)
 		}
 	}
 
-	return false;
+	return nullptr;
 }
 
 
@@ -148,8 +154,6 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 
 	for(ConvexPolygon &p : *this) {
 
-		p.SetupPoints();
-
 		dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 		for(int i = 0; i < p.NumPoints(); i++) {
@@ -181,10 +185,6 @@ void DrawPanel::OnPaint(wxPaintEvent &e)
 
 		s_points.clear();
 	}
-
-	if(m_edit != nullptr) {
-		m_edit->OnPaint(dc);
-	}
 }
 
 void DrawPanel::OnToolSelect(ToolBar::ID id)
@@ -212,24 +212,21 @@ void DrawPanel::OnToolSelect(ToolBar::ID id)
 		default:
 			break;
 		}
+
+		if(m_edit != nullptr) {
+			PushEventHandler(m_edit);
+		}
 	}
 }
 
 
 void DrawPanel::OnMouseLeftDown(wxMouseEvent &e)
 {		
-	if(m_edit != nullptr) {
-		m_edit->OnMouseLeftDown(e);
-	}
-
 	Refresh(false);
 }
 
 void DrawPanel::OnMouseLeftUp(wxMouseEvent &e)
 {
-	if(m_edit != nullptr) {
-		m_edit->OnMouseLeftUp(e);
-	}
 }
 
 void DrawPanel::OnMouseMotion(wxMouseEvent &e)
@@ -242,10 +239,6 @@ void DrawPanel::OnMouseMotion(wxMouseEvent &e)
 
 	wxPoint2DDouble wpos = ScreenToWorld(wxpos);
 	m_mousepos = wpos;
-
-	if(m_edit != nullptr) {
-		m_edit->OnMouseMotion(e);
-	}
 
 	if(m_inpan && !e.ButtonIsDown(wxMOUSE_BTN_MIDDLE)) {
 		m_inpan = false;

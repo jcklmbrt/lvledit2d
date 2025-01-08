@@ -7,12 +7,10 @@
 class RectangleEdit : public IBaseEdit
 {
 public:
-	RectangleEdit(DrawPanel *panel) 
-		: IBaseEdit(panel) {};
+	RectangleEdit(DrawPanel *panel);
 	void OnMouseLeftDown(wxMouseEvent &e);
-	void OnMouseLeftUp(wxMouseEvent &e);
 	void OnMouseMotion(wxMouseEvent &e);
-	void OnPaint(wxPaintDC &dc);
+	void OnPaint(wxPaintEvent &e);
 private:
 	void StartEdit(wxPoint2DDouble wpos);
 	bool m_inedit = false;

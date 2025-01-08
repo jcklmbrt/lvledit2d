@@ -13,10 +13,46 @@ public:
 	plane_t(const wxPoint2DDouble &start, const wxPoint2DDouble &end);
 	double SignedDistance(const wxPoint2DDouble &p);
 	bool Line(const wxPoint2DDouble &a, const wxPoint2DDouble &b, wxPoint2DDouble &out);
+	void Flip();
+	void Polygon(const std::vector<wxPoint2DDouble> &points, bool sign, std::vector<wxPoint2DDouble> &out);
 private:
 	/* Ax + By + C = 0 */
 	double A, B, C;
 };
+
+inline void plane_t::Flip()
+{
+	A = -A;
+	B = -B;
+	C = -C;
+}
+
+inline void plane_t::Polygon(const std::vector<wxPoint2DDouble> &points, bool sign, std::vector<wxPoint2DDouble> &out) {
+
+	size_t npoints = points.size();
+	for(size_t i = 0; i < npoints; i++) {
+		wxPoint2DDouble a = points[i];
+		wxPoint2DDouble b = points[(i + 1) % npoints];
+
+		double da = SignedDistance(a);
+		double db = SignedDistance(b);
+
+		if(sign && da >= 0) {
+			out.push_back(a);
+		}
+		if(!sign && da <= 0) {
+			out.push_back(a);
+		}
+
+		if(da * db < 0) {
+			wxPoint2DDouble isect;
+			if(Line(a, b, isect)) {
+				out.push_back(isect);
+			}
+		}
+	}
+}
+
 
 inline bool plane_t::Line(const wxPoint2DDouble &a, const wxPoint2DDouble &b, wxPoint2DDouble &out)
 {
@@ -62,8 +98,8 @@ public:
 	bool ContainsPoint(wxPoint2DDouble pt) const;
 	bool ClosestPoint(wxPoint2DDouble mpos, double threshold, wxPoint2DDouble &pt, edge_t *edge = nullptr, edge_t *exclude = nullptr);
 	void MoveBy(wxPoint2DDouble delta);
-	void SetupPoints();
-	bool Slice(plane_t plane);
+	void Slice(plane_t plane);
+	void ImposePlane(plane_t plane, std::vector<wxPoint2DDouble> &out);
 	wxRect2DDouble GetAABB() const;
 	wxPoint2DDouble GetCenter() const;
 	size_t NumPoints() const;
@@ -88,6 +124,7 @@ inline void ConvexPolygon::MoveBy(wxPoint2DDouble delta)
 		p += delta;
 	}
 
+	m_aabb.Offset(delta);
 	m_center += delta;
 }
 

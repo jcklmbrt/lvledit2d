@@ -3,6 +3,7 @@
 #define _LINEEDIT_HPP
 
 #include <wx/dcclient.h>
+#include <wx/event.h>
 #include <wx/geometry.h>
 #include <wx/mousestate.h>
 #include "src/edit/ibaseedit.hpp"
@@ -22,9 +23,7 @@ public:
 	LineEdit(DrawPanel *parent);
 	~LineEdit();
 	void OnMouseLeftDown(wxMouseEvent &e);
-	void OnMouseLeftUp(wxMouseEvent &e) override {};
-	void OnMouseMotion(wxMouseEvent &e) override {};
-	void OnPaint(wxPaintDC &dc);
+	void OnPaint(wxPaintEvent &e);
 private:
 	/* START_POINT */
 	void StartPoint_OnMouseLeftDown(wxMouseEvent &e);
@@ -41,6 +40,7 @@ public:
 	edge_t          m_edge;
 	plane_t         m_plane;
 	ConvexPolygon  *m_poly = nullptr;
+	std::vector<wxPoint2DDouble> m_points;
 	constexpr static double k_threshold = 1000.0;
 private:
 	LineEditState_t m_state = LineEditState_t::START_POINT;
