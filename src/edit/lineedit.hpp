@@ -6,7 +6,7 @@
 #include <wx/event.h>
 #include <wx/geometry.h>
 #include <wx/mousestate.h>
-#include "src/edit/ibaseedit.hpp"
+#include "src/edit/editorcontext.hpp"
 
 class ConvexPolygon;
 
@@ -23,7 +23,9 @@ public:
 	LineEdit(DrawPanel *parent);
 	~LineEdit();
 	void OnMouseLeftDown(wxMouseEvent &e);
+	void OnMouseRightDown(wxMouseEvent &e);
 	void OnPaint(wxPaintEvent &e);
+	void DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p);
 private:
 	/* START_POINT */
 	void StartPoint_OnMouseLeftDown(wxMouseEvent &e);
@@ -33,13 +35,13 @@ private:
 	void EndPoint_OnPaint(wxPaintDC &dc);
 	/* SLICE */
 	void Slice_OnMouseLeftDown(wxMouseEvent &e);
+	void Slice_OnMouseRightDown(wxMouseEvent &e);
 	void Slice_OnPaint(wxPaintDC &dc);
 public:
 	wxPoint2DDouble m_start;
 	wxPoint2DDouble m_end;
 	edge_t          m_edge;
 	plane_t         m_plane;
-	ConvexPolygon  *m_poly = nullptr;
 	std::vector<wxPoint2DDouble> m_points;
 	constexpr static double k_threshold = 1000.0;
 private:

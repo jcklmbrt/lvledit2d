@@ -2,7 +2,7 @@
 #define _CRECTANGEEDIT_HPP
 
 #include <wx/geometry.h>
-#include "src/edit/ibaseedit.hpp"
+#include "src/edit/editorcontext.hpp"
 
 class RectangleEdit : public IBaseEdit
 {

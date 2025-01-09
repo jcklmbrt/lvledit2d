@@ -1,6 +1,7 @@
-
-#include "src/edit/rectangleedit.hpp"
 #include <wx/event.h>
+
+#include "src/drawpanel.hpp"
+#include "src/edit/rectangleedit.hpp"
 
 RectangleEdit::RectangleEdit(DrawPanel *panel)
 	: IBaseEdit(panel)
@@ -14,8 +15,8 @@ void RectangleEdit::StartEdit(wxPoint2DDouble wpos)
 {
 	m_editstart = wpos;
 
-	if(m_parent->IsSnapToGrid()) {
-		double spacing = static_cast<double>(m_parent->GetGridSpacing());
+	if(m_panel->IsSnapToGrid()) {
+		double spacing = static_cast<double>(m_panel->GetGridSpacing());
 		m_editstart.m_x -= fmodl(m_editstart.m_x, spacing);
 		m_editstart.m_y -= fmodl(m_editstart.m_y, spacing);
 	}
@@ -29,13 +30,14 @@ void RectangleEdit::StartEdit(wxPoint2DDouble wpos)
 void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	wxPoint mpos = e.GetPosition();
-	wxPoint2DDouble world_pos = m_parent->ScreenToWorld(mpos);
+	wxPoint2DDouble world_pos = m_panel->ScreenToWorld(mpos);
 
 	e.Skip(true);
 
 	if(m_inedit) {
 		/* 2nd left click */
-		m_parent->push_back(m_tmprect);
+		std::vector<ConvexPolygon> &polys = m_context->GetPolys();
+		polys.push_back(m_tmprect);
 		m_inedit = false;
 	} else {
 		/* 1st left click*/
@@ -52,40 +54,41 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 		return;
 	}
 
-	wxPoint mpos = e.GetPosition();
-	wxPoint2DDouble world_pos = m_parent->ScreenToWorld(mpos);
+	wxPoint2DDouble mpos = m_panel->MouseToWorld(e);
 
-	double x = world_pos.m_x;
-	double y = world_pos.m_y;
-
-	if(m_parent->IsSnapToGrid()) {
-		double spacing = static_cast<double>(m_parent->GetGridSpacing());
-		x -= fmodl(x, spacing);
-		y -= fmodl(y, spacing);
+	if(m_panel->IsSnapToGrid()) {
+		BackgroundGrid::Snap(mpos);
 	}
 
-	if(x > m_editstart.m_x) {
-		m_tmprect.SetRight(x);
+	if(mpos.m_x > m_editstart.m_x) {
+		m_tmprect.SetRight(mpos.m_x);
 	}
 	else {
-		m_tmprect.SetLeft(x);
+		m_tmprect.SetLeft(mpos.m_x);
 	}
-	if(y > m_editstart.m_y) {
-		m_tmprect.SetBottom(y);
+	if(mpos.m_y > m_editstart.m_y) {
+		m_tmprect.SetBottom(mpos.m_y);
 	}
 	else {
-		m_tmprect.SetTop(y);
+		m_tmprect.SetTop(mpos.m_y);
 	}
 }
 
 void RectangleEdit::OnPaint(wxPaintEvent &e)
 {
 	e.Skip(true);
+
+	wxPaintDC dc(m_panel);
+
 	if(!m_inedit) {
+		wxPoint2DDouble mpos = m_panel->GetMousePos();
+		if(m_panel->IsSnapToGrid()) {
+			BackgroundGrid::Snap(mpos);
+		}
+		wxPoint spos = m_panel->WorldToScreen(mpos);
+		DrawPanel::DrawPoint(dc, spos, wxWHITE);
 		return;
 	}
-
-	wxPaintDC dc(m_parent);
 
 	wxPen pens[2] = { wxPen(*wxBLACK, 3), wxPen(*wxWHITE, 1) };
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
@@ -98,8 +101,8 @@ void RectangleEdit::OnPaint(wxPaintEvent &e)
 		rb.m_y = m_tmprect.GetBottom();
 
 		wxPoint slt, srb;
-		slt = m_parent->WorldToScreen(lt);
-		srb = m_parent->WorldToScreen(rb);
+		slt = m_panel->WorldToScreen(lt);
+		srb = m_panel->WorldToScreen(rb);
 
 		dc.SetPen(pen);
 

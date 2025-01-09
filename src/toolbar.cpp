@@ -56,7 +56,7 @@ void ToolBar::OnSelect(wxCommandEvent &e)
 		DrawPanel *dp = dynamic_cast<DrawPanel *>(page);
 
 		if(dp != nullptr) {
-			dp->OnToolSelect(m_selected);
+			dp->GetEditor().OnToolSelect(m_selected);
 		}
 	}
 }

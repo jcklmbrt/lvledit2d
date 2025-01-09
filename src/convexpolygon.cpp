@@ -75,6 +75,13 @@ void ConvexPolygon::Slice(plane_t plane)
 	std::vector<wxPoint2DDouble> new_points;
 	ImposePlane(plane, new_points);
 
+	wxPoint2DDouble sum = { 0.0, 0.0 };
+	for(wxPoint2DDouble p : new_points) {
+		sum += p;
+	}
+
+	m_center = sum / static_cast<double>(new_points.size());
+
 	m_points = new_points;
 }
 

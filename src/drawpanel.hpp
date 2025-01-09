@@ -10,51 +10,51 @@
 #include "src/toolbar.hpp"
 #include "src/convexpolygon.hpp"
 #include "src/viewmatrix.hpp"
+#include "src/edit/editorcontext.hpp"
 
-class IBaseEdit;
+class DrawPanel;
 
-class DrawPanel : public wxPanel,
-                  public ViewMatrix,
-                  public std::vector<ConvexPolygon>
+class BackgroundGrid : public wxEvtHandler
+{
+public:
+	constexpr static int SPACING = 50;
+	BackgroundGrid(DrawPanel *parent);
+	static void Snap(wxPoint2DDouble &pt);
+private:
+	void OnPaint(wxPaintEvent &e);
+private:
+	DrawPanel *m_parent;
+};
+
+
+class DrawPanel : public wxPanel
 {
 public:
 	DrawPanel(wxWindow *parent);
 	~DrawPanel();
 	/* Editor helpers */
-	int  GetGridSpacing() { return m_gridspacing; }
-	bool IsSnapToGrid() { return m_snaptogrid; }
+	int  GetGridSpacing() { return m_grid.SPACING; }
+	bool IsSnapToGrid() { return m_editor.IsSnapToGrid(); }
 	wxPoint2DDouble GetMousePos() { return m_mousepos; }
-	void FinishEdit();
-	void OnToolSelect(ToolBar::ID id);
-	ConvexPolygon *SelectPoly(wxPoint2DDouble wpos);
-	ConvexPolygon *ClosestPoly(wxPoint2DDouble wpos, double threshold);
+	EditorContext &GetEditor() { return m_editor; };
 	static void DrawPoint(wxPaintDC &dc, wxPoint point, const wxColor *color);
 private:
 	/* Drawing */
 	void OnPaint(wxPaintEvent &e);
-	void DrawGrid(wxPaintDC &dc);
 	/* Mouse events */
-	void OnMouseLeftDown(wxMouseEvent &e);
-	void OnMouseLeftUp(wxMouseEvent &e);
-	void OnMouseMotion(wxMouseEvent &e);
+	void OnMouse(wxMouseEvent &e);
 	void OnKeyDown(wxKeyEvent &e);
-	/* Zoom/Pan ctrl */
-	void OnMouseMiddleDown(wxMouseEvent &e);
-	void OnMouseMiddleUp(wxMouseEvent &e);
-	void OnMouseWheel(wxMouseEvent &e);
 
 	/* cache mouse position for use in draw routines */
 	wxPoint2DDouble m_mousepos;
 
-	/* Zoom/Pan ctrl */
-	bool m_inpan;
-	wxPoint2DDouble m_lastmousepos;
-
-	/* editing context */
-	IBaseEdit *m_edit = nullptr;
-
-	int m_gridspacing = 50;
-	bool m_snaptogrid  = true;
+	BackgroundGrid  m_grid;
+	ViewMatrixCtrl  m_view;
+	EditorContext   m_editor;
+public:
+	inline wxPoint WorldToScreen(wxPoint2DDouble world) { return m_view.WorldToScreen(world); }
+	inline wxPoint2DDouble ScreenToWorld(wxPoint screen) {return m_view.ScreenToWorld(screen);}
+	inline wxPoint2DDouble MouseToWorld(wxMouseEvent &e) { return m_view.MouseToWorld(e); }
 };
 
 #endif

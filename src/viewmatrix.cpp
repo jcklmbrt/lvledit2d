@@ -1,4 +1,4 @@
-
+#include <wx/window.h>
 #include "src/viewmatrix.hpp"
 
 ViewMatrix::ViewMatrix()
@@ -56,6 +56,8 @@ void ViewMatrix::Zoom(wxPoint2DDouble p, wxDouble factor)
 
 	m_zoom = zoom;
 	m_pan = pan;
+
+	SetupMatrix();
 }
 
 void ViewMatrix::Pan(wxPoint2DDouble delta)
@@ -66,5 +68,78 @@ void ViewMatrix::Pan(wxPoint2DDouble delta)
 		return;
 	}
 	m_pan = pan;
+	SetupMatrix();
 }
 
+ViewMatrixCtrl::ViewMatrixCtrl(wxWindow *parent)
+	: m_parent(parent), m_inpan(false)
+{
+	Bind(wxEVT_MIDDLE_DOWN, &ViewMatrixCtrl::OnMouseMiddleDown, this, wxID_ANY);
+	Bind(wxEVT_MIDDLE_UP, &ViewMatrixCtrl::OnMouseMiddleUp, this, wxID_ANY);
+	Bind(wxEVT_MOUSEWHEEL, &ViewMatrixCtrl::OnMouseWheel, this, wxID_ANY);
+	Bind(wxEVT_MOTION, &ViewMatrixCtrl::OnMouseMotion, this, wxID_ANY);
+}
+
+void ViewMatrixCtrl::OnMouseMotion(wxMouseEvent &e)
+{
+	e.Skip(true);
+
+	wxPoint wxpos = e.GetPosition();
+
+	wxPoint2DDouble pos;
+	pos.m_x = static_cast<float>(wxpos.x);
+	pos.m_y = static_cast<float>(wxpos.y);
+
+	if(m_inpan && !e.ButtonIsDown(wxMOUSE_BTN_MIDDLE)) {
+		m_inpan = false;
+	}
+
+	if(m_inpan) {
+		Pan(pos - m_lastmousepos);
+		m_lastmousepos = pos;
+	}
+}
+
+void ViewMatrixCtrl::OnMouseWheel(wxMouseEvent &e)
+{
+	wxPoint wxpos = e.GetPosition();
+	wxPoint2DDouble pos;
+	pos.m_x = static_cast<float>(wxpos.x);
+	pos.m_y = static_cast<float>(wxpos.y);
+
+	if(e.GetWheelAxis() == wxMOUSE_WHEEL_VERTICAL) {
+		int rot = e.GetWheelRotation();
+		if(rot == 0) {
+			/* no scroll */
+		}
+		else if(rot > 0) { /* scroll up */
+			Zoom(pos, 1.1f);
+		}
+		else { /* scroll down */
+			Zoom(pos, 0.9f);
+		}
+	}
+
+	e.Skip();
+}
+
+
+void ViewMatrixCtrl::OnMouseMiddleDown(wxMouseEvent &e)
+{
+	e.Skip(true);
+
+	wxPoint wxpos = e.GetPosition();
+
+	wxPoint2DDouble pos;
+	pos.m_x = static_cast<float>(wxpos.x);
+	pos.m_y = static_cast<float>(wxpos.y);
+
+	m_lastmousepos = pos;
+	m_inpan = true;
+}
+
+void ViewMatrixCtrl::OnMouseMiddleUp(wxMouseEvent &e)
+{
+	e.Skip(true);
+	m_inpan = false;
+}
