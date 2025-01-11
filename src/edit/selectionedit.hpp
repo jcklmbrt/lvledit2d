@@ -9,10 +9,10 @@ class SelectionEdit : public IBaseEdit
 public:
 	SelectionEdit(DrawPanel *panel);
 	void OnMouseLeftDown(wxMouseEvent &e);
-	void OnMouseRightDown(wxMouseEvent &e);
 	void OnMouseLeftUp(wxMouseEvent &e);
 	void OnMouseMotion(wxMouseEvent &e);
 private:
+	bool m_inedit = false;
 	wxPoint2DDouble m_editstart;
 };
 

@@ -45,7 +45,6 @@ DrawPanel::~DrawPanel()
 	RemoveEventHandler(&m_editor);
 	RemoveEventHandler(&m_view);
 	RemoveEventHandler(&m_grid);
-	m_editor.FinishEdit();
 }
 
 

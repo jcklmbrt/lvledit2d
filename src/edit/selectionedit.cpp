@@ -9,7 +9,6 @@ SelectionEdit::SelectionEdit(DrawPanel *panel)
 	: IBaseEdit(panel)
 {
 	Bind(wxEVT_LEFT_DOWN, &SelectionEdit::OnMouseLeftDown, this);
-	Bind(wxEVT_RIGHT_DOWN, &SelectionEdit::OnMouseRightDown, this);
 	Bind(wxEVT_MOTION, &SelectionEdit::OnMouseMotion, this);
 	Bind(wxEVT_LEFT_UP, &SelectionEdit::OnMouseLeftUp, this);
 };
@@ -18,23 +17,13 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	wxPoint2DDouble world_pos = m_panel->MouseToWorld(e);
 
-	m_poly = m_context->SelectPoly(world_pos);
+	ConvexPolygon *poly = m_context->SelectPoly(world_pos);
 
-	if(m_poly != nullptr) {
+	if(poly != nullptr) {
+		m_inedit = true;
 		m_editstart = world_pos;
+		m_context->SetSelectedPoly(poly);
 	}
-
-	e.Skip(true);
-}
-
-void SelectionEdit::OnMouseRightDown(wxMouseEvent &e)
-{
-	wxPoint2DDouble world_pos = m_panel->MouseToWorld(e);
-
-	ConvexPolygon *todel = m_context->SelectPoly(world_pos);
-
-	std::vector<ConvexPolygon> &polys = m_context->GetPolys();
-	polys.erase(polys.begin() + (todel - polys.data()));
 
 	e.Skip(true);
 }
@@ -44,7 +33,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 {
 	e.Skip(true);
 
-	if(m_poly == nullptr) {
+	if(!m_inedit) {
 		return;
 	}
 
@@ -72,12 +61,27 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		m_editstart = world_pos;
 	}
 
-	m_poly->MoveBy(delta);
+	ConvexPolygon *selected = m_context->GetSelectedPoly();
+
+	selected->MoveBy(delta);
+
+	bool intersects = false;
+	for(ConvexPolygon &poly : m_context->GetPolys()) {
+		if(&poly != selected && selected->Intersects(poly)) {
+			intersects = true;
+			break;
+		}
+	}
+
+	if(intersects) {
+		/* go back */
+		selected->MoveBy(-delta);
+	}
 }
 
 
 void SelectionEdit::OnMouseLeftUp(wxMouseEvent &e)
 {
-	m_poly = nullptr;
+	m_inedit = false;
 	e.Skip(true);
 }

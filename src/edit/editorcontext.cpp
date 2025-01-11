@@ -1,3 +1,4 @@
+#include <array>
 #include "src/drawpanel.hpp"
 #include "src/edit/selectionedit.hpp"
 #include "src/edit/rectangleedit.hpp"
@@ -9,18 +10,68 @@ void IBaseEdit::DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p)
 {
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
-	size_t npoints = p->NumPoints();
+	if(p == m_context->GetSelectedPoly()) {
+		wxRect2DDouble aabb = p->GetAABB();
+		wxRect s_aabb;
+		s_aabb.SetLeftTop(m_panel->WorldToScreen(aabb.GetLeftTop()));
+		s_aabb.SetRightBottom(m_panel->WorldToScreen(aabb.GetRightBottom()));
+
+		dc.SetPen(wxPen(*wxBLUE, 1));
+		dc.DrawRectangle(s_aabb);
+
+		/* inflate bb to illustrate planes */
+		aabb.Inset(-50, -50);
+
+		std::array aabbpts = {
+			aabb.GetLeftTop(),
+			aabb.GetRightTop(),
+			aabb.GetRightBottom(),
+			aabb.GetLeftBottom()
+		};
+
+		std::vector<wxPoint> plane_lines;
+
+		for(const Plane &plane : p->GetPlanes()) {
+			size_t naabbpts = aabbpts.size();
+			for(size_t i = 0; i < naabbpts; i++) {
+				wxPoint2DDouble a = aabbpts[i];
+				wxPoint2DDouble b = aabbpts[(i + 1) % naabbpts];
+
+				double da = plane.SignedDistance(a);
+				double db = plane.SignedDistance(b);
+
+				if(da * db < 0) {
+					wxPoint2DDouble isect;
+					if(plane.Line(a, b, isect)) {
+						wxPoint spt = m_panel->WorldToScreen(isect);
+						plane_lines.push_back(spt);
+					}
+				}
+			}
+		}
+
+		dc.SetPen(wxPen(*wxBLACK, 1));
+		if(plane_lines.size() >= 2)
+			for(size_t i = 0; i < plane_lines.size() - 1; i += 2) {
+				wxPoint a = plane_lines[i];
+				wxPoint b = plane_lines[i + 1];
+				dc.DrawLine(a, b);
+			}
+	}
+
+	const std::vector<wxPoint2DDouble> &points = p->GetPoints();
+	size_t npoints = points.size();
 	wxPoint *s_points = new wxPoint[npoints];
 
 	for(size_t i = 0; i < npoints; i++) {
-		wxPoint2DDouble point = p->GetPoint(i);
+		wxPoint2DDouble point = points[i];
 		s_points[i] = m_panel->WorldToScreen(point);
 	}
 
 	dc.SetPen(wxPen(*wxBLACK, 3));
 	dc.DrawPolygon(npoints, s_points);
 
-	if(p == m_poly) {
+	if(p == m_context->GetSelectedPoly()) {
 		dc.SetPen(wxPen(*wxGREEN, 1));
 	}
 	else {
@@ -29,22 +80,23 @@ void IBaseEdit::DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p)
 
 	dc.DrawPolygon(npoints, s_points);
 
-	for(size_t i = 0; i < npoints; i++) {
-		m_panel->DrawPoint(dc, s_points[i], wxWHITE);
+	if(p == m_context->GetSelectedPoly()) {
+		for(size_t i = 0; i < npoints; i++) {
+			m_panel->DrawPoint(dc, s_points[i], wxWHITE);
+		}
+
+		wxPoint2DDouble center = p->GetCenter();
+		wxPoint s_center = m_panel->WorldToScreen(center);
+
+		m_panel->DrawPoint(dc, s_center, wxYELLOW);
 	}
-
-	wxPoint2DDouble center = p->GetCenter();
-	wxPoint s_center = m_panel->WorldToScreen(center);
-
-	m_panel->DrawPoint(dc, s_center, wxYELLOW);
 
 	delete[] s_points;
 }
 
 
 IBaseEdit::IBaseEdit(DrawPanel *panel)
-	: m_panel(panel),
-	m_poly(nullptr)
+	: m_panel(panel)
 {
 	m_context = &m_panel->GetEditor();
 }
@@ -62,7 +114,6 @@ DrawPanel *IBaseEdit::GetPanel()
 }
 
 
-
 EditorContext::EditorContext(DrawPanel *parent)
 	: m_parent(parent)
 {
@@ -70,14 +121,30 @@ EditorContext::EditorContext(DrawPanel *parent)
 	m_state = nullptr;
 }
 
+
+EditorContext::~EditorContext()
+{
+	if(m_state != nullptr) {
+		m_parent->RemoveEventHandler(m_state);
+		delete m_state;
+	}
+}
+
+
 void EditorContext::OnPaint(wxPaintEvent &e)
 {
 	e.Skip();
 	wxPaintDC dc(m_parent);
 
-	for(ConvexPolygon &p : m_polys) {
-		if(m_state) {
-			m_state->DrawPolygon(dc, &p);
+	if(m_state != nullptr) {
+		for(ConvexPolygon &p : m_polys) {
+			if(&p != m_selected) {
+				m_state->DrawPolygon(dc, &p);
+			}
+		}
+
+		if(m_selected != nullptr) {
+			m_state->DrawPolygon(dc, m_selected);
 		}
 	}
 }
@@ -101,7 +168,11 @@ void EnqueueEventHandler(wxWindowBase *window, wxEvtHandler *handler)
 void EditorContext::OnToolSelect(ToolBar::ID id)
 {
 	if(m_state != nullptr) {
-		FinishEdit();
+		if(m_state != nullptr) {
+			m_parent->RemoveEventHandler(m_state);
+			delete m_state;
+		}
+		m_state = nullptr;
 		m_parent->Refresh(false);
 	}
 
@@ -125,21 +196,11 @@ void EditorContext::OnToolSelect(ToolBar::ID id)
 	}
 }
 
-void EditorContext::FinishEdit()
-{
-	if(m_state != nullptr) {
-		m_parent->RemoveEventHandler(m_state);
-		delete m_state;
-	}
-
-	m_state = nullptr;
-}
-
 
 ConvexPolygon *EditorContext::SelectPoly(wxPoint2DDouble wpos)
 {
 	for(ConvexPolygon &p : m_polys) {
-		if(p.ContainsPoint(wpos)) {
+		if(p.Contains(wpos)) {
 			return &p;
 		}
 	}

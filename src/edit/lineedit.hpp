@@ -40,10 +40,8 @@ private:
 public:
 	wxPoint2DDouble m_start;
 	wxPoint2DDouble m_end;
-	edge_t          m_edge;
-	plane_t         m_plane;
+	Plane         m_plane;
 	std::vector<wxPoint2DDouble> m_points;
-	constexpr static double k_threshold = 1000.0;
 private:
 	LineEditState_t m_state = LineEditState_t::START_POINT;
 };

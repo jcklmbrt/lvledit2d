@@ -10,48 +10,47 @@ void LineEdit::StartPoint_OnMouseLeftDown(wxMouseEvent &e)
 {
 	wxPoint mpos = e.GetPosition();
 	wxPoint2DDouble start = m_panel->ScreenToWorld(mpos);
-	ConvexPolygon  *poly = m_context->ClosestPoly(start, k_threshold);
+	ConvexPolygon  *poly = m_context->GetSelectedPoly();
 
 	if(poly == nullptr) {
-		m_context->FinishEdit();
+		
 	} else {
-		wxPoint2DDouble closest_point;
-		if(poly->ClosestPoint(start, k_threshold, closest_point, &m_edge)) {
-			m_start = closest_point;
-			m_poly = poly;
-			m_state = LineEditState_t::END_POINT;
+		if(m_panel->IsSnapToGrid()) {
+			BackgroundGrid::Snap(start);
 		}
+		m_start = start;
+		m_context->SetSelectedPoly(poly);
+		m_state = LineEditState_t::END_POINT;
 	}
 }
 
 
 void LineEdit::StartPoint_OnPaint(wxPaintDC &dc)
 {
-	wxPoint2DDouble start = m_panel->GetMousePos();
-	ConvexPolygon *poly = m_context->ClosestPoly(start, k_threshold);
-
-	if(poly != nullptr) {
-		wxPoint2DDouble closest_point = start;
-		if(poly->ClosestPoint(start, k_threshold, closest_point)) {
-			wxPoint spt = m_panel->WorldToScreen(closest_point);
-			m_panel->DrawPoint(dc, spt, wxWHITE);
-		}
+	wxPoint2DDouble mpos = m_panel->GetMousePos();
+	if(m_panel->IsSnapToGrid()) {
+		BackgroundGrid::Snap(mpos);
 	}
+	wxPoint spos = m_panel->WorldToScreen(mpos);
+	DrawPanel::DrawPoint(dc, spos, wxWHITE);
 }
 
 
 void LineEdit::EndPoint_OnMouseLeftDown(wxMouseEvent &e)
 {
-	wxPoint2DDouble mpos = m_panel->MouseToWorld(e);
+	m_end = m_panel->MouseToWorld(e);
 
-	wxPoint2DDouble closest_point;
-	if(m_poly->ClosestPoint(mpos, k_threshold, closest_point, nullptr, &m_edge)) {
-		m_end = closest_point;
-		m_plane = plane_t(m_start, m_end);
+	if(m_panel->IsSnapToGrid()) {
+		BackgroundGrid::Snap(m_end);
+	}
 
+	m_plane = Plane(m_start, m_end);
+
+	ConvexPolygon *poly = m_context->GetSelectedPoly();
+
+	if(poly != nullptr) {
 		m_points.clear();
-		m_poly->ImposePlane(m_plane, m_points);
-
+		poly->ImposePlane(m_plane, m_points);
 		m_state = LineEditState_t::SLICE;
 	}
 }
@@ -62,25 +61,30 @@ void LineEdit::EndPoint_OnPaint(wxPaintDC &dc)
 	wxPoint a, b;
 	wxPoint2DDouble mpos = m_panel->GetMousePos();
 
-	wxPoint2DDouble closest_point;
-	if(m_poly->ClosestPoint(mpos, k_threshold, closest_point, nullptr, &m_edge)) {
-		a = m_panel->WorldToScreen(m_start);
-		b = m_panel->WorldToScreen(closest_point);
+	a = m_panel->WorldToScreen(m_start);
 
-		dc.SetPen(wxPen(*wxBLACK, 2));
-		dc.DrawLine(a, b);
-		dc.SetPen(wxPen(*wxRED, 1));
-		dc.DrawLine(a, b);
-
-		DrawPanel::DrawPoint(dc, a, wxWHITE);
-		DrawPanel::DrawPoint(dc, b, wxWHITE);
+	if(m_panel->IsSnapToGrid()) {
+		BackgroundGrid::Snap(mpos);
 	}
+
+	b = m_panel->WorldToScreen(mpos);
+
+	dc.SetPen(wxPen(*wxBLACK, 2));
+	dc.DrawLine(a, b);
+	dc.SetPen(wxPen(*wxRED, 1));
+	dc.DrawLine(a, b);
+
+	DrawPanel::DrawPoint(dc, a, wxWHITE);
+	DrawPanel::DrawPoint(dc, b, wxWHITE);
 }
 
 
 void LineEdit::Slice_OnMouseLeftDown(wxMouseEvent &e)
 {
-	m_poly->Slice(m_plane);
+	ConvexPolygon *poly = m_context->GetSelectedPoly();
+	wxASSERT(poly != nullptr);
+	poly->Slice(m_plane);
+	
 	/* Back to the start */
 	m_state = LineEditState_t::START_POINT;
 }
@@ -91,17 +95,23 @@ void LineEdit::Slice_OnMouseRightDown(wxMouseEvent &e)
 	m_plane.Flip();
 
 	m_points.clear();
-	m_poly->ImposePlane(m_plane, m_points);
+
+	ConvexPolygon *poly = m_context->GetSelectedPoly();
+	wxASSERT(poly != nullptr);
+	poly->ImposePlane(m_plane, m_points);
 }
 
 
 void LineEdit::Slice_OnPaint(wxPaintDC &dc)
 {
 	std::vector<wxPoint> s_points;
+	ConvexPolygon *poly = m_context->GetSelectedPoly();
+	wxASSERT(poly != nullptr);
 
-	size_t npoints = m_poly->NumPoints();
+	const std::vector<wxPoint2DDouble> &points = poly->GetPoints();
+	size_t npoints = points.size();
 	for(size_t i = 0; i < npoints; i++) {
-		wxPoint2DDouble point = m_poly->GetPoint(i);
+		wxPoint2DDouble point = points[i];
 		wxPoint s_point = m_panel->WorldToScreen(point);
 		s_points.push_back(s_point);
 	}
@@ -170,7 +180,7 @@ void LineEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 void LineEdit::DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p)
 {
-	if(p == m_poly && m_state == LineEditState_t::SLICE) {
+	if(p == m_context->GetSelectedPoly() && m_state == LineEditState_t::SLICE) {
 		Slice_OnPaint(dc);
 	} else {
 		IBaseEdit::DrawPolygon(dc, p);

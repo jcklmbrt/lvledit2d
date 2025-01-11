@@ -11,21 +11,6 @@ RectangleEdit::RectangleEdit(DrawPanel *panel)
 	Bind(wxEVT_MOTION, &RectangleEdit::OnMouseMotion, this, wxID_ANY);
 }
 
-void RectangleEdit::StartEdit(wxPoint2DDouble wpos)
-{
-	m_editstart = wpos;
-
-	if(m_panel->IsSnapToGrid()) {
-		double spacing = static_cast<double>(m_panel->GetGridSpacing());
-		m_editstart.m_x -= fmodl(m_editstart.m_x, spacing);
-		m_editstart.m_y -= fmodl(m_editstart.m_y, spacing);
-	}
-
-	m_tmprect = wxRect2DDouble();
-	m_tmprect.SetCentre(m_editstart);
-	m_inedit = true;
-}
-
 
 void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
@@ -34,15 +19,46 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 	e.Skip(true);
 
+	std::vector<ConvexPolygon> &polys = m_context->GetPolys();
+	bool intersects = false;
+
 	if(m_inedit) {
 		/* 2nd left click */
-		std::vector<ConvexPolygon> &polys = m_context->GetPolys();
-		polys.push_back(m_tmprect);
-		m_inedit = false;
+		for(ConvexPolygon &poly : polys) {
+			if(poly.Intersects(m_tmprect)) {
+				intersects = true;
+				break;
+			}
+		}
+
+		if(!intersects) {
+			polys.push_back(m_tmprect);
+			m_context->SetSelectedPoly(&polys.back());
+			m_inedit = false;
+		}
 	} else {
 		/* 1st left click*/
-		StartEdit(world_pos);
-		m_inedit = true;
+		for(ConvexPolygon &poly : polys) {
+			if(poly.Contains(world_pos)) {
+				intersects = true;
+				break;
+			}
+		}
+
+		if(!intersects) {
+			m_editstart = world_pos;
+
+			if(m_panel->IsSnapToGrid()) {
+				double spacing = static_cast<double>(m_panel->GetGridSpacing());
+				m_editstart.m_x -= fmodl(m_editstart.m_x, spacing);
+				m_editstart.m_y -= fmodl(m_editstart.m_y, spacing);
+			}
+
+			m_tmprect = wxRect2DDouble();
+			m_tmprect.SetCentre(m_editstart);
+			m_inedit = true;
+		}
+
 	}
 }
 
@@ -86,11 +102,34 @@ void RectangleEdit::OnPaint(wxPaintEvent &e)
 			BackgroundGrid::Snap(mpos);
 		}
 		wxPoint spos = m_panel->WorldToScreen(mpos);
-		DrawPanel::DrawPoint(dc, spos, wxWHITE);
+
+		std::vector<ConvexPolygon> &polys = m_context->GetPolys();
+		bool intersects = false;
+		for(ConvexPolygon &poly : polys) {
+			if(poly.Contains(mpos)) {
+				intersects = true;
+				break;
+			}
+		}
+
+		if(intersects) {
+			DrawPanel::DrawPoint(dc, spos, wxRED);
+		} else {
+			DrawPanel::DrawPoint(dc, spos, wxWHITE);
+		}
 		return;
 	}
 
 	wxPen pens[2] = { wxPen(*wxBLACK, 3), wxPen(*wxWHITE, 1) };
+
+	std::vector<ConvexPolygon> &polys = m_context->GetPolys();
+	for(ConvexPolygon &poly : polys) {
+		if(poly.Intersects(m_tmprect)) {
+			pens[1] = wxPen(*wxRED, 1);
+			break;
+		}
+	}
+
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
 
 	for(wxPen pen : pens) {

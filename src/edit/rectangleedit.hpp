@@ -12,7 +12,6 @@ public:
 	void OnMouseMotion(wxMouseEvent &e);
 	void OnPaint(wxPaintEvent &e);
 private:
-	void StartEdit(wxPoint2DDouble wpos);
 	bool m_inedit = false;
 	wxRect2DDouble m_tmprect;
 	wxPoint2DDouble m_editstart;

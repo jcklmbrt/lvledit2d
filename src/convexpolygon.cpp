@@ -10,7 +10,6 @@ ConvexPolygon::ConvexPolygon(const wxRect2DDouble &rect)
 	m_center = rect.GetCentre();
 	m_aabb   = rect;
 
-	m_points.clear();
 	/* Start off with our bounding box */
 	m_points.push_back(m_aabb.GetLeftTop());
 	m_points.push_back(m_aabb.GetRightTop());
@@ -18,57 +17,116 @@ ConvexPolygon::ConvexPolygon(const wxRect2DDouble &rect)
 	m_points.push_back(m_aabb.GetLeftBottom());
 }
 
-static
-wxPoint2DDouble ClosestPointOnLine(wxPoint2DDouble a,
-                                   wxPoint2DDouble b, 
-                                   wxPoint2DDouble pt)
+
+static bool PointsInsidePlane(const Plane &plane, const wxPoint2DDouble points[], size_t npoints)
 {
-	wxPoint2DDouble ab = b  - a;
-	wxPoint2DDouble ap = pt - a;
-
-	double t = ap.GetDotProduct(ab) / ab.GetDotProduct(ab);
-
-	t = std::clamp(t, 0.0, 1.0);
-
-	return a + t * ab;
+	for(size_t i = 0; i < npoints; i++) {
+		if(plane.SignedDistance(points[i]) > 0.0) {
+			return false;
+		}
+	}
+	return true;
 }
 
-bool ConvexPolygon::ClosestPoint(wxPoint2DDouble mpos, double threshold, wxPoint2DDouble &pt, edge_t *edge, edge_t *exclude)
+
+bool ConvexPolygon::PointsInside(const Plane &plane) const
 {
-	bool res = false;
-	double min_dist = threshold;
-	size_t num_points = NumPoints();
-	for(size_t i = 0; i < num_points; i++) {
+	return PointsInsidePlane(plane, m_points.data(), m_points.size());
+}
 
-		edge_t e;
-		e.first  = i;
-		e.second = (i + 1) % num_points;
 
-		if(exclude != nullptr) {
-			if(*exclude == e) {
-				continue;
-			}
+void ConvexPolygon::SetupAABB()
+{
+	wxASSERT_MSG(m_points.size() >= 2,
+		"Cannot construct a rect from less than two points.");
+
+	wxPoint2DDouble mins = { DBL_MAX, DBL_MAX };
+	wxPoint2DDouble maxs = { DBL_MIN, DBL_MIN };
+
+	for(const wxPoint2DDouble pt : m_points) {
+		if(pt.m_x < mins.m_x) {
+			mins.m_x = pt.m_x;
 		}
-
-		wxPoint2DDouble cp = GetPoint(e.first);
-		wxPoint2DDouble np = GetPoint(e.second);
-
-		wxPoint2DDouble p = ClosestPointOnLine(cp, np, mpos);
-		double dist = p.GetDistance(mpos);
-		if(dist < min_dist) {
-			min_dist = dist;
-			pt = p;
-			if(edge != nullptr) {
-				*edge = e;
-			}
-			res = true;
+		if(pt.m_y < mins.m_y) {
+			mins.m_y = pt.m_y;
+		}
+		if(pt.m_x > maxs.m_x) {
+			maxs.m_x = pt.m_x;
+		}
+		if(pt.m_y > maxs.m_y) {
+			maxs.m_y = pt.m_y;
 		}
 	}
 
-	return res;
+	m_aabb.SetLeftTop(mins);
+	m_aabb.SetRightBottom(maxs);
 }
 
-void ConvexPolygon::Slice(plane_t plane)
+
+bool ConvexPolygon::Intersects(const wxRect2DDouble &rect) const
+{
+	/* Broad phase */
+	if(!m_aabb.Intersects(rect)) {
+		return false;
+	}
+
+	std::array points = {
+		rect.GetLeftTop(),
+		rect.GetRightTop(),
+		rect.GetRightBottom(),
+		rect.GetLeftBottom()
+	};
+
+	for(const Plane &plane : m_planes) {
+		if(PointsInsidePlane(plane, points.data(), points.size())) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+bool ConvexPolygon::Contains(const wxPoint2DDouble &pt) const
+{
+	if(!m_aabb.Contains(pt)) {
+		return false;
+	}
+
+	for(const Plane &plane : m_planes) {
+		if(plane.SignedDistance(pt) <= 0.0) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+bool ConvexPolygon::Intersects(const ConvexPolygon &other) const
+{
+	/* Broad phase */
+	if(!m_aabb.Intersects(other.GetAABB())) {
+		return false;
+	}
+
+	for(const Plane &plane : other.GetPlanes()) {
+		if(PointsInside(plane)) {
+			return false;
+		}
+	}
+
+	for(const Plane &plane : m_planes) {
+		if(other.PointsInside(plane)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+void ConvexPolygon::Slice(Plane plane)
 {
 	m_planes.push_back(plane);
 
@@ -81,27 +139,13 @@ void ConvexPolygon::Slice(plane_t plane)
 	}
 
 	m_center = sum / static_cast<double>(new_points.size());
-
 	m_points = new_points;
+
+	SetupAABB();
 }
 
-void ConvexPolygon::ImposePlane(plane_t plane, std::vector<wxPoint2DDouble> &out)
-{
-	plane.Polygon(m_points, true, out);
-}
 
-bool ConvexPolygon::ContainsPoint(wxPoint2DDouble pt) const
+void ConvexPolygon::ImposePlane(Plane plane, std::vector<wxPoint2DDouble> &out) const
 {
-	bool res = false;
-	size_t num_points = NumPoints();
-	for(size_t i = 0; i < num_points; i++) {
-		wxPoint2DDouble cp = GetPoint(i);
-		wxPoint2DDouble np = GetPoint((i + 1) % num_points);
-
-		if(((cp.m_y >= pt.m_y && np.m_y < pt.m_y) || (cp.m_y < pt.m_y && np.m_y >= pt.m_y)) &&
-			(pt.m_x < (np.m_x - cp.m_x) * (pt.m_y - cp.m_y) / (np.m_y - cp.m_y) + cp.m_x)) {
-			res = !res;
-		}
-	}
-	return res;
+	plane.Clip(m_points, out);
 }
