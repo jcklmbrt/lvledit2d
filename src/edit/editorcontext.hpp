@@ -10,6 +10,28 @@ class DrawPanel;
 class EditorContext;
 
 
+enum class EditActionType_t
+{
+	LINE,
+	RECT,
+	MOVE
+};
+
+
+struct EditAction_Line
+{
+	EditActionType_t type;
+	size_t plane;
+};
+
+
+union EditAction
+{
+	EditActionType_t type;
+	EditAction_Line  line;
+};
+
+
 class IBaseEdit : public wxEvtHandler
 {
 public:
@@ -37,7 +59,9 @@ public:
 	ConvexPolygon *GetSelectedPoly() { return m_selected; };
 	void SetSelectedPoly(ConvexPolygon *poly) { m_selected = poly; }
 private:
-	std::vector<ConvexPolygon> m_polys;
+	std::vector<wxRect2DDouble> m_rects;
+	std::vector<Plane2D>        m_planes;
+	std::vector<ConvexPolygon>  m_polys;
 	ConvexPolygon *m_selected = nullptr;
 	IBaseEdit *m_state;
 	DrawPanel *m_parent;

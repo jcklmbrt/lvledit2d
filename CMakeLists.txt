@@ -39,4 +39,4 @@ target_sources(lvledit2d PRIVATE
 	"src/convexpolygon.cpp"
 	"src/edit/rectangleedit.cpp"
 	"src/edit/selectionedit.cpp"
-	"src/edit/lineedit.cpp"  "src/edit/editorcontext.cpp")
+	"src/edit/lineedit.cpp"  "src/edit/editorcontext.cpp" "src/plane2d.cpp")

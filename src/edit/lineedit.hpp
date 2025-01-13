@@ -40,7 +40,7 @@ private:
 public:
 	wxPoint2DDouble m_start;
 	wxPoint2DDouble m_end;
-	Plane         m_plane;
+	Plane2D         m_plane;
 	std::vector<wxPoint2DDouble> m_points;
 private:
 	LineEditState_t m_state = LineEditState_t::START_POINT;

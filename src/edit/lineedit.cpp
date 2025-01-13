@@ -44,7 +44,7 @@ void LineEdit::EndPoint_OnMouseLeftDown(wxMouseEvent &e)
 		BackgroundGrid::Snap(m_end);
 	}
 
-	m_plane = Plane(m_start, m_end);
+	m_plane = Plane2D(m_start, m_end);
 
 	ConvexPolygon *poly = m_context->GetSelectedPoly();
 

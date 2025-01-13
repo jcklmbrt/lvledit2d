@@ -18,7 +18,22 @@ ConvexPolygon::ConvexPolygon(const wxRect2DDouble &rect)
 }
 
 
-static bool PointsInsidePlane(const Plane &plane, const wxPoint2DDouble points[], size_t npoints)
+void ConvexPolygon::MoveBy(wxPoint2DDouble delta)
+{
+	for(Plane2D &plane : m_planes) {
+		plane.Offset(delta);
+	}
+
+	for(wxPoint2DDouble &point : m_points) {
+		point += delta;
+	}
+
+	m_aabb.Offset(delta);
+	m_center += delta;
+}
+
+
+static bool PointsInsidePlane(const Plane2D &plane, const wxPoint2DDouble points[], size_t npoints)
 {
 	for(size_t i = 0; i < npoints; i++) {
 		if(plane.SignedDistance(points[i]) > 0.0) {
@@ -29,7 +44,7 @@ static bool PointsInsidePlane(const Plane &plane, const wxPoint2DDouble points[]
 }
 
 
-bool ConvexPolygon::PointsInside(const Plane &plane) const
+bool ConvexPolygon::PointsInside(const Plane2D &plane) const
 {
 	return PointsInsidePlane(plane, m_points.data(), m_points.size());
 }
@@ -77,7 +92,7 @@ bool ConvexPolygon::Intersects(const wxRect2DDouble &rect) const
 		rect.GetLeftBottom()
 	};
 
-	for(const Plane &plane : m_planes) {
+	for(const Plane2D &plane : m_planes) {
 		if(PointsInsidePlane(plane, points.data(), points.size())) {
 			return false;
 		}
@@ -93,7 +108,7 @@ bool ConvexPolygon::Contains(const wxPoint2DDouble &pt) const
 		return false;
 	}
 
-	for(const Plane &plane : m_planes) {
+	for(const Plane2D &plane : m_planes) {
 		if(plane.SignedDistance(pt) <= 0.0) {
 			return false;
 		}
@@ -110,13 +125,13 @@ bool ConvexPolygon::Intersects(const ConvexPolygon &other) const
 		return false;
 	}
 
-	for(const Plane &plane : other.GetPlanes()) {
+	for(const Plane2D &plane : other.GetPlanes()) {
 		if(PointsInside(plane)) {
 			return false;
 		}
 	}
 
-	for(const Plane &plane : m_planes) {
+	for(const Plane2D &plane : m_planes) {
 		if(other.PointsInside(plane)) {
 			return false;
 		}
@@ -126,7 +141,7 @@ bool ConvexPolygon::Intersects(const ConvexPolygon &other) const
 }
 
 
-void ConvexPolygon::Slice(Plane plane)
+void ConvexPolygon::Slice(Plane2D plane)
 {
 	m_planes.push_back(plane);
 
@@ -145,7 +160,7 @@ void ConvexPolygon::Slice(Plane plane)
 }
 
 
-void ConvexPolygon::ImposePlane(Plane plane, std::vector<wxPoint2DDouble> &out) const
+void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<wxPoint2DDouble> &out) const
 {
 	plane.Clip(m_points, out);
 }

@@ -31,7 +31,7 @@ void IBaseEdit::DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p)
 
 		std::vector<wxPoint> plane_lines;
 
-		for(const Plane &plane : p->GetPlanes()) {
+		for(const Plane2D &plane : p->GetPlanes()) {
 			size_t naabbpts = aabbpts.size();
 			for(size_t i = 0; i < naabbpts; i++) {
 				wxPoint2DDouble a = aabbpts[i];
