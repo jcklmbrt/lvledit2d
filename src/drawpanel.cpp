@@ -1,8 +1,11 @@
 #include <cmath>
+#include <cfloat>
+#include <wx/aui/auibook.h>
 #include <wx/debug.h>
 #include <wx/event.h>
 #include <wx/gdicmn.h>
 #include <wx/geometry.h>
+#include <wx/msgdlg.h>
 #include <wx/wx.h>
 #include <wx/pen.h>
 
@@ -47,6 +50,21 @@ DrawPanel::~DrawPanel()
 	RemoveEventHandler(&m_grid);
 }
 
+
+DrawPanel *DrawPanel::GetCurrent()
+{
+	DrawPanel *dp = nullptr;
+	MainFrame *mainframe = wxGetApp().GetMainFrame();
+	wxAuiNotebook *notebook = mainframe->GetNotebook();
+
+	if(notebook->GetPageCount() > 0) {
+		int sel = notebook->GetSelection();
+		wxWindow *page = notebook->GetPage(sel);
+		dp = dynamic_cast<DrawPanel *>(page);
+	}
+
+	return dp;
+}
 
 BackgroundGrid::BackgroundGrid(DrawPanel *parent)
 	: m_parent(parent)
@@ -135,5 +153,4 @@ void DrawPanel::OnMouse(wxMouseEvent &e)
 
 void DrawPanel::OnKeyDown(wxKeyEvent &e)
 {
-
 }

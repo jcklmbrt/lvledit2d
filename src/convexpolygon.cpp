@@ -1,20 +1,19 @@
-
+#include <cfloat>
 #include <array>
 #include <vector>
 #include <wx/geometry.h>
 #include "src/convexpolygon.hpp"
+#include "src/plane2d.hpp"
 
 
 ConvexPolygon::ConvexPolygon(const wxRect2DDouble &rect)
 {
-	m_center = rect.GetCentre();
-	m_aabb   = rect;
-
+	m_aabb = rect;
 	/* Start off with our bounding box */
-	m_points.push_back(m_aabb.GetLeftTop());
-	m_points.push_back(m_aabb.GetRightTop());
-	m_points.push_back(m_aabb.GetRightBottom());
-	m_points.push_back(m_aabb.GetLeftBottom());
+	m_points.push_back(rect.GetLeftTop());
+	m_points.push_back(rect.GetRightTop());
+	m_points.push_back(rect.GetRightBottom());
+	m_points.push_back(rect.GetLeftBottom());
 }
 
 
@@ -29,11 +28,10 @@ void ConvexPolygon::MoveBy(wxPoint2DDouble delta)
 	}
 
 	m_aabb.Offset(delta);
-	m_center += delta;
 }
 
 
-static bool PointsInsidePlane(const Plane2D &plane, const wxPoint2DDouble points[], size_t npoints)
+bool ConvexPolygon::AllPointsBehind(const Plane2D &plane, const wxPoint2DDouble points[], size_t npoints)
 {
 	for(size_t i = 0; i < npoints; i++) {
 		if(plane.SignedDistance(points[i]) > 0.0) {
@@ -44,13 +42,13 @@ static bool PointsInsidePlane(const Plane2D &plane, const wxPoint2DDouble points
 }
 
 
-bool ConvexPolygon::PointsInside(const Plane2D &plane) const
+bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 {
-	return PointsInsidePlane(plane, m_points.data(), m_points.size());
+	return AllPointsBehind(plane, m_points.data(), m_points.size());
 }
 
 
-void ConvexPolygon::SetupAABB()
+void ConvexPolygon::ResizeAABB()
 {
 	wxASSERT_MSG(m_points.size() >= 2,
 		"Cannot construct a rect from less than two points.");
@@ -78,7 +76,7 @@ void ConvexPolygon::SetupAABB()
 }
 
 
-bool ConvexPolygon::Intersects(const wxRect2DDouble &rect) const
+bool ConvexPolygon::Intersects(const wxRect2DDouble &rect) const 
 {
 	/* Broad phase */
 	if(!m_aabb.Intersects(rect)) {
@@ -93,7 +91,7 @@ bool ConvexPolygon::Intersects(const wxRect2DDouble &rect) const
 	};
 
 	for(const Plane2D &plane : m_planes) {
-		if(PointsInsidePlane(plane, points.data(), points.size())) {
+		if(AllPointsBehind(plane, points.data(), points.size())) {
 			return false;
 		}
 	}
@@ -120,24 +118,38 @@ bool ConvexPolygon::Contains(const wxPoint2DDouble &pt) const
 
 bool ConvexPolygon::Intersects(const ConvexPolygon &other) const
 {
-	/* Broad phase */
 	if(!m_aabb.Intersects(other.GetAABB())) {
 		return false;
 	}
 
 	for(const Plane2D &plane : other.GetPlanes()) {
-		if(PointsInside(plane)) {
+		if(AllPointsBehind(plane)) {
 			return false;
 		}
 	}
 
 	for(const Plane2D &plane : m_planes) {
-		if(other.PointsInside(plane)) {
+		if(other.AllPointsBehind(plane)) {
 			return false;
 		}
 	}
 
 	return true;
+}
+
+
+void ConvexPolygon::PurgePlanes()
+{
+	/* remove all planes that aren't touching any points */
+	m_planes.erase(std::remove_if(m_planes.begin(), m_planes.end(), [this](Plane2D plane) {
+		constexpr double EPSILON = 0.001;
+		for(const wxPoint2DDouble &pt : m_points) {
+			if(plane.SignedDistance(pt) < EPSILON) {
+				return false;
+			}
+		}
+		return true;
+	}), m_planes.end());
 }
 
 
@@ -148,15 +160,7 @@ void ConvexPolygon::Slice(Plane2D plane)
 	std::vector<wxPoint2DDouble> new_points;
 	ImposePlane(plane, new_points);
 
-	wxPoint2DDouble sum = { 0.0, 0.0 };
-	for(wxPoint2DDouble p : new_points) {
-		sum += p;
-	}
-
-	m_center = sum / static_cast<double>(new_points.size());
 	m_points = new_points;
-
-	SetupAABB();
 }
 
 

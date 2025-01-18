@@ -3,6 +3,7 @@
 #include <wx/geometry.h>
 
 #include "src/drawpanel.hpp"
+#include "src/edit/editorcontext.hpp"
 #include "src/edit/lineedit.hpp"
 
 
@@ -83,7 +84,14 @@ void LineEdit::Slice_OnMouseLeftDown(wxMouseEvent &e)
 {
 	ConvexPolygon *poly = m_context->GetSelectedPoly();
 	wxASSERT(poly != nullptr);
-	poly->Slice(m_plane);
+
+	EditAction_Line action;
+	action.aabb = poly->GetAABB();
+	action.plane = m_plane;
+	action.start = m_start;
+	action.end = m_end;
+
+	m_context->ApplyAction(action);
 	
 	/* Back to the start */
 	m_state = LineEditState_t::START_POINT;

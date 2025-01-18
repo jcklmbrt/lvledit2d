@@ -1,21 +1,19 @@
 
 #include <wx/event.h>
-#include <wx/gdicmn.h>
+#include <wx/sizer.h>
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 #include <wx/notebook.h>
 #include <wx/wfstream.h>
 
-
 #include "src/drawpanel.hpp"
 #include "src/toolbar.hpp"
 #include "src/mainframe.hpp"
-
+#include "src/historylist.hpp"
 
 #include "res/reset.xpm"
 #include "res/save.xpm"
 #include "res/icon.xpm"
-
 
 MainFrame::MainFrame()
 	: wxFrame(nullptr, wxID_ANY, "LvlEdit2d")
@@ -36,18 +34,26 @@ MainFrame::MainFrame()
 	file->Append(save);
 	file->Append(exit);
 
+	wxMenuItem *undo = new wxMenuItem(edit, wxID_UNDO);
+	wxMenuItem *redo = new wxMenuItem(edit, wxID_REDO);
+	wxMenuItem *show_history = new wxMenuItem(edit, ID::SHOW_HISTORY, "Show History", "", wxITEM_CHECK);
+	edit->Append(show_history);
+	edit->Append(undo);
+	edit->Append(redo);
+
 	wxMenuBar *menubar = new wxMenuBar;
 	menubar->Append(file, "&File");
 	menubar->Append(edit, "&Edit");
 	SetMenuBar(menubar);
 
-	wxStatusBar *status  = CreateStatusBar();
-
 	wxToolBar *toolbar = new ToolBar(this, wxID_ANY);
 	SetToolBar(toolbar);
 
-	wxPanel       *panel    = new wxPanel(this);
+	wxPanel *panel = new wxPanel(this);
 	wxAuiNotebook *notebook = new wxAuiNotebook(panel, wxID_ANY);
+
+	wxPanel *sidepanel = new wxPanel(this);
+	HistoryList *hlist = new HistoryList(sidepanel);
 
 	wxBoxSizer *sizer;
 
@@ -55,16 +61,28 @@ MainFrame::MainFrame()
 	sizer->Add(notebook, 1, wxEXPAND);
 	panel->SetSizer(sizer);
 
-	sizer = new wxBoxSizer(wxVERTICAL);
+	sizer = new wxBoxSizer(wxHORIZONTAL);
 	sizer->Add(panel, 1, wxEXPAND);
+	sizer->Add(sidepanel, 0, wxEXPAND);
 	SetSizer(sizer);
 
-	m_notebook = notebook;
+	sizer = new wxBoxSizer(wxVERTICAL);
+	sizer->Add(hlist, 1, wxALIGN_RIGHT);
+	sidepanel->SetSizer(sizer);
 
+	m_notebook = notebook;
+	m_historylist = hlist;
+	m_sidepanel = sidepanel;
+
+	m_sidepanel->Hide();
+
+	Bind(wxEVT_MENU, &MainFrame::OnShowHistory, this, ID::SHOW_HISTORY);
 	Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
 	Bind(wxEVT_MENU, &MainFrame::OnOpen, this, wxID_OPEN);
 	Bind(wxEVT_MENU, &MainFrame::OnSave, this, wxID_SAVE);
 	Bind(wxEVT_MENU, &MainFrame::OnNew,  this, wxID_NEW);
+	Bind(wxEVT_MENU, &MainFrame::OnUndo, this, wxID_UNDO);
+	Bind(wxEVT_MENU, &MainFrame::OnRedo, this, wxID_REDO);
 }
 
 
@@ -102,6 +120,42 @@ void MainFrame::OnNew(wxCommandEvent &e)
 	s.Printf("Page:%d", n++);
 	DrawPanel *dp = new DrawPanel(m_notebook);
 	m_notebook->AddPage(dp, s, true);
+}
+
+void MainFrame::OnShowHistory(wxCommandEvent &e)
+{
+	wxSizer *sizer = GetSizer();
+	if(e.IsChecked()) {
+		m_sidepanel->Show();
+	} else {
+		m_sidepanel->Hide();
+	}
+
+	sizer->Layout();
+
+	Refresh();
+}
+
+
+void MainFrame::OnUndo(wxCommandEvent &e)
+{
+	DrawPanel *dp = DrawPanel::GetCurrent();
+	if(dp != nullptr) {
+		EditorContext &editor = dp->GetEditor();
+		editor.Undo();
+		dp->Refresh();
+	}
+}
+
+
+void MainFrame::OnRedo(wxCommandEvent &e)
+{
+	DrawPanel *dp = DrawPanel::GetCurrent();
+	if(dp != nullptr) {
+		EditorContext &editor = dp->GetEditor();
+		editor.Redo();
+		dp->Refresh();
+	}
 }
 
 

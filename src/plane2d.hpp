@@ -14,6 +14,7 @@ public:
 	void Flip();
 	void Offset(const wxPoint2DDouble &pt);
 	void Clip(const std::vector<wxPoint2DDouble> &points, std::vector<wxPoint2DDouble> &out);
+	bool operator==(const Plane2D &other) const;
 private:
 	/* Ax + By + C = 0 */
 	double m_a, m_b, m_c;

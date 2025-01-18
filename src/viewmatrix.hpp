@@ -18,6 +18,7 @@ public:
 	ViewMatrix();
 	void Pan(wxPoint2DDouble point);
 	void Zoom(wxPoint2DDouble point, double factor);
+	double GetZoom() { return m_zoom; }
 	wxPoint WorldToScreen(wxPoint2DDouble world);
 	wxPoint2DDouble ScreenToWorld(wxPoint screen);
 	wxPoint2DDouble MouseToWorld(wxMouseEvent &e);

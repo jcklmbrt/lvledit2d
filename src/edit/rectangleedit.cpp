@@ -1,6 +1,7 @@
 #include <wx/event.h>
 
 #include "src/drawpanel.hpp"
+#include "src/edit/editorcontext.hpp"
 #include "src/edit/rectangleedit.hpp"
 
 RectangleEdit::RectangleEdit(DrawPanel *panel)
@@ -32,8 +33,9 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 		}
 
 		if(!intersects) {
-			polys.push_back(m_tmprect);
-			m_context->SetSelectedPoly(&polys.back());
+			EditAction_Rect action;
+			action.rect = m_tmprect;
+			m_context->ApplyAction(action);
 			m_inedit = false;
 		}
 	} else {

@@ -71,3 +71,9 @@ double Plane2D::SignedDistance(const wxPoint2DDouble &p) const
 {
 	return m_a * p.m_x + m_b * p.m_y + m_c;
 }
+
+
+bool Plane2D::operator==(const Plane2D &other) const
+{
+	return other.m_a == m_a && other.m_b == m_b && other.m_c == m_c;
+}

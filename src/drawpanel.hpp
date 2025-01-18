@@ -37,14 +37,13 @@ public:
 	bool IsSnapToGrid() { return m_editor.IsSnapToGrid(); }
 	wxPoint2DDouble GetMousePos() { return m_mousepos; }
 	EditorContext &GetEditor() { return m_editor; };
+	ViewMatrix &GetView() { return m_view; }
 	static void DrawPoint(wxPaintDC &dc, wxPoint point, const wxColor *color);
+	static DrawPanel *GetCurrent();
 private:
-	/* Drawing */
-	void OnPaint(wxPaintEvent &e);
 	/* Mouse events */
 	void OnMouse(wxMouseEvent &e);
 	void OnKeyDown(wxKeyEvent &e);
-
 	/* cache mouse position for use in draw routines */
 	wxPoint2DDouble m_mousepos;
 

@@ -3,6 +3,7 @@
 #include <wx/event.h>
 
 #include "src/drawpanel.hpp"
+#include "src/edit/editorcontext.hpp"
 #include "src/edit/selectionedit.hpp"
 
 SelectionEdit::SelectionEdit(DrawPanel *panel)
@@ -73,9 +74,13 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		}
 	}
 
-	if(intersects) {
-		/* go back */
-		selected->MoveBy(-delta);
+	/* go back */
+	selected->MoveBy(-delta);
+
+	if(!intersects) {
+		EditAction_Move action;
+		action.delta = delta;
+		m_context->ApplyAction(action);
 	}
 }
 

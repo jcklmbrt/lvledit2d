@@ -45,18 +45,9 @@ void ToolBar::OnSelect(wxCommandEvent &e)
 {
 	int id = e.GetId();
 	m_selected = static_cast<ID>(id);
-	
-	MainFrame     *mainframe = wxGetApp().GetMainFrame();
-	wxAuiNotebook *notebook  = mainframe->GetNotebook();
+	DrawPanel *dp = DrawPanel::GetCurrent();
 
-	if(notebook->GetPageCount() > 0) {
-		int sel = notebook->GetSelection();
-		wxWindow *page = notebook->GetPage(sel);
-
-		DrawPanel *dp = dynamic_cast<DrawPanel *>(page);
-
-		if(dp != nullptr) {
-			dp->GetEditor().OnToolSelect(m_selected);
-		}
+	if(dp != nullptr) {
+		dp->GetEditor().OnToolSelect(m_selected);
 	}
 }
