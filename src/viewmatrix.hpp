@@ -2,8 +2,8 @@
 #ifndef _VIEWMATRIX_HPP
 #define _VIEWMATRIX_HPP
 
-#include <wx/affinematrix2d.h>
-#include <wx/event.h>
+#include <wx/geometry.h>
+#include "src/geometry.hpp"
 
 #define MAX_PAN_X  10000.0
 #define MIN_PAN_X -10000.0
@@ -16,17 +16,18 @@ class ViewMatrix
 {
 public:
 	ViewMatrix();
-	void Pan(wxPoint2DDouble point);
-	void Zoom(wxPoint2DDouble point, double factor);
-	double GetZoom() { return m_zoom; }
-	wxPoint WorldToScreen(wxPoint2DDouble world);
-	wxPoint2DDouble ScreenToWorld(wxPoint screen);
-	wxPoint2DDouble MouseToWorld(wxMouseEvent &e);
+	void Pan(Point2D point);
+	void Zoom(Point2D point, float factor);
+	float GetZoom() const { return m_zoom; }
+	wxPoint WorldToScreen(Point2D world) const;
+	Point2D ScreenToWorld(wxPoint screen) const;
+	Point2D MouseToWorld(wxMouseEvent &e) const;
+	Matrix4 GetMatrix() const { return m_view; }
 private:
 	void SetupMatrix();
-	wxAffineMatrix2D m_matrix;
-	double m_zoom  = 1.0;
-	wxPoint2DDouble m_pan = { 0.0, 0.0 };
+	Matrix4 m_view;
+	float m_zoom  = 1.0;
+	Point2D m_pan = { 0.0, 0.0 };
 };
 
 
@@ -34,7 +35,7 @@ class ViewMatrixCtrl : public wxEvtHandler,
                        public ViewMatrix
 {
 public:
-	ViewMatrixCtrl(wxWindow *m_parent);
+	ViewMatrixCtrl(wxWindow *parent);
 private:
 	void OnMouseMiddleDown(wxMouseEvent &e);
 	void OnMouseMiddleUp(wxMouseEvent &e);
@@ -42,7 +43,7 @@ private:
 	void OnMouseMotion(wxMouseEvent &e);
 private:
 	bool m_inpan;
-	wxPoint2DDouble m_lastmousepos;
+	Point2D m_lastmousepos;
 	wxWindow *m_parent;
 };
 

@@ -1,20 +1,21 @@
 #ifndef _CRECTANGLEDIT_HPP
 #define _CRECTANGEEDIT_HPP
 
-#include <wx/geometry.h>
+#include "src/geometry.hpp"
 #include "src/edit/editorcontext.hpp"
 
 class RectangleEdit : public IBaseEdit
 {
 public:
-	RectangleEdit(DrawPanel *panel);
+	RectangleEdit(GLCanvas *panel);
 	void OnMouseLeftDown(wxMouseEvent &e);
 	void OnMouseMotion(wxMouseEvent &e);
-	void OnPaint(wxPaintEvent &e);
+	void OnDraw();
 private:
 	bool m_inedit = false;
-	wxRect2DDouble m_tmprect;
-	wxPoint2DDouble m_editstart;
+	bool m_onepoint = false;
+	Point2D m_start;
+	Rect2D m_rect;
 };
 
 #endif

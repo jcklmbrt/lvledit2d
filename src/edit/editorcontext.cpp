@@ -1,8 +1,7 @@
 #include <array>
-#include <wx/debug.h>
+
 #include "src/lvledit2d.hpp"
-#include "src/convexpolygon.hpp"
-#include "src/drawpanel.hpp"
+#include "src/glcanvas.hpp"
 #include "src/edit/selectionedit.hpp"
 #include "src/edit/rectangleedit.hpp"
 #include "src/edit/lineedit.hpp"
@@ -10,19 +9,105 @@
 #include "src/mainframe.hpp"
 #include "src/historylist.hpp"
 
-
-void IBaseEdit::DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p)
+struct L2dHeader 
 {
-	dc.SetBrush(*wxTRANSPARENT_BRUSH);
+	uint8_t magic[2];
+	uint32_t actions_offset;
+	uint32_t actions_size;
+	uint32_t actions_index;
+};
+
+
+bool EditorContext::Load(const wxFileName &path)
+{
+	wxASSERT(path.FileExists());
+
+	m_name = path.GetName();
+	m_file = fopen(path.GetFullPath(), "rb");
+
+	L2dHeader hdr;
+	rewind(m_file);
+	fread(&hdr, sizeof(L2dHeader), 1, m_file);
+
+	if(hdr.magic[0] != 'L' && hdr.magic[1] != '2') {
+		fclose(m_file);
+		m_file = nullptr;
+		return false;
+	}
+
+	size_t num_actions = hdr.actions_size / sizeof(EditAction);
+	m_actions.resize(num_actions);
+	m_history = hdr.actions_index;
+
+	fseek(m_file, hdr.actions_offset, SEEK_SET);
+	fread(m_actions.data(), hdr.actions_size, 1, m_file);
+
+	for(size_t i = 0; i < m_history; i++) {
+		ApplyAction(m_actions[i]);
+	}
+
+	MainFrame *mainframe = wxGetApp().GetMainFrame();
+	HistoryList *hlist = mainframe->GetHistoryList();
+	hlist->SetItemCount(m_actions.size());
+	hlist->Refresh();
+
+	/* reopen our file for writing */
+	freopen(path.GetPath(), "wb", m_file);
+
+	return true;
+}
+
+
+bool EditorContext::Save()
+{
+	if(m_file == nullptr) {
+		return false;
+	}
+
+	L2dHeader hdr;
+	hdr.magic[0] = 'L';
+	hdr.magic[1] = '2';
+	hdr.actions_offset = sizeof(L2dHeader);
+	hdr.actions_size = m_actions.size() * sizeof(EditAction);
+	hdr.actions_index = m_history;
+
+	rewind(m_file);
+	fwrite(&hdr, sizeof(L2dHeader), 1, m_file);
+
+	fseek(m_file, hdr.actions_offset, SEEK_SET);
+	fwrite(m_actions.data(), hdr.actions_size, 1, m_file);
+
+	return true;
+}
+
+
+bool EditorContext::Save(const wxFileName &path)
+{
+	wxASSERT(path.GetExt() == "l2d");
+
+	if(m_file != nullptr) {
+		fclose(m_file);
+	}
+
+	m_name = path.GetName();
+	m_file = fopen(path.GetFullPath(), "wb");
+
+	wxASSERT(m_file != nullptr);
+
+	return Save();
+}
+
+
+void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
+{
+	const Color blue = Color(0.2f, 0.2f, 1.0f, 1.0f);
+	const Color red = Color(1.0f, 0.2f, 0.2f, 1.0f);
+	const Color white = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	const Color green = Color(0.2, 1.0f, 0.2f, 1.0f);
 
 	if(p == m_context->GetSelectedPoly()) {
-		wxRect2DDouble aabb = p->GetAABB();
-		wxRect s_aabb;
-		s_aabb.SetLeftTop(m_panel->WorldToScreen(aabb.GetLeftTop()));
-		s_aabb.SetRightBottom(m_panel->WorldToScreen(aabb.GetRightBottom()));
-
-		dc.SetPen(wxPen(*wxBLUE, 1));
-		dc.DrawRectangle(s_aabb);
+		Rect2D aabb = p->GetAABB();
+		m_canvas->DrawRect(aabb, Color(0.2f, 0.2f, 1.0f, 1.0f));
 
 		/* inflate aabb to illustrate planes */
 		const double outset = -50.0;
@@ -35,71 +120,48 @@ void IBaseEdit::DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p)
 			aabb.GetLeftBottom()
 		};
 
-		std::vector<wxPoint> plane_lines;
+		std::vector<Point2D> plane_lines;
 
 		for(const Plane2D &plane : p->GetPlanes()) {
 			size_t naabbpts = aabbpts.size();
 			for(size_t i = 0; i < naabbpts; i++) {
-				wxPoint2DDouble a = aabbpts[i];
-				wxPoint2DDouble b = aabbpts[(i + 1) % naabbpts];
+				Point2D a = aabbpts[i];
+				Point2D b = aabbpts[(i + 1) % naabbpts];
 
 				double da = plane.SignedDistance(a);
 				double db = plane.SignedDistance(b);
 
 				if(da * db < 0) {
-					wxPoint2DDouble isect;
+					Point2D isect;
 					if(plane.Line(a, b, isect)) {
-						wxPoint spt = m_panel->WorldToScreen(isect);
-						plane_lines.push_back(spt);
+						plane_lines.push_back(isect);
 					}
 				}
 			}
 		}
 
-		dc.SetPen(wxPen(*wxRED, 1));
 		if(plane_lines.size() >= 2)
 			for(size_t i = 0; i < plane_lines.size() - 1; i += 2) {
-				wxPoint a = plane_lines[i];
-				wxPoint b = plane_lines[i + 1];
-				dc.DrawLine(a, b);
+				Point2D a = plane_lines[i];
+				Point2D b = plane_lines[i + 1];
+				m_canvas->DrawLine(a, b, 1.0, red);
 			}
 	}
 
-	const std::vector<wxPoint2DDouble> &points = p->GetPoints();
-	size_t npoints = points.size();
-	wxPoint *s_points = new wxPoint[npoints];
-
-	for(size_t i = 0; i < npoints; i++) {
-		wxPoint2DDouble point = points[i];
-		s_points[i] = m_panel->WorldToScreen(point);
-	}
-
-	dc.SetPen(wxPen(*wxBLACK, 3));
-	dc.DrawPolygon(npoints, s_points);
-
 	if(p == m_context->GetSelectedPoly()) {
-		dc.SetPen(wxPen(*wxGREEN, 1));
+		m_canvas->DrawPolygon(*p, green);
 	}
 	else {
-		dc.SetPen(wxPen(*wxWHITE, 1));
+		m_canvas->DrawPolygon(*p, Color(1.0f, 1.0f, 1.0f, 1.0f));
 	}
-
-	dc.DrawPolygon(npoints, s_points);
-
-	if(p == m_context->GetSelectedPoly()) {
-		for(size_t i = 0; i < npoints; i++) {
-			m_panel->DrawPoint(dc, s_points[i], wxWHITE);
-		}
-	}
-
-	delete[] s_points;
 }
 
 
-IBaseEdit::IBaseEdit(DrawPanel *panel)
-	: m_panel(panel)
+IBaseEdit::IBaseEdit(GLCanvas *canvas)
+	: m_canvas(canvas),
+	  m_context(&m_canvas->GetEditor()),
+	  m_view(m_canvas->GetView())
 {
-	m_context = &m_panel->GetEditor();
 }
 
 
@@ -109,16 +171,16 @@ IBaseEdit::~IBaseEdit()
 }
 
 
-DrawPanel *IBaseEdit::GetPanel()
+void IBaseEdit::OnDraw()
 {
-	return m_panel;
+
 }
 
 
-EditorContext::EditorContext(DrawPanel *parent)
-	: m_parent(parent)
+EditorContext::EditorContext(GLCanvas *canvas)
+	: m_canvas(canvas),
+	  m_name("untitled")
 {
-	Bind(wxEVT_PAINT, &EditorContext::OnPaint, this);
 	m_state = nullptr;
 }
 
@@ -126,26 +188,31 @@ EditorContext::EditorContext(DrawPanel *parent)
 EditorContext::~EditorContext()
 {
 	if(m_state != nullptr) {
-		m_parent->RemoveEventHandler(m_state);
+		m_canvas->RemoveEventHandler(m_state);
 		delete m_state;
+	}
+
+	if(m_file != nullptr) {
+		Save();
+		fclose(m_file);
 	}
 }
 
 
-void EditorContext::OnPaint(wxPaintEvent &e)
+void EditorContext::OnDraw()
 {
-	e.Skip();
-	wxPaintDC dc(m_parent);
-
 	if(m_state != nullptr) {
+
+		m_state->OnDraw();
+
 		for(ConvexPolygon &p : m_polys) {
 			if(&p != m_selected) {
-				m_state->DrawPolygon(dc, &p);
+				m_state->DrawPolygon(&p);
 			}
 		}
 
 		if(m_selected != nullptr) {
-			m_state->DrawPolygon(dc, m_selected);
+			m_state->DrawPolygon(m_selected);
 		}
 	}
 }
@@ -170,35 +237,35 @@ void EditorContext::OnToolSelect(ToolBar::ID id)
 {
 	if(m_state != nullptr) {
 		if(m_state != nullptr) {
-			m_parent->RemoveEventHandler(m_state);
+			m_canvas->RemoveEventHandler(m_state);
 			delete m_state;
 		}
 		m_state = nullptr;
-		m_parent->Refresh(false);
+		m_canvas->Refresh(false);
 	}
 
 	if(m_state == nullptr) {
 		switch(id) {
 		case ToolBar::ID::SELECT:
-			m_state = new SelectionEdit(m_parent);
+			m_state = new SelectionEdit(m_canvas);
 			break;
 		case ToolBar::ID::QUAD:
-			m_state = new RectangleEdit(m_parent);
+			m_state = new RectangleEdit(m_canvas);
 			break;
 		case ToolBar::ID::LINE:
-			m_state = new LineEdit(m_parent);
+			m_state = new LineEdit(m_canvas);
 			break;
 		default:
 			break;
 		}
 		if(m_state != nullptr) {
-			EnqueueEventHandler(m_parent, m_state);
+			EnqueueEventHandler(m_canvas, m_state);
 		}
 	}
 }
 
 
-ConvexPolygon *EditorContext::SelectPoly(wxPoint2DDouble wpos)
+ConvexPolygon *EditorContext::SelectPoly(Point2D wpos)
 {
 	for(ConvexPolygon &p : m_polys) {
 		if(p.Contains(wpos)) {
@@ -266,9 +333,36 @@ void EditorContext::Undo()
 	}
 
 	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	HistoryList *hlist = mainframe->GetHistroyList();
+	HistoryList *hlist = mainframe->GetHistoryList();
 	hlist->SetItemCount(m_actions.size());
 	hlist->Refresh();
+}
+
+ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
+{
+	ConvexPolygon *poly = nullptr;
+
+	switch(action.base.type) {
+	case EditActionType_t::LINE:
+		poly = &m_polys[action.base.poly];
+		poly->Slice(action.line.plane);
+		poly->PurgePlanes();
+		poly->ResizeAABB();
+		break;
+	case EditActionType_t::MOVE:
+		poly = &m_polys[action.base.poly];
+		poly->MoveBy(action.move.delta);
+		break;
+	case EditActionType_t::RECT:
+		m_polys.push_back(action.rect.rect);
+		poly = &m_polys.back();
+		break;
+	}
+
+	wxASSERT_MSG(action.base.poly == poly - &m_polys.front(),
+		"Polygon indices out of order.");
+
+	return poly;
 }
 
 void EditorContext::Redo()
@@ -278,36 +372,17 @@ void EditorContext::Redo()
 	}
 
 	m_history++;
-	EditAction &back = LastAction();
-	ConvexPolygon *poly;
-
-	switch(back.base.type) {
-	case EditActionType_t::LINE:
-		poly = &m_polys[back.base.poly];
-		poly->Slice(back.line.plane);
-		poly->PurgePlanes();
-		poly->ResizeAABB();
-		break;
-	case EditActionType_t::MOVE:
-		poly = &m_polys[back.base.poly];
-		poly->MoveBy(back.move.delta);
-		break;
-	case EditActionType_t::RECT:
-		m_polys.push_back(back.rect.rect);
-		poly = &m_polys.back();
-		break;
-	}
-
-	wxASSERT_MSG(back.base.poly == poly - &m_polys.front(),
-		"Polygon indices out of order.");
+	EditAction &last = LastAction();
+	ApplyAction(last);
 
 	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	HistoryList *hlist = mainframe->GetHistroyList();
+	HistoryList *hlist = mainframe->GetHistoryList();
 	hlist->SetItemCount(m_actions.size());
 	hlist->Refresh();
 }
 
-void EditorContext::ApplyAction(EditAction action)
+
+void EditorContext::AppendAction(EditAction action)
 {
 	switch(action.base.type) {
 	case EditActionType_t::LINE:
@@ -327,7 +402,7 @@ void EditorContext::ApplyAction(EditAction action)
 	action.base.poly = m_selected - &m_polys.front();
 
 	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	HistoryList *hlist = mainframe->GetHistroyList();
+	HistoryList *hlist = mainframe->GetHistoryList();
 	hlist->SetItemCount(m_actions.size());
 	hlist->Refresh();
 
@@ -338,6 +413,7 @@ void EditorContext::ApplyAction(EditAction action)
 			if(back.base.poly == action.base.poly) {
 				back.move.delta += action.move.delta;
 				hlist->Refresh(false);
+				Save();
 				return;
 			}
 		}
@@ -353,4 +429,6 @@ void EditorContext::ApplyAction(EditAction action)
 
 	hlist->SetItemCount(m_actions.size());
 	hlist->Refresh();
+
+	Save();
 }

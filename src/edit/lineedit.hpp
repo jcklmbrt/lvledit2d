@@ -20,28 +20,28 @@ enum class LineEditState_t
 class LineEdit : public IBaseEdit
 {
 public:
-	LineEdit(DrawPanel *parent);
+	LineEdit(GLCanvas *parent);
 	~LineEdit();
 	void OnMouseLeftDown(wxMouseEvent &e);
 	void OnMouseRightDown(wxMouseEvent &e);
-	void OnPaint(wxPaintEvent &e);
-	void DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p);
+	void OnDraw();
+	void DrawPolygon(const ConvexPolygon *p);
 private:
 	/* START_POINT */
 	void StartPoint_OnMouseLeftDown(wxMouseEvent &e);
-	void StartPoint_OnPaint(wxPaintDC &dc);
+	void StartPoint_OnDraw();
 	/* END_POINT */
 	void EndPoint_OnMouseLeftDown(wxMouseEvent &e);
-	void EndPoint_OnPaint(wxPaintDC &dc);
+	void EndPoint_OnDraw();
 	/* SLICE */
 	void Slice_OnMouseLeftDown(wxMouseEvent &e);
 	void Slice_OnMouseRightDown(wxMouseEvent &e);
-	void Slice_OnPaint(wxPaintDC &dc);
+	void Slice_OnDraw();
 public:
-	wxPoint2DDouble m_start;
-	wxPoint2DDouble m_end;
-	Plane2D         m_plane;
-	std::vector<wxPoint2DDouble> m_points;
+	Point2D m_start;
+	Point2D m_end;
+	Plane2D m_plane;
+	std::vector<Point2D> m_points;
 private:
 	LineEditState_t m_state = LineEditState_t::START_POINT;
 };

@@ -2,14 +2,13 @@
 #define _EDITORCONTEXT_HPP
 
 #include <vector>
-#include <wx/geometry.h>
-#include <wx/wx.h>
-#include "src/plane2d.hpp"
+#include <wx/filename.h>
 #include "src/toolbar.hpp"
-#include "src/convexpolygon.hpp"
+#include "src/geometry.hpp"
 
-class DrawPanel;
+class GLCanvas;
 class EditorContext;
+class ViewMatrix;
 
 
 enum class EditActionType_t
@@ -33,7 +32,7 @@ class EditAction_Rect : EditAction_Base
 {
 public:
 	EditAction_Rect() { type = EditActionType_t::RECT; }
-	wxRect2DDouble rect;
+	Rect2D rect;
 };
 
 
@@ -41,9 +40,9 @@ class EditAction_Line : EditAction_Base
 {
 public:
 	EditAction_Line() { type = EditActionType_t::LINE; }
-	wxRect2DDouble aabb;
-	wxPoint2DDouble start;
-	wxPoint2DDouble end;
+	Rect2D aabb;
+	Point2D start;
+	Point2D end;
 	Plane2D plane;
 };
 
@@ -52,12 +51,13 @@ class EditAction_Move : EditAction_Base
 {
 public:
 	EditAction_Move() { type = EditActionType_t::MOVE; }
-	wxPoint2DDouble delta;
+	Point2D delta;
 };
 
 
 union EditAction
 {
+	EditAction() {}
 	EditAction(EditAction_Line &line) : line(line) {}
 	EditAction(EditAction_Rect &rect) : rect(rect) {}
 	EditAction(EditAction_Move &move) : move(move) {}
@@ -71,28 +71,33 @@ union EditAction
 class IBaseEdit : public wxEvtHandler
 {
 public:
-	IBaseEdit(DrawPanel *panel);
-	virtual void DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p);
+	IBaseEdit(GLCanvas *canvas);
+	virtual void DrawPolygon(const ConvexPolygon *p);
+	virtual void OnDraw();
 	virtual ~IBaseEdit();
-	DrawPanel *GetPanel();
 protected:
-	DrawPanel *m_panel;
+	GLCanvas *m_canvas;
 	EditorContext *m_context;
+	const ViewMatrix &m_view;
 };
 
 
 class EditorContext : public wxEvtHandler
 {
 public:
-	EditorContext(DrawPanel *parent);
+	EditorContext(GLCanvas *parent);
 	~EditorContext();
-	void ApplyAction(EditAction action);
+	ConvexPolygon *ApplyAction(const EditAction &action);
+	void AppendAction(EditAction action);
 	void Undo();
 	void Redo();
-	ConvexPolygon *SelectPoly(wxPoint2DDouble wpos);
+	bool Save();
+	bool Save(const wxFileName &path);
+	bool Load(const wxFileName &path);
+	ConvexPolygon *SelectPoly(Point2D wpos);
 	void ResetPoly(size_t i);
 	void OnToolSelect(ToolBar::ID id);
-	void OnPaint(wxPaintEvent &e);
+	void OnDraw();
 	bool IsSnapToGrid() { return m_snaptogrid; }
 	std::vector<ConvexPolygon> &GetPolys() { return m_polys; }
 	std::vector<EditAction> &GetHistory() { return m_actions; }
@@ -100,13 +105,19 @@ public:
 	void SetSelectedPoly(ConvexPolygon *poly) { m_selected = poly; }
 	EditAction &LastAction() { wxASSERT(m_history); return m_actions[m_history - 1]; };
 	size_t HistorySize() { return m_history; }
+	wxString GetName() { return m_name; }
+	bool HasFile() { return m_file != nullptr; }
 private:
 	std::vector<ConvexPolygon> m_polys;
 	std::vector<EditAction> m_actions;
 	size_t m_history = 0; /* replacement for m_actions.size() */
 	ConvexPolygon *m_selected = nullptr;
+	FILE *m_file = nullptr;
+	wxString m_name;
 	IBaseEdit *m_state;
-	DrawPanel *m_parent;
+	GLCanvas *m_canvas;
+	/* additional options that just default to true.
+	   will add checkboxes later */
 	bool m_snaptogrid = true;
 };
 

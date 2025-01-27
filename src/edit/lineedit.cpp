@@ -2,7 +2,7 @@
 #include <wx/gdicmn.h>
 #include <wx/geometry.h>
 
-#include "src/drawpanel.hpp"
+#include "src/glcanvas.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/lineedit.hpp"
 
@@ -10,14 +10,14 @@
 void LineEdit::StartPoint_OnMouseLeftDown(wxMouseEvent &e)
 {
 	wxPoint mpos = e.GetPosition();
-	wxPoint2DDouble start = m_panel->ScreenToWorld(mpos);
+	Point2D start = m_view.ScreenToWorld(mpos);
 	ConvexPolygon  *poly = m_context->GetSelectedPoly();
 
 	if(poly == nullptr) {
 		
 	} else {
-		if(m_panel->IsSnapToGrid()) {
-			BackgroundGrid::Snap(start);
+		if(m_canvas->IsSnapToGrid()) {
+			GLBackgroundGrid::Snap(start);
 		}
 		m_start = start;
 		m_context->SetSelectedPoly(poly);
@@ -26,23 +26,24 @@ void LineEdit::StartPoint_OnMouseLeftDown(wxMouseEvent &e)
 }
 
 
-void LineEdit::StartPoint_OnPaint(wxPaintDC &dc)
+void LineEdit::StartPoint_OnDraw()
 {
-	wxPoint2DDouble mpos = m_panel->GetMousePos();
-	if(m_panel->IsSnapToGrid()) {
-		BackgroundGrid::Snap(mpos);
+	Point2D mpos = m_canvas->GetMousePos();
+	if(m_canvas->IsSnapToGrid()) {
+		GLBackgroundGrid::Snap(mpos);
 	}
-	wxPoint spos = m_panel->WorldToScreen(mpos);
-	DrawPanel::DrawPoint(dc, spos, wxWHITE);
+
+	m_canvas->DrawPoint(mpos, Color(1.0f, 1.0f, 1.0f, 1.0f));
+
 }
 
 
 void LineEdit::EndPoint_OnMouseLeftDown(wxMouseEvent &e)
 {
-	m_end = m_panel->MouseToWorld(e);
+	m_end = m_view.MouseToWorld(e);
 
-	if(m_panel->IsSnapToGrid()) {
-		BackgroundGrid::Snap(m_end);
+	if(m_canvas->IsSnapToGrid()) {
+		GLBackgroundGrid::Snap(m_end);
 	}
 
 	m_plane = Plane2D(m_start, m_end);
@@ -57,26 +58,23 @@ void LineEdit::EndPoint_OnMouseLeftDown(wxMouseEvent &e)
 }
 
 
-void LineEdit::EndPoint_OnPaint(wxPaintDC &dc)
+void LineEdit::EndPoint_OnDraw()
 {
 	wxPoint a, b;
-	wxPoint2DDouble mpos = m_panel->GetMousePos();
+	Point2D mpos = m_canvas->GetMousePos();
+	const Color red = Color(1.0f, 0.2f, 0.2f, 1.0f);
+	const Color white = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	const Color black = Color(0.0f, 0.0f, 0.0f, 1.0f);
 
-	a = m_panel->WorldToScreen(m_start);
-
-	if(m_panel->IsSnapToGrid()) {
-		BackgroundGrid::Snap(mpos);
+	if(m_canvas->IsSnapToGrid()) {
+		GLBackgroundGrid::Snap(mpos);
 	}
 
-	b = m_panel->WorldToScreen(mpos);
+	m_canvas->DrawLine(m_start, mpos, 3.0, black);
+	m_canvas->DrawLine(m_start, mpos, 1.0, red);
 
-	dc.SetPen(wxPen(*wxBLACK, 2));
-	dc.DrawLine(a, b);
-	dc.SetPen(wxPen(*wxRED, 1));
-	dc.DrawLine(a, b);
-
-	DrawPanel::DrawPoint(dc, a, wxWHITE);
-	DrawPanel::DrawPoint(dc, b, wxWHITE);
+	m_canvas->DrawPoint(m_start, white);
+	m_canvas->DrawPoint(mpos, white);
 }
 
 
@@ -91,7 +89,7 @@ void LineEdit::Slice_OnMouseLeftDown(wxMouseEvent &e)
 	action.start = m_start;
 	action.end = m_end;
 
-	m_context->ApplyAction(action);
+	m_context->AppendAction(action);
 	
 	/* Back to the start */
 	m_state = LineEditState_t::START_POINT;
@@ -110,46 +108,24 @@ void LineEdit::Slice_OnMouseRightDown(wxMouseEvent &e)
 }
 
 
-void LineEdit::Slice_OnPaint(wxPaintDC &dc)
+void LineEdit::Slice_OnDraw()
 {
 	std::vector<wxPoint> s_points;
 	ConvexPolygon *poly = m_context->GetSelectedPoly();
 	wxASSERT(poly != nullptr);
 
-	const std::vector<wxPoint2DDouble> &points = poly->GetPoints();
-	size_t npoints = points.size();
-	for(size_t i = 0; i < npoints; i++) {
-		wxPoint2DDouble point = points[i];
-		wxPoint s_point = m_panel->WorldToScreen(point);
-		s_points.push_back(s_point);
-	}
+	Color red = Color(1.0f, 0.0f, 0.0f, 1.0f);
+	Color green = Color(0.0f, 1.0f, 0.0f, 1.0f);
 
-	dc.SetBrush(*wxTRANSPARENT_BRUSH);
-	dc.SetPen(wxPen(*wxBLACK, 3));
-	dc.DrawPolygon(s_points.size(), s_points.data());
-	dc.SetPen(wxPen(*wxWHITE, 1));
-	dc.DrawPolygon(s_points.size(), s_points.data());
-
-	s_points.clear();
-	for(wxPoint2DDouble point : m_points) {
-		wxPoint s_point = m_panel->WorldToScreen(point);
-		s_points.push_back(s_point);
-	}
-
-	dc.SetBrush(*wxTRANSPARENT_BRUSH);
-	dc.SetPen(wxPen(*wxBLACK, 3));
-	dc.DrawPolygon(s_points.size(), s_points.data());
-	dc.SetPen(wxPen(*wxGREEN, 1));
-	dc.DrawPolygon(s_points.size(), s_points.data());
+	m_canvas->DrawPolygon(*poly, red);
+	m_canvas->DrawPolygon(m_points.data(), m_points.size(), green);
 }
 
 
-LineEdit::LineEdit(DrawPanel *parent)
-	: IBaseEdit(parent)
+LineEdit::LineEdit(GLCanvas *canvas)
+	: IBaseEdit(canvas)
 {
 	m_state = LineEditState_t::START_POINT;
-
-	Bind(wxEVT_PAINT, &LineEdit::OnPaint, this);
 	Bind(wxEVT_LEFT_DOWN, &LineEdit::OnMouseLeftDown, this);
 	Bind(wxEVT_RIGHT_DOWN, &LineEdit::OnMouseRightDown, this);
 }
@@ -186,31 +162,27 @@ void LineEdit::OnMouseLeftDown(wxMouseEvent &e)
 	e.Skip();
 }
 
-void LineEdit::DrawPolygon(wxPaintDC &dc, const ConvexPolygon *p)
+void LineEdit::DrawPolygon(const ConvexPolygon *p)
 {
 	if(p == m_context->GetSelectedPoly() && m_state == LineEditState_t::SLICE) {
-		Slice_OnPaint(dc);
+		Slice_OnDraw();
 	} else {
-		IBaseEdit::DrawPolygon(dc, p);
+		IBaseEdit::DrawPolygon(p);
 	}
 }
 
-void LineEdit::OnPaint(wxPaintEvent &e)
+void LineEdit::OnDraw()
 {
-	wxPaintDC dc(m_panel);
-
 	switch(m_state)
 	{
 	case LineEditState_t::START_POINT:
-		StartPoint_OnPaint(dc);
+		StartPoint_OnDraw();
 		break;
 	case LineEditState_t::END_POINT:
-		EndPoint_OnPaint(dc);
+		EndPoint_OnDraw();
 		break;
 	case LineEditState_t::SLICE:
 		/* Slice is handled by DrawPolygon */
 		break;
 	}
-
-	e.Skip();
 }

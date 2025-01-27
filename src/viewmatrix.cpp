@@ -1,46 +1,53 @@
-#include <wx/window.h>
+#include <glm/glm.hpp>
+#include <glm/mat4x4.hpp>
+#include <wx/event.h>
 #include "src/viewmatrix.hpp"
+
 
 ViewMatrix::ViewMatrix()
 {
-	wxASSERT(m_matrix.IsIdentity());
+	m_view = glm::identity<Matrix4>();
 }
 
-wxPoint ViewMatrix::WorldToScreen(wxPoint2DDouble world)
+
+wxPoint ViewMatrix::WorldToScreen(Point2D world) const
 {
 	wxPoint screen;
-	world = m_matrix.TransformPoint(world);
-	screen.x = static_cast<int>(world.m_x);
-	screen.y = static_cast<int>(world.m_y);
+	world = m_view * glm::vec4(world, 0.0, 1.0);
+	screen.x = static_cast<int>(world.x);
+	screen.y = static_cast<int>(world.y);
 	return screen;
 }
 
-wxPoint2DDouble ViewMatrix::ScreenToWorld(wxPoint screen)
+
+Point2D ViewMatrix::ScreenToWorld(wxPoint screen) const
 {
-	wxPoint2DDouble world;
-	world.m_x = static_cast<wxDouble>(screen.x);
-	world.m_y = static_cast<wxDouble>(screen.y);
-
-	wxAffineMatrix2D inv = m_matrix;
-	inv.Invert();
-
-	return inv.TransformPoint(world);
+	Point2D s;
+	s.x = static_cast<float>(screen.x);
+	s.y = static_cast<float>(screen.y);
+	return inverse(m_view) * glm::vec4(s, 0.0, 1.0);
 }
 
-wxPoint2DDouble ViewMatrix::MouseToWorld(wxMouseEvent &e)
+
+Point2D ViewMatrix::MouseToWorld(wxMouseEvent &e) const
 {
 	wxPoint mpos = e.GetPosition();
 	return ScreenToWorld(e.GetPosition());
 }
 
+
 void ViewMatrix::SetupMatrix()
 {
-	m_matrix = wxAffineMatrix2D();
-	m_matrix.Scale(m_zoom, m_zoom);
-	m_matrix.Translate(m_pan.m_x, m_pan.m_y);
+	glm::vec3 zoom = { m_zoom, m_zoom, 1.0 };
+	glm::vec3 pan = { m_pan, 0.0 };
+
+	m_view = glm::identity<Matrix4>();
+	m_view = glm::scale(m_view, zoom);
+	m_view = glm::translate(m_view, pan);
 }
 
-void ViewMatrix::Zoom(wxPoint2DDouble p, wxDouble factor)
+
+void ViewMatrix::Zoom(Point2D p, float factor)
 {
 	float zoom = m_zoom * factor;
 	if(zoom > MAX_ZOOM || zoom < MIN_ZOOM) {
@@ -49,8 +56,8 @@ void ViewMatrix::Zoom(wxPoint2DDouble p, wxDouble factor)
 
 	auto pan = (m_pan - p / m_zoom) + p / zoom;
 
-	if(pan.m_x > MAX_PAN_X || pan.m_x < MIN_PAN_X ||
-	   pan.m_y > MAX_PAN_Y || pan.m_y < MIN_PAN_Y) {
+	if(pan.x > MAX_PAN_X || pan.x < MIN_PAN_X ||
+	   pan.y > MAX_PAN_Y || pan.y < MIN_PAN_Y) {
 		return;
 	}
 
@@ -60,16 +67,18 @@ void ViewMatrix::Zoom(wxPoint2DDouble p, wxDouble factor)
 	SetupMatrix();
 }
 
-void ViewMatrix::Pan(wxPoint2DDouble delta)
+
+void ViewMatrix::Pan(Point2D delta)
 {
-	wxPoint2DDouble pan = m_pan + delta / m_zoom;
-	if(pan.m_x > MAX_PAN_X || pan.m_x < MIN_PAN_X ||
-	   pan.m_y > MAX_PAN_Y || pan.m_y < MIN_PAN_Y) {
+	Point2D pan = m_pan + delta / m_zoom;
+	if(pan.x > MAX_PAN_X || pan.x < MIN_PAN_X ||
+	   pan.y > MAX_PAN_Y || pan.y < MIN_PAN_Y) {
 		return;
 	}
 	m_pan = pan;
 	SetupMatrix();
 }
+
 
 ViewMatrixCtrl::ViewMatrixCtrl(wxWindow *parent)
 	: m_parent(parent), m_inpan(false)
@@ -80,15 +89,16 @@ ViewMatrixCtrl::ViewMatrixCtrl(wxWindow *parent)
 	Bind(wxEVT_MOTION, &ViewMatrixCtrl::OnMouseMotion, this, wxID_ANY);
 }
 
+
 void ViewMatrixCtrl::OnMouseMotion(wxMouseEvent &e)
 {
 	e.Skip(true);
 
 	wxPoint wxpos = e.GetPosition();
 
-	wxPoint2DDouble pos;
-	pos.m_x = static_cast<float>(wxpos.x);
-	pos.m_y = static_cast<float>(wxpos.y);
+	Point2D pos;
+	pos.x = static_cast<float>(wxpos.x);
+	pos.y = static_cast<float>(wxpos.y);
 
 	if(m_inpan && !e.ButtonIsDown(wxMOUSE_BTN_MIDDLE)) {
 		m_inpan = false;
@@ -100,12 +110,13 @@ void ViewMatrixCtrl::OnMouseMotion(wxMouseEvent &e)
 	}
 }
 
+
 void ViewMatrixCtrl::OnMouseWheel(wxMouseEvent &e)
 {
 	wxPoint wxpos = e.GetPosition();
-	wxPoint2DDouble pos;
-	pos.m_x = static_cast<float>(wxpos.x);
-	pos.m_y = static_cast<float>(wxpos.y);
+	Point2D pos;
+	pos.x = static_cast<float>(wxpos.x);
+	pos.y = static_cast<float>(wxpos.y);
 
 	if(e.GetWheelAxis() == wxMOUSE_WHEEL_VERTICAL) {
 		int rot = e.GetWheelRotation();
@@ -130,13 +141,14 @@ void ViewMatrixCtrl::OnMouseMiddleDown(wxMouseEvent &e)
 
 	wxPoint wxpos = e.GetPosition();
 
-	wxPoint2DDouble pos;
-	pos.m_x = static_cast<float>(wxpos.x);
-	pos.m_y = static_cast<float>(wxpos.y);
+	Point2D pos;
+	pos.x = static_cast<float>(wxpos.x);
+	pos.y = static_cast<float>(wxpos.y);
 
 	m_lastmousepos = pos;
 	m_inpan = true;
 }
+
 
 void ViewMatrixCtrl::OnMouseMiddleUp(wxMouseEvent &e)
 {

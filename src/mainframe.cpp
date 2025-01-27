@@ -1,19 +1,16 @@
 
-#include <wx/event.h>
-#include <wx/sizer.h>
-#include <wx/wx.h>
-#include <wx/glcanvas.h>
-#include <wx/notebook.h>
-#include <wx/wfstream.h>
-
-#include "src/drawpanel.hpp"
+#include "src/edit/editorcontext.hpp"
 #include "src/toolbar.hpp"
 #include "src/mainframe.hpp"
 #include "src/historylist.hpp"
+#include "src/lvledit2d.hpp"
+#include "src/glcanvas.hpp"
+#include "src/notebook.hpp"
 
 #include "res/reset.xpm"
 #include "res/save.xpm"
 #include "res/icon.xpm"
+
 
 MainFrame::MainFrame()
 	: wxFrame(nullptr, wxID_ANY, "LvlEdit2d")
@@ -31,6 +28,7 @@ MainFrame::MainFrame()
 
 	file->Append(wxID_NEW);
 	file->Append(wxID_OPEN);
+	file->Append(wxID_SAVEAS);
 	file->Append(save);
 	file->Append(exit);
 
@@ -49,37 +47,24 @@ MainFrame::MainFrame()
 	wxToolBar *toolbar = new ToolBar(this, wxID_ANY);
 	SetToolBar(toolbar);
 
-	wxPanel *panel = new wxPanel(this);
-	wxAuiNotebook *notebook = new wxAuiNotebook(panel, wxID_ANY);
+	HistoryList *hlist = new HistoryList(this);
+	Notebook *notebook = new Notebook(this, hlist);
 
-	wxPanel *sidepanel = new wxPanel(this);
-	HistoryList *hlist = new HistoryList(sidepanel);
-
-	wxBoxSizer *sizer;
-
-	sizer = new wxBoxSizer(wxVERTICAL);
+	wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
 	sizer->Add(notebook, 1, wxEXPAND);
-	panel->SetSizer(sizer);
-
-	sizer = new wxBoxSizer(wxHORIZONTAL);
-	sizer->Add(panel, 1, wxEXPAND);
-	sizer->Add(sidepanel, 0, wxEXPAND);
+	sizer->Add(hlist, 0, wxEXPAND);
 	SetSizer(sizer);
-
-	sizer = new wxBoxSizer(wxVERTICAL);
-	sizer->Add(hlist, 1, wxALIGN_RIGHT);
-	sidepanel->SetSizer(sizer);
 
 	m_notebook = notebook;
 	m_historylist = hlist;
-	m_sidepanel = sidepanel;
 
-	m_sidepanel->Hide();
+	m_historylist->Hide();
 
 	Bind(wxEVT_MENU, &MainFrame::OnShowHistory, this, ID::SHOW_HISTORY);
 	Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
 	Bind(wxEVT_MENU, &MainFrame::OnOpen, this, wxID_OPEN);
 	Bind(wxEVT_MENU, &MainFrame::OnSave, this, wxID_SAVE);
+	Bind(wxEVT_MENU, &MainFrame::OnSaveAs, this, wxID_SAVEAS);
 	Bind(wxEVT_MENU, &MainFrame::OnNew,  this, wxID_NEW);
 	Bind(wxEVT_MENU, &MainFrame::OnUndo, this, wxID_UNDO);
 	Bind(wxEVT_MENU, &MainFrame::OnRedo, this, wxID_REDO);
@@ -88,47 +73,42 @@ MainFrame::MainFrame()
 
 void MainFrame::OnOpen(wxCommandEvent &e)
 {
-	wxFileDialog dialog(this);
+	wxFileDialog dialog(this, "Open L2D file", wxEmptyString, wxEmptyString,
+		"L2D files (*.l2d)|*.l2d", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
 
 	if(dialog.ShowModal() == wxID_CANCEL) {
 		return;
 	}
 
-	DrawPanel *dp = new DrawPanel(m_notebook);
-	m_notebook->AddPage(dp, dialog.GetFilename(), true);
+	m_notebook->AddCanvas(dialog.GetPath());
 }
 
 
 void MainFrame::OnSave(wxCommandEvent &e)
 {
-	wxFileDialog dialog(this, "Save file", "", "",
-		"LvlEdit2d files (*.l2d)|*.l2d", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	m_notebook->Save(false);
+}
 
-	if(dialog.ShowModal() == wxID_CANCEL) {
-		return;
-	}
 
-	int sel = m_notebook->GetSelection();
-	m_notebook->DeletePage(sel);
+void MainFrame::OnSaveAs(wxCommandEvent &e)
+{
+	m_notebook->Save(true);
 }
 
 
 void MainFrame::OnNew(wxCommandEvent &e)
 {
-	static int n = 0;
-	wxString s;
-	s.Printf("Page:%d", n++);
-	DrawPanel *dp = new DrawPanel(m_notebook);
-	m_notebook->AddPage(dp, s, true);
+	m_notebook->AddCanvas();
 }
+
 
 void MainFrame::OnShowHistory(wxCommandEvent &e)
 {
 	wxSizer *sizer = GetSizer();
 	if(e.IsChecked()) {
-		m_sidepanel->Show();
+		m_historylist->Show();
 	} else {
-		m_sidepanel->Hide();
+		m_historylist->Hide();
 	}
 
 	sizer->Layout();
@@ -139,22 +119,22 @@ void MainFrame::OnShowHistory(wxCommandEvent &e)
 
 void MainFrame::OnUndo(wxCommandEvent &e)
 {
-	DrawPanel *dp = DrawPanel::GetCurrent();
-	if(dp != nullptr) {
-		EditorContext &editor = dp->GetEditor();
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+	if(canvas != nullptr) {
+		EditorContext &editor = canvas->GetEditor();
 		editor.Undo();
-		dp->Refresh();
+		canvas->Refresh();
 	}
 }
 
 
 void MainFrame::OnRedo(wxCommandEvent &e)
 {
-	DrawPanel *dp = DrawPanel::GetCurrent();
-	if(dp != nullptr) {
-		EditorContext &editor = dp->GetEditor();
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+	if(canvas != nullptr) {
+		EditorContext &editor = canvas->GetEditor();
 		editor.Redo();
-		dp->Refresh();
+		canvas->Refresh();
 	}
 }
 

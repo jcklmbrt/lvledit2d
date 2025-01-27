@@ -3,7 +3,7 @@
 #include <wx/wx.h>
 #include "src/toolbar.hpp"
 #include "src/lvledit2d.hpp"
-#include "src/drawpanel.hpp"
+#include "src/glcanvas.hpp"
 
 #include "res/line.xpm"
 #include "res/quad.xpm"
@@ -45,7 +45,7 @@ void ToolBar::OnSelect(wxCommandEvent &e)
 {
 	int id = e.GetId();
 	m_selected = static_cast<ID>(id);
-	DrawPanel *dp = DrawPanel::GetCurrent();
+	GLCanvas *dp = GLCanvas::GetCurrent();
 
 	if(dp != nullptr) {
 		dp->GetEditor().OnToolSelect(m_selected);
