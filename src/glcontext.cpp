@@ -1,10 +1,8 @@
 #include <glad/gl.h>
 #include <wx/wx.h>
 #include "src/geometry.hpp"
-#include "src/viewmatrix.hpp"
 #include "src/glcontext.hpp"
 
-static wxGLCanvas *s_dummy;
 
 static GLuint CompileShaders(const char *fs_src, const char *vs_src)
 {
@@ -53,20 +51,6 @@ static GLuint CompileShaders(const char *fs_src, const char *vs_src)
 	glDeleteShader(fs);
 
 	return program;
-}
-
-
-static wxGLCanvas *CreateDummyCanvas(wxWindow *parent)
-{
-	wxGLAttributes attrs;
-	attrs.PlatformDefaults().Defaults().EndList();
-	wxASSERT(wxGLCanvas::IsDisplaySupported(attrs));
-
-	/* this is a bit silly, but we need to create a canvas before we can create a context */
-	s_dummy = new wxGLCanvas(parent, attrs);
-	s_dummy->Hide();
-
-	return s_dummy;
 }
 
 
@@ -174,16 +158,14 @@ void GLContext::CopyBuffers()
 }
 
 
-GLContext::GLContext(wxWindow *parent)
-	: wxGLContext(CreateDummyCanvas(parent), nullptr, ContextAttrs_Core33())
+GLContext::GLContext(wxGLCanvas *parent)
+	: wxGLContext(parent, nullptr, ContextAttrs_Core33())
 {
 	wxASSERT(IsOK());
 
-	SetCurrent(*s_dummy);
+	SetCurrent(*parent);
 	int version = gladLoaderLoadGL();
 	wxASSERT(version != 0);
-
-	delete s_dummy;
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

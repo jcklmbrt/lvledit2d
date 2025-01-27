@@ -7,6 +7,7 @@
 class HistoryList;
 class wxGLCanvas;
 class GLContext;
+class GLCanvas;
 
 class Notebook : public wxAuiNotebook
 {
@@ -16,6 +17,7 @@ public:
 	void Save(bool force_rename);
 	bool AddCanvas();
 	bool AddCanvas(const wxFileName &file);
+	bool AddCanvas(GLCanvas *canvas);
 private:
 	void OnPageChange(wxAuiNotebookEvent &e);
 	void OnPageClose(wxAuiNotebookEvent &e);

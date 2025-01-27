@@ -1,4 +1,5 @@
 #include <array>
+#include <cassert>
 #include "src/geometry.hpp"
 
 
@@ -124,8 +125,7 @@ bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 
 void ConvexPolygon::ResizeAABB()
 {
-	assert(m_points.size() >= 2,
-		"Cannot construct a rect from less than two points.");
+	assert(m_points.size() >= 2);// "Cannot construct a rect from less than two points.");
 
 	Point2D mins = { DBL_MAX, DBL_MAX };
 	Point2D maxs = { DBL_MIN, DBL_MIN };

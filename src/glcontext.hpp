@@ -31,7 +31,7 @@ private:
 class GLContext : public wxGLContext
 {
 public:
-	GLContext(wxWindow *parent);
+	GLContext(wxGLCanvas *parent);
 	virtual ~GLContext();
 	void ClearBuffers();
 	void CopyBuffers();

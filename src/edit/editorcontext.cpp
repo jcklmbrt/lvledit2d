@@ -1,5 +1,9 @@
+#include <cassert>
 #include <array>
+#include <cfloat>
+#include <wx/msgdlg.h>
 
+#include "src/geometry.hpp"
 #include "src/lvledit2d.hpp"
 #include "src/glcanvas.hpp"
 #include "src/edit/selectionedit.hpp"
@@ -20,7 +24,7 @@ struct L2dHeader
 
 bool EditorContext::Load(const wxFileName &path)
 {
-	wxASSERT(path.FileExists());
+	assert(path.FileExists());
 
 	m_name = path.GetName();
 	m_file = fopen(path.GetFullPath(), "rb");
@@ -83,7 +87,7 @@ bool EditorContext::Save()
 
 bool EditorContext::Save(const wxFileName &path)
 {
-	wxASSERT(path.GetExt() == "l2d");
+	assert(path.GetExt() == "l2d");
 
 	if(m_file != nullptr) {
 		fclose(m_file);
@@ -92,7 +96,7 @@ bool EditorContext::Save(const wxFileName &path)
 	m_name = path.GetName();
 	m_file = fopen(path.GetFullPath(), "wb");
 
-	wxASSERT(m_file != nullptr);
+	assert(m_file != nullptr);
 
 	return Save();
 }
@@ -100,18 +104,12 @@ bool EditorContext::Save(const wxFileName &path)
 
 void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 {
-	const Color blue = Color(0.2f, 0.2f, 1.0f, 1.0f);
-	const Color red = Color(1.0f, 0.2f, 0.2f, 1.0f);
-	const Color white = Color(1.0f, 1.0f, 1.0f, 1.0f);
-	const Color green = Color(0.2, 1.0f, 0.2f, 1.0f);
-
 	if(p == m_context->GetSelectedPoly()) {
 		Rect2D aabb = p->GetAABB();
-		m_canvas->DrawRect(aabb, Color(0.2f, 0.2f, 1.0f, 1.0f));
+		m_canvas->OutlineRect(aabb, 1.0f, BLUE);
 
 		/* inflate aabb to illustrate planes */
-		const double outset = -50.0;
-		aabb.Inset(outset, outset);
+		aabb.Inset(-100, -100);
 
 		std::array aabbpts = {
 			aabb.GetLeftTop(),
@@ -120,39 +118,49 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 			aabb.GetLeftBottom()
 		};
 
-		std::vector<Point2D> plane_lines;
-
 		for(const Plane2D &plane : p->GetPlanes()) {
+			Point2D line[2];
+			int n = 0;
 			size_t naabbpts = aabbpts.size();
 			for(size_t i = 0; i < naabbpts; i++) {
 				Point2D a = aabbpts[i];
 				Point2D b = aabbpts[(i + 1) % naabbpts];
 
-				double da = plane.SignedDistance(a);
-				double db = plane.SignedDistance(b);
+				float da = plane.SignedDistance(a);
+				float db = plane.SignedDistance(b);
 
-				if(da * db < 0) {
+				if(fabs(da) <= FLT_EPSILON) {
+					/* a is on the plane */
+					line[n++] = a;
+				} else if(fabs(db) <= FLT_EPSILON) {
+					/* next point will be on the plane */
+				} else if(da * db <= 0.0) {
+					/* a point between a and b intersects with the plane */
 					Point2D isect;
 					if(plane.Line(a, b, isect)) {
-						plane_lines.push_back(isect);
+						line[n++] = isect;
 					}
+					
 				}
 			}
-		}
 
-		if(plane_lines.size() >= 2)
-			for(size_t i = 0; i < plane_lines.size() - 1; i += 2) {
-				Point2D a = plane_lines[i];
-				Point2D b = plane_lines[i + 1];
-				m_canvas->DrawLine(a, b, 1.0, red);
-			}
+			assert(n == 2);
+			m_canvas->DrawLine(line[0], line[1], 1.0, RED);
+		}
 	}
+
+	const std::vector<Point2D> &pts = p->GetPoints();
+
+	m_canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
 
 	if(p == m_context->GetSelectedPoly()) {
-		m_canvas->DrawPolygon(*p, green);
+		m_canvas->OutlinePoly(pts.data(), pts.size(), 1.0, GREEN);
+		for(const Point2D &pt : pts) {
+			m_canvas->DrawPoint(pt, WHITE);
+		}
 	}
 	else {
-		m_canvas->DrawPolygon(*p, Color(1.0f, 1.0f, 1.0f, 1.0f));
+		m_canvas->OutlinePoly(pts.data(), pts.size(), 1.0, WHITE);
 	}
 }
 
@@ -202,9 +210,6 @@ EditorContext::~EditorContext()
 void EditorContext::OnDraw()
 {
 	if(m_state != nullptr) {
-
-		m_state->OnDraw();
-
 		for(ConvexPolygon &p : m_polys) {
 			if(&p != m_selected) {
 				m_state->DrawPolygon(&p);
@@ -214,6 +219,8 @@ void EditorContext::OnDraw()
 		if(m_selected != nullptr) {
 			m_state->DrawPolygon(m_selected);
 		}
+
+		m_state->OnDraw();
 	}
 }
 
@@ -286,11 +293,11 @@ void EditorContext::ResetPoly(size_t i)
 		if(action.base.poly == i) {
 			switch(action.base.type) {
 			case EditActionType_t::LINE:
-				wxASSERT(poly);
+				assert(poly);
 				poly->Slice(action.line.plane);
 				break;
 			case EditActionType_t::MOVE:
-				wxASSERT(poly);
+				assert(poly);
 				poly->MoveBy(action.move.delta);
 				break;
 			case EditActionType_t::RECT:
@@ -359,8 +366,8 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 		break;
 	}
 
-	wxASSERT_MSG(action.base.poly == poly - &m_polys.front(),
-		"Polygon indices out of order.");
+	/* polygon indices out of order */
+	assert(action.base.poly == poly - &m_polys.front());
 
 	return poly;
 }

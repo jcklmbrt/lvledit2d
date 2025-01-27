@@ -10,8 +10,6 @@ Notebook::Notebook(wxWindow *parent, HistoryList *hlist)
 	: wxAuiNotebook(parent, wxID_ANY),
 	  m_hlist(hlist)
 {
-	m_context = new GLContext(this);
-
 	Bind(wxEVT_AUINOTEBOOK_PAGE_CHANGING, &Notebook::OnPageChange, this);
 	Bind(wxEVT_AUINOTEBOOK_PAGE_CLOSED, &Notebook::OnPageClose, this);
 }
@@ -56,18 +54,29 @@ void Notebook::Save(bool force_rename)
 }
 
 
+bool Notebook::AddCanvas(GLCanvas *canvas)
+{
+	wxString name = canvas->GetEditor().GetName();
+
+	if(m_context == nullptr) {
+		m_context = new GLContext(canvas);
+	}
+
+	canvas->SetContext(m_context);
+	canvas->SetCurrent(*m_context);
+
+	return AddPage(canvas, name, true);
+}
+
+
 bool Notebook::AddCanvas()
 {
 	wxGLAttributes attrs;
 	attrs.PlatformDefaults().Defaults().EndList();
-	GLCanvas *canvas = new GLCanvas(this, m_context, attrs);
-
-	m_context->SetCurrent(*canvas);
+	GLCanvas *canvas = new GLCanvas(this, attrs);
 
 	/* untitled */
-	wxString name = canvas->GetEditor().GetName();
-
-	return AddPage(canvas, name, true);
+	return AddCanvas(canvas);
 }
 
 
@@ -75,15 +84,13 @@ bool Notebook::AddCanvas(const wxFileName &file)
 {
 	wxGLAttributes attrs;
 	attrs.PlatformDefaults().Defaults().EndList();
-	GLCanvas *canvas = new GLCanvas(this, m_context, attrs);
+	GLCanvas *canvas = new GLCanvas(this, attrs);
 
 	EditorContext &edit = canvas->GetEditor();
 	
 	edit.Load(file);
 
-	m_context->SetCurrent(*canvas);
-
-	return AddPage(canvas, edit.GetName(), true);
+	return AddCanvas(canvas);
 }
 
 

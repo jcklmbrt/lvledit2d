@@ -47,6 +47,7 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 	if(dp != nullptr) {
 		std::vector<EditAction> history = dp->GetEditor().GetHistory();
 		wxASSERT(item >= 0 && item <= history.size());
+		Point2D lt, rb;
 		const EditAction &action = history[item];
 		if(col == ColumnID::ACTION) {
 			switch(action.base.type) {
@@ -66,8 +67,8 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 				s.Printf("x0:%.1lf,y0:%.1lf,x1:%.1lf,y1:%.1lf", action.line.start.x, action.line.start.y, action.line.end.x, action.line.end.y);
 				break;
 			case EditActionType_t::RECT:
-				Point2D lt = action.rect.rect.GetLeftTop();
-				Point2D rb = action.rect.rect.GetRightBottom();
+				lt = action.rect.rect.GetLeftTop();
+				rb = action.rect.rect.GetRightBottom();
 				s.Printf("x:%.1lf,y:%.1lf,w:%.1lf,h:%.1lf", lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
 				break;
 			case EditActionType_t::MOVE:

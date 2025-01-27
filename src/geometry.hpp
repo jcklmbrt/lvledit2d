@@ -12,6 +12,11 @@ using Point2D = glm::vec2;
 using Color = glm::vec4;
 using Matrix4 = glm::mat4;
 
+constexpr Color BLACK = Color(0.0f, 0.0f, 0.0f, 1.0f);
+constexpr Color WHITE = Color(1.0f, 1.0f, 1.0f, 1.0f);
+constexpr Color RED = Color(1.0f, 0.0f, 0.0f, 1.0f);
+constexpr Color BLUE = Color(0.0f, 0.0f, 1.0f, 1.0f);
+constexpr Color GREEN = Color(0.0f, 1.0f, 0.0f, 1.0f);
 
 class Rect2D
 {

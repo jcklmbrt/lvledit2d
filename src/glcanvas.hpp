@@ -9,18 +9,18 @@
 #include "src/glcontext.hpp"
 #include "src/viewmatrix.hpp"
 
+class Notebook;
 class GLContext;
 class GLCanvas;
 
 class GLCanvas : public wxGLCanvas
 {
 public:
-	GLCanvas(wxWindow *parent, GLContext *context, const wxGLAttributes &attrs);
+	GLCanvas(Notebook *parent, const wxGLAttributes &attrs);
 	virtual ~GLCanvas();
-	void DrawPolygon(const ConvexPolygon &poly, const Color &color);
-	void DrawPolygon(const Point2D points[], size_t npoints, const Color &color);
 	void DrawPoint(const Point2D &point, const Color &color);
-	void DrawRect(const Rect2D &rect, const Color &color);
+	void OutlineRect(const Rect2D &rect, float thickness, const Color &color);
+	void OutlinePoly(const Point2D points[], size_t npoints, float thickness, const Color &color);
 	void DrawLine(const Point2D &a, const Point2D &b, float thickness, const Color &color);
 public:
 	int  GetGridSpacing() { return 50; }
@@ -30,6 +30,9 @@ public:
 	ViewMatrix &GetView() { return m_view; }
 
 	static GLCanvas *GetCurrent();
+	void SetContext(GLContext *context) {
+		m_context = context;
+	}
 private:
 	void OnPaint(wxPaintEvent &e);
 	void OnSize(wxSizeEvent &e);
@@ -38,7 +41,8 @@ private:
 	/* cache mouse position for use in draw routines */
 	Point2D m_mousepos;
 
-	GLContext *m_context;
+	GLContext *m_context = nullptr;
+	Notebook *m_parent;
 	ViewMatrixCtrl m_view;
 	EditorContext m_editor;
 	Matrix4 m_proj;

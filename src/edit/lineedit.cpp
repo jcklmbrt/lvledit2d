@@ -2,6 +2,7 @@
 #include <wx/gdicmn.h>
 #include <wx/geometry.h>
 
+#include "src/geometry.hpp"
 #include "src/glcanvas.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/lineedit.hpp"
@@ -33,8 +34,7 @@ void LineEdit::StartPoint_OnDraw()
 		GLBackgroundGrid::Snap(mpos);
 	}
 
-	m_canvas->DrawPoint(mpos, Color(1.0f, 1.0f, 1.0f, 1.0f));
-
+	m_canvas->DrawPoint(mpos, WHITE);
 }
 
 
@@ -62,19 +62,16 @@ void LineEdit::EndPoint_OnDraw()
 {
 	wxPoint a, b;
 	Point2D mpos = m_canvas->GetMousePos();
-	const Color red = Color(1.0f, 0.2f, 0.2f, 1.0f);
-	const Color white = Color(1.0f, 1.0f, 1.0f, 1.0f);
-	const Color black = Color(0.0f, 0.0f, 0.0f, 1.0f);
 
 	if(m_canvas->IsSnapToGrid()) {
 		GLBackgroundGrid::Snap(mpos);
 	}
 
-	m_canvas->DrawLine(m_start, mpos, 3.0, black);
-	m_canvas->DrawLine(m_start, mpos, 1.0, red);
+	m_canvas->DrawLine(m_start, mpos, 3.0, BLACK);
+	m_canvas->DrawLine(m_start, mpos, 1.0, RED);
 
-	m_canvas->DrawPoint(m_start, white);
-	m_canvas->DrawPoint(mpos, white);
+	m_canvas->DrawPoint(m_start, WHITE);
+	m_canvas->DrawPoint(mpos, WHITE);
 }
 
 
@@ -110,15 +107,15 @@ void LineEdit::Slice_OnMouseRightDown(wxMouseEvent &e)
 
 void LineEdit::Slice_OnDraw()
 {
-	std::vector<wxPoint> s_points;
 	ConvexPolygon *poly = m_context->GetSelectedPoly();
 	wxASSERT(poly != nullptr);
 
-	Color red = Color(1.0f, 0.0f, 0.0f, 1.0f);
-	Color green = Color(0.0f, 1.0f, 0.0f, 1.0f);
+	const std::vector<Point2D> &pts = poly->GetPoints();
+	m_canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
+	m_canvas->OutlinePoly(pts.data(), pts.size(), 1.0, RED);
 
-	m_canvas->DrawPolygon(*poly, red);
-	m_canvas->DrawPolygon(m_points.data(), m_points.size(), green);
+	m_canvas->OutlinePoly(m_points.data(), m_points.size(), 3.0, BLACK);
+	m_canvas->OutlinePoly(m_points.data(), m_points.size(), 1.0, GREEN);
 }
 
 
