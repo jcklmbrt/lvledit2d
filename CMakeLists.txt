@@ -47,4 +47,6 @@ target_sources(lvledit2d PRIVATE
 	"src/historylist.cpp"
     "src/glcanvas.cpp"
 	"src/glcontext.cpp"
-	"src/notebook.cpp")
+	"src/notebook.cpp"
+	"src/glbackgroundgrid.cpp"
+	"src/glsolidgeometry.cpp")

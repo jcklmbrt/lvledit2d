@@ -1,6 +1,7 @@
 #include <wx/event.h>
 
 #include "src/glcanvas.hpp"
+#include "src/glbackgroundgrid.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/rectangleedit.hpp"
 

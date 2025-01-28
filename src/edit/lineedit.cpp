@@ -4,6 +4,7 @@
 
 #include "src/geometry.hpp"
 #include "src/glcanvas.hpp"
+#include "src/glbackgroundgrid.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/lineedit.hpp"
 
