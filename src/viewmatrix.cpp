@@ -83,10 +83,10 @@ void ViewMatrix::Pan(Point2D delta)
 ViewMatrixCtrl::ViewMatrixCtrl(wxWindow *parent)
 	: m_parent(parent), m_inpan(false)
 {
-	Bind(wxEVT_MIDDLE_DOWN, &ViewMatrixCtrl::OnMouseMiddleDown, this, wxID_ANY);
-	Bind(wxEVT_MIDDLE_UP, &ViewMatrixCtrl::OnMouseMiddleUp, this, wxID_ANY);
-	Bind(wxEVT_MOUSEWHEEL, &ViewMatrixCtrl::OnMouseWheel, this, wxID_ANY);
-	Bind(wxEVT_MOTION, &ViewMatrixCtrl::OnMouseMotion, this, wxID_ANY);
+	Bind(wxEVT_MIDDLE_DOWN, &ViewMatrixCtrl::OnMouseMiddleDown, this);
+	Bind(wxEVT_MIDDLE_UP, &ViewMatrixCtrl::OnMouseMiddleUp, this);
+	Bind(wxEVT_MOUSEWHEEL, &ViewMatrixCtrl::OnMouseWheel, this);
+	Bind(wxEVT_MOTION, &ViewMatrixCtrl::OnMouseMotion, this);
 }
 
 

@@ -9,11 +9,6 @@ class LvlEdit2D : public wxApp
 public:
 	virtual bool OnInit();
 	virtual int  OnExit();
-	inline MainFrame *GetMainFrame() {
-		return m_mainframe;
-	}
-private:
-	MainFrame *m_mainframe = nullptr;
 };
 
 DECLARE_APP(LvlEdit2D)

@@ -1,5 +1,5 @@
 #include <array>
-#include <cassert>
+#include <algorithm>
 #include "src/geometry.hpp"
 
 
@@ -123,14 +123,15 @@ bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 }
 
 
-void ConvexPolygon::ResizeAABB()
+void Rect2D::FitPoints(const Point2D pts[], size_t npts)
 {
-	assert(m_points.size() >= 2);// "Cannot construct a rect from less than two points.");
+	wxASSERT_MSG(npts >= 2, "Cannot construct a rect from less than two points.");
 
 	Point2D mins = { DBL_MAX, DBL_MAX };
 	Point2D maxs = { DBL_MIN, DBL_MIN };
 
-	for(const Point2D pt : m_points) {
+	for(size_t i = 0; i < npts; i++) {
+		Point2D pt = pts[i];
 		if(pt.x < mins.x) {
 			mins.x = pt.x;
 		}
@@ -144,9 +145,14 @@ void ConvexPolygon::ResizeAABB()
 			maxs.y = pt.y;
 		}
 	}
+	SetMins(mins);
+	SetMaxs(maxs);
+}
 
-	m_aabb.SetMins(mins);
-	m_aabb.SetMaxs(maxs);
+
+void ConvexPolygon::ResizeAABB()
+{
+	m_aabb.FitPoints(m_points.data(), m_points.size());
 }
 
 
@@ -216,7 +222,7 @@ void ConvexPolygon::PurgePlanes()
 {
 	/* remove all planes that aren't touching any points */
 	m_planes.erase(std::remove_if(m_planes.begin(), m_planes.end(), [this](Plane2D plane) {
-		constexpr float EPSILON = 0.001;
+		constexpr float EPSILON = 0.001f;
 		for(const Point2D &pt : m_points) {
 			if(plane.SignedDistance(pt) < EPSILON) {
 				return false;
@@ -241,4 +247,13 @@ void ConvexPolygon::Slice(Plane2D plane)
 void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<Point2D> &out) const
 {
 	plane.Clip(m_points, out);
+}
+
+#include "src/glcanvas.hpp"
+Texture *ConvexPolygon::GetTexture() const {
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+	if(canvas == nullptr) return nullptr;
+	std::vector<Texture> &textures = canvas->GetEditor().GetTextures();
+	if(m_texture == -1) return nullptr;
+	return &textures[m_texture];
 }

@@ -3,13 +3,15 @@
 
 #include <wx/aui/aui.h>
 #include <wx/filename.h>
+#include "src/singleton.hpp"
 
 class HistoryList;
 class wxGLCanvas;
 class GLContext;
 class GLCanvas;
 
-class Notebook : public wxAuiNotebook
+class Notebook : public wxAuiNotebook,
+                 public Singleton<Notebook>
 {
 public:
 	Notebook(wxWindow *parent, HistoryList *hlist);
@@ -21,9 +23,6 @@ public:
 private:
 	void OnPageChange(wxAuiNotebookEvent &e);
 	void OnPageClose(wxAuiNotebookEvent &e);
-private:
-	HistoryList *m_hlist;
-	GLContext *m_context = nullptr;
 };
 
 #endif

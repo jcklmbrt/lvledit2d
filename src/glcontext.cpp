@@ -4,6 +4,7 @@
 
 #include "src/glsolidgeometry.hpp"
 #include "src/glbackgroundgrid.hpp"
+#include "src/gltexturegeometry.hpp"
 #include "src/geometry.hpp"
 #include "src/glcontext.hpp"
 
@@ -75,20 +76,22 @@ void GLContext::Clear(const Color &color)
 void GLContext::SetMatrices(const Matrix4 &proj, const Matrix4 &view)
 {
 	m_solid->SetMatrices(proj, view);
+	m_texture->SetMatrices(proj, view);
 	m_grid->SetMatrices(proj, view);
 }
 
 void GLContext::DrawElements()
 {
 	m_grid->DrawGrid();
+	//m_texture->DrawElements();
 	m_solid->DrawElements();
 }
-
 
 
 void GLContext::ClearBuffers()
 {
 	m_solid->ClearBuffers();
+	//m_texture->ClearBuffers();
 }
 
 
@@ -103,10 +106,21 @@ void GLContext::AddLine(const Point2D &a, const Point2D &b, float thickness, con
 	m_solid->AddLine(a, b, thickness, color);
 }
 
+void GLContext::AddPolygon(const ConvexPolygon &poly, const Color &color)
+{
+	m_texture->AddPolygon(poly, color);
+}
+
+void GLContext::AddPolygon(const Point2D pts[], size_t npts, Texture &texture, const Color &color)
+{
+	m_texture->AddPolygon(pts, npts, texture, color);
+}
+
 
 void GLContext::CopyBuffers()
 {
 	m_solid->CopyBuffers();
+	m_texture->CopyBuffers();
 }
 
 
@@ -125,7 +139,7 @@ GLContext::GLContext(wxGLCanvas *parent)
 
 	m_grid = new GLBackgroundGrid();
 	m_solid = new GLSolidGeometry();
-	
+	m_texture = new GLTextureGeometry();
 }
 
 
@@ -133,5 +147,6 @@ GLContext::~GLContext()
 {
 	delete m_grid;
 	delete m_solid;
+	delete m_texture;
 }
 

@@ -6,7 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
-
+#include <wx/debug.h>
 
 using Point2D = glm::vec2;
 using Color = glm::vec4;
@@ -26,8 +26,8 @@ public:
 		: m_mins(mins),
 		  m_maxs(maxs)
 	{
-		assert(maxs.x >= mins.x);
-		assert(maxs.y >= mins.y);
+		wxASSERT(maxs.x >= mins.x);
+		wxASSERT(maxs.y >= mins.y);
 	}
 	void Offset(const Point2D &delta) 
 	{
@@ -39,6 +39,7 @@ public:
 	Point2D GetRightBottom() const { return m_maxs; }
 	Point2D GetLeftBottom() const { return { m_mins.x, m_maxs.y }; }
 	Point2D GetRightTop() const { return { m_maxs.x, m_mins.y }; }
+	Point2D GetSize() const { return m_maxs - m_mins; }
 	bool Intersects(const Rect2D &other) const 
 	{
 		return m_mins.x < other.m_maxs.x && other.m_mins.x < m_maxs.x &&
@@ -56,7 +57,7 @@ public:
 		m_mins = m_mins + delta;
 		m_maxs = m_maxs - delta;
 	}
-
+	void FitPoints(const Point2D pts[], size_t npts);
 	void SetMins(const Point2D &mins) { m_mins = mins; }
 	void SetMaxs(const Point2D &maxs) { m_maxs = maxs; }
 	void SetRight(float r) { m_maxs.x = r; }
@@ -84,6 +85,7 @@ private:
 	float m_a, m_b, m_c;
 };
 
+class Texture;
 
 class ConvexPolygon
 {
@@ -102,11 +104,15 @@ public:
 	bool Intersects(const ConvexPolygon &other) const;
 	bool Intersects(const Rect2D &rect) const;
 	bool Contains(const Point2D &pt) const;
+	Texture *GetTexture() const;
+	void SetTexture(size_t i) { m_texture = i; }
 private:
 	Rect2D m_aabb;
 	std::vector<Plane2D> m_planes;
 	/* internal representation of polygon */
 	std::vector<Point2D> m_points;
+
+	size_t m_texture = -1;
 };
 
 #endif

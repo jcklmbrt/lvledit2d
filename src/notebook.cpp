@@ -1,14 +1,15 @@
 
 #include "src/edit/editorcontext.hpp"
 #include "src/historylist.hpp"
+#include "src/texturepanel.hpp"
 #include "src/glcanvas.hpp"
+#include "src/mainframe.hpp"
 #include "src/glcontext.hpp"
 #include "src/notebook.hpp"
 
 
 Notebook::Notebook(wxWindow *parent, HistoryList *hlist)
-	: wxAuiNotebook(parent, wxID_ANY),
-	  m_hlist(hlist)
+	: wxAuiNotebook(parent, wxID_ANY)
 {
 	Bind(wxEVT_AUINOTEBOOK_PAGE_CHANGING, &Notebook::OnPageChange, this);
 	Bind(wxEVT_AUINOTEBOOK_PAGE_CLOSED, &Notebook::OnPageClose, this);
@@ -17,7 +18,6 @@ Notebook::Notebook(wxWindow *parent, HistoryList *hlist)
 
 Notebook::~Notebook()
 {
-	delete m_context;
 }
 
 
@@ -58,12 +58,15 @@ bool Notebook::AddCanvas(GLCanvas *canvas)
 {
 	wxString name = canvas->GetEditor().GetName();
 
-	if(m_context == nullptr) {
-		m_context = new GLContext(canvas);
+	GLContext *ctx;
+
+	if(GLContext::IsNull()) {
+		ctx = new GLContext(canvas);
+	} else {
+		ctx = GLContext::GetInstance();
 	}
 
-	canvas->SetContext(m_context);
-	canvas->SetCurrent(*m_context);
+	canvas->SetCurrent(*ctx);
 
 	return AddPage(canvas, name, true);
 }
@@ -98,9 +101,13 @@ void Notebook::OnPageClose(wxAuiNotebookEvent &e)
 {
 	e.Skip();
 
+	HistoryList *hlist;
+
 	if(GetPageCount() <= 0) {
-		m_hlist->SetItemCount(0);
-		m_hlist->Refresh();
+		hlist = HistoryList::GetInstance();
+		hlist->SetItemCount(0);
+		hlist->Refresh();
+		MainFrame::GetInstance()->Sidebook_Hide();
 	}
 }
 
@@ -112,12 +119,20 @@ void Notebook::OnPageChange(wxAuiNotebookEvent &e)
 	wxWindow *page = GetPage(e.GetSelection());
 	GLCanvas *dp = dynamic_cast<GLCanvas *>(page);
 
+	HistoryList *hlist = HistoryList::GetInstance();
+	TextureList *tlist = TextureList::GetInstance();
+
+	MainFrame::GetInstance()->Sidebook_Show();
+
 	if(dp != nullptr) {
-		m_hlist->SetItemCount(dp->GetEditor().GetHistory().size());
+		tlist->SetItemCount(dp->GetEditor().GetTextures().size());
+		hlist->SetItemCount(dp->GetEditor().GetHistory().size());
 	}
 	else {
-		m_hlist->SetItemCount(0);
+		hlist->SetItemCount(0);
+		tlist->SetItemCount(0);
 	}
 
-	m_hlist->Refresh();
+	hlist->Refresh();
+	tlist->Refresh();
 }

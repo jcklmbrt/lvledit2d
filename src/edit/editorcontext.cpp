@@ -1,4 +1,3 @@
-#include <cassert>
 #include <array>
 #include <cfloat>
 #include <wx/msgdlg.h>
@@ -10,8 +9,10 @@
 #include "src/edit/rectangleedit.hpp"
 #include "src/edit/lineedit.hpp"
 #include "src/edit/editorcontext.hpp"
+#include "src/edit/textureedit.hpp"
 #include "src/mainframe.hpp"
 #include "src/historylist.hpp"
+#include "src/texturepanel.hpp"
 
 struct L2dHeader 
 {
@@ -24,7 +25,7 @@ struct L2dHeader
 
 bool EditorContext::Load(const wxFileName &path)
 {
-	assert(path.FileExists());
+	wxASSERT(path.FileExists());
 
 	m_name = path.GetName();
 	m_file = fopen(path.GetFullPath(), "rb");
@@ -50,13 +51,12 @@ bool EditorContext::Load(const wxFileName &path)
 		ApplyAction(m_actions[i]);
 	}
 
-	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	HistoryList *hlist = mainframe->GetHistoryList();
+	HistoryList *hlist = HistoryList::GetInstance();
 	hlist->SetItemCount(m_actions.size());
 	hlist->Refresh();
 
 	/* reopen our file for writing */
-	freopen(path.GetPath(), "wb", m_file);
+	freopen(path.GetFullPath(), "wb", m_file);
 
 	return true;
 }
@@ -87,7 +87,7 @@ bool EditorContext::Save()
 
 bool EditorContext::Save(const wxFileName &path)
 {
-	assert(path.GetExt() == "l2d");
+	wxASSERT(path.GetExt() == "l2d");
 
 	if(m_file != nullptr) {
 		fclose(m_file);
@@ -96,7 +96,7 @@ bool EditorContext::Save(const wxFileName &path)
 	m_name = path.GetName();
 	m_file = fopen(path.GetFullPath(), "wb");
 
-	assert(m_file != nullptr);
+	wxASSERT(m_file != nullptr);
 
 	return Save();
 }
@@ -144,7 +144,7 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 				}
 			}
 
-			assert(n == 2);
+			wxASSERT(n == 2);
 			m_canvas->DrawLine(line[0], line[1], 1.0, RED);
 		}
 	}
@@ -161,6 +161,10 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 	}
 	else {
 		m_canvas->OutlinePoly(pts.data(), pts.size(), 1.0, WHITE);
+	}
+
+	if(p->GetTexture() != nullptr) {
+		m_canvas->TexturePoly(*p, WHITE);
 	}
 }
 
@@ -262,6 +266,9 @@ void EditorContext::OnToolSelect(ToolBar::ID id)
 		case ToolBar::ID::LINE:
 			m_state = new LineEdit(m_canvas);
 			break;
+		case ToolBar::ID::TEXTURE:
+			m_state = new TextureEdit(m_canvas);
+			break;
 		default:
 			break;
 		}
@@ -293,11 +300,11 @@ void EditorContext::ResetPoly(size_t i)
 		if(action.base.poly == i) {
 			switch(action.base.type) {
 			case EditActionType_t::LINE:
-				assert(poly);
+				wxASSERT(poly);
 				poly->Slice(action.line.plane);
 				break;
 			case EditActionType_t::MOVE:
-				assert(poly);
+				wxASSERT(poly);
 				poly->MoveBy(action.move.delta);
 				break;
 			case EditActionType_t::RECT:
@@ -339,8 +346,7 @@ void EditorContext::Undo()
 		break;
 	}
 
-	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	HistoryList *hlist = mainframe->GetHistoryList();
+	HistoryList *hlist = HistoryList::GetInstance();
 	hlist->SetItemCount(m_actions.size());
 	hlist->Refresh();
 }
@@ -366,11 +372,21 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 		break;
 	}
 
-	/* polygon indices out of order */
-	assert(action.base.poly == poly - &m_polys.front());
+	wxASSERT_MSG(action.base.poly == poly - &m_polys.front(),
+		"Polygon indices out of order.");
 
 	return poly;
 }
+
+
+void EditorContext::AddTexture(const wxFileName &filename)
+{
+	m_textures.emplace_back(filename);
+	TextureList *tlist = TextureList::GetInstance();
+	tlist->SetItemCount(m_textures.size());
+	tlist->Refresh();
+}
+
 
 void EditorContext::Redo()
 {
@@ -382,8 +398,7 @@ void EditorContext::Redo()
 	EditAction &last = LastAction();
 	ApplyAction(last);
 
-	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	HistoryList *hlist = mainframe->GetHistoryList();
+	HistoryList *hlist = HistoryList::GetInstance();
 	hlist->SetItemCount(m_actions.size());
 	hlist->Refresh();
 }
@@ -408,8 +423,7 @@ void EditorContext::AppendAction(EditAction action)
 
 	action.base.poly = m_selected - &m_polys.front();
 
-	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	HistoryList *hlist = mainframe->GetHistoryList();
+	HistoryList *hlist = HistoryList::GetInstance();
 	hlist->SetItemCount(m_actions.size());
 	hlist->Refresh();
 

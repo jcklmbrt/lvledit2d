@@ -41,7 +41,7 @@ GLSolidGeometry::GLSolidGeometry()
 
 	glBindVertexArray(m_vao);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vtxbuf);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(SolidVertex), (void *)0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(SolidVertex), (void *)offsetof(SolidVertex, position));
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(SolidVertex), (void *)offsetof(SolidVertex, color));
 	glEnableVertexAttribArray(1);
@@ -112,16 +112,14 @@ void GLSolidGeometry::AddRect(const Rect2D &rect, const Color &color)
 
 void GLSolidGeometry::AddLine(const Point2D &a, const Point2D &b, float thickness, const Color &color)
 {
-	Point2D delta = glm::normalize(b - a);
+	Point2D delta = glm::normalize(b - a) * thickness * 0.5f;
 	Point2D normal = { -delta.y, delta.x };
 
-	normal *= thickness * 0.5;
-
 	Point2D q[4] = {
-		a - normal,
-		a + normal,
-		b - normal,
-		b + normal
+		(a - delta) - normal,
+		(a - delta) + normal,
+		(b + delta) - normal,
+		(b + delta) + normal
 	};
 
 	AddQuad(q, color);

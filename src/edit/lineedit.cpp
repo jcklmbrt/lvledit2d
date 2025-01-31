@@ -52,9 +52,14 @@ void LineEdit::EndPoint_OnMouseLeftDown(wxMouseEvent &e)
 	ConvexPolygon *poly = m_context->GetSelectedPoly();
 
 	if(poly != nullptr) {
-		m_points.clear();
-		poly->ImposePlane(m_plane, m_points);
-		m_state = LineEditState_t::SLICE;
+		if(poly->AllPointsBehind(m_plane)) {
+			/* bad cut, start over. */
+			m_state = LineEditState_t::START_POINT;
+		} else {
+			m_points.clear();
+			poly->ImposePlane(m_plane, m_points);
+			m_state = LineEditState_t::SLICE;
+		}
 	}
 }
 
@@ -117,6 +122,10 @@ void LineEdit::Slice_OnDraw()
 
 	m_canvas->OutlinePoly(m_points.data(), m_points.size(), 3.0, BLACK);
 	m_canvas->OutlinePoly(m_points.data(), m_points.size(), 1.0, GREEN);
+
+	if(poly->GetTexture() != nullptr) {
+		m_canvas->TexturePoly(m_points.data(), m_points.size(), *poly->GetTexture(), WHITE);
+	}
 }
 
 

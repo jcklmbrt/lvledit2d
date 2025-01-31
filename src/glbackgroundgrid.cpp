@@ -41,7 +41,7 @@ GLBackgroundGrid::GLBackgroundGrid()
 	)";
 
 	m_program = GLContext::CompileShaders(fs_src, vs_src);
-	assert(m_program);
+	wxASSERT(m_program);
 	/* fullscreen rect. don't bother with EBO. */
 	static float vertices[] = {
 		 1.0f,  1.0f,

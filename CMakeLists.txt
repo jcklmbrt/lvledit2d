@@ -49,4 +49,5 @@ target_sources(lvledit2d PRIVATE
 	"src/glcontext.cpp"
 	"src/notebook.cpp"
 	"src/glbackgroundgrid.cpp"
-	"src/glsolidgeometry.cpp")
+	"src/glsolidgeometry.cpp"
+	"src/gltexturegeometry.cpp" "src/edit/textureedit.cpp" "src/texturepanel.cpp")

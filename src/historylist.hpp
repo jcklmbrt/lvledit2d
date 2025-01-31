@@ -3,10 +3,13 @@
 
 #include <wx/listctrl.h>
 
+#include "src/singleton.hpp"
+
 class wxWindow;
 class wxItemAttr;
 
-class HistoryList : public wxListCtrl
+class HistoryList : public wxListCtrl,
+                    public Singleton<HistoryList>
 {
 	enum ColumnID : long
 	{

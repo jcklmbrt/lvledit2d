@@ -2,7 +2,7 @@
 #ifndef _VIEWMATRIX_HPP
 #define _VIEWMATRIX_HPP
 
-#include <wx/geometry.h>
+#include <wx/event.h>
 #include "src/geometry.hpp"
 
 #define MAX_PAN_X  10000.0

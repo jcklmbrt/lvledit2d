@@ -10,8 +10,11 @@ bool LvlEdit2D::OnInit()
 	if(!wxApp::OnInit()) {
 		return false;
 	}
-	m_mainframe = new MainFrame;
-	m_mainframe->Show(true);
+
+	wxInitAllImageHandlers();
+
+	wxFrame *mainframe = new MainFrame;
+	mainframe->Show(true);
 	return true;
 }
 

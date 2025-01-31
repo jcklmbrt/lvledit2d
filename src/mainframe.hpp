@@ -3,31 +3,15 @@
 
 
 #include <wx/wx.h>
+#include <wx/notebook.h>
+#include "src/singleton.hpp"
 
 
-class HistoryList;
-class Notebook;
-
-
-class MainFrame : public wxFrame
+class MainFrame : public wxFrame,
+                  public Singleton<MainFrame>
 {
 public:
-	enum ID : int {
-		/* private */
-		MASK = 0x100,
-		/* public */
-		SHOW_HISTORY,
-	};
-public:
 	MainFrame();
-	inline Notebook *GetNotebook()
-	{ 
-		return m_notebook; 
-	}
-	inline HistoryList *GetHistoryList()
-	{
-		return m_historylist;
-	}
 private: /* Events */
 	void OnNew(wxCommandEvent &e);
 	void OnOpen(wxCommandEvent &e);
@@ -36,9 +20,19 @@ private: /* Events */
 	void OnExit(wxCommandEvent &e);
 	void OnUndo(wxCommandEvent &e);
 	void OnRedo(wxCommandEvent &e);
-	void OnShowHistory(wxCommandEvent &e);
-	Notebook *m_notebook = nullptr;
-	HistoryList *m_historylist = nullptr;
+private:
+	wxNotebook *m_sidebook;
+public:
+	void Sidebook_Hide()
+	{
+		m_sidebook->Hide();
+		GetSizer()->Layout();
+	}
+	void Sidebook_Show()
+	{
+		m_sidebook->Show();
+		GetSizer()->Layout();
+	}
 };
 
 #endif

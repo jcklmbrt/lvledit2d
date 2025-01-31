@@ -83,7 +83,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		m_context->AppendAction(action);
 	}
 
-	m_canvas->Refresh();
+	m_canvas->Refresh(true);
 }
 
 

@@ -1,4 +1,4 @@
-#include <cassert>
+
 #include <glad/gl.h>
 
 #include <wx/wx.h>
@@ -14,7 +14,7 @@ GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
 	  m_editor(this),
 	  m_view(this)
 {
-	assert(wxGLCanvas::IsDisplaySupported(attrs));
+	wxASSERT(wxGLCanvas::IsDisplaySupported(attrs));
 
 	wxSize size = GetSize() * GetContentScaleFactor();
 
@@ -46,8 +46,7 @@ GLCanvas::~GLCanvas()
 GLCanvas *GLCanvas::GetCurrent()
 {
 	GLCanvas *canvas = nullptr;
-	MainFrame *mainframe = wxGetApp().GetMainFrame();
-	Notebook *notebook = mainframe->GetNotebook();
+	Notebook *notebook = Notebook::GetInstance();
 
 	if(notebook->GetPageCount() > 0) {
 		int sel = notebook->GetSelection();
@@ -74,17 +73,28 @@ void GLCanvas::OutlineRect(const Rect2D &rect, float thickness, const Color &col
 	Point2D rt = rect.GetRightTop();
 
 	thickness /= m_view.GetZoom();
-	m_context->AddLine(lt, rt, thickness, color);
-	m_context->AddLine(rt, rb, thickness, color);
-	m_context->AddLine(rb, lb, thickness, color);
-	m_context->AddLine(lb, lt, thickness, color);
+	GLContext *ctx = GLContext::GetInstance();
+	ctx->AddLine(lt, rt, thickness, color);
+	ctx->AddLine(rt, rb, thickness, color);
+	ctx->AddLine(rb, lb, thickness, color);
+	ctx->AddLine(lb, lt, thickness, color);
 }
 
 
 void GLCanvas::DrawLine(const Point2D &a, const Point2D &b, float thickness, const Color &color)
 {
 	thickness /= m_view.GetZoom();
-	m_context->AddLine(a, b, thickness, color);
+	GLContext::GetInstance()->AddLine(a, b, thickness, color);
+}
+
+void GLCanvas::TexturePoly(const Point2D pts[], size_t npts, Texture &texture, const Color &color)
+{
+	GLContext::GetInstance()->AddPolygon(pts, npts, texture, color);
+}
+
+void GLCanvas::TexturePoly(const ConvexPolygon &p, const Color &color)
+{
+	GLContext::GetInstance()->AddPolygon(p, color);
 }
 
 
@@ -95,11 +105,12 @@ void GLCanvas::DrawPoint(const Point2D &pt, const Color &color)
 	Point2D maxs = { pt.x + thickness * 3.0f, pt.y + thickness * 3.0f };
 	Rect2D rect = Rect2D(mins, maxs);
 
-	m_context->AddRect(rect, BLACK); /* outline */
+	GLContext *ctx = GLContext::GetInstance();
+	ctx->AddRect(rect, BLACK); /* outline */
 	rect.Inset(thickness * 2.0, thickness * 2.0);
-	m_context->AddRect(rect, color); /* foreground */
+	ctx->AddRect(rect, color); /* foreground */
 	rect.Inset(thickness * 2.0, thickness * 2.0);
-	m_context->AddRect(rect, BLACK); /* center */
+	ctx->AddRect(rect, BLACK); /* center */
 }
 
 
@@ -110,29 +121,29 @@ void GLCanvas::OutlinePoly(const Point2D points[], size_t npoints, float thickne
 	for(size_t i = 0; i < npoints; i++) {
 		Point2D a = points[i];
 		Point2D b = points[(i + 1) % npoints];
-		m_context->AddLine(a, b, thickness, color);
+		GLContext::GetInstance()->AddLine(a, b, thickness, color);
 	}
 }
 
 
 void GLCanvas::OnPaint(wxPaintEvent &e)
 {
-	assert(m_context);
+	GLContext *ctx = GLContext::GetInstance();
 
-	m_context->SetCurrent(*this);
+	ctx->SetCurrent(*this);
 
 	wxPaintDC dc(this);
 	
 	const Color bg = Color(0.9f, 0.9f, 0.9f, 1.0f);
 
-	m_context->Clear(bg);
-	m_context->ClearBuffers();
+	ctx->Clear(bg);
+	ctx->ClearBuffers();
 
 	m_editor.OnDraw();
 
-	m_context->CopyBuffers();
-	m_context->SetMatrices(m_proj, m_view.GetMatrix());
-	m_context->DrawElements();
+	ctx->CopyBuffers();
+	ctx->SetMatrices(m_proj, m_view.GetMatrix());
+	ctx->DrawElements();
 
 	SwapBuffers();
 }
@@ -142,9 +153,7 @@ void GLCanvas::OnSize(wxSizeEvent &e)
 {
 	e.Skip();
 
-	assert(m_context);
-
-	m_context->SetCurrent(*this);
+	GLContext::GetInstance()->SetCurrent(*this);
 
 	wxSize size = e.GetSize();
 

@@ -6,6 +6,7 @@
 #include "src/lvledit2d.hpp"
 #include "src/glcanvas.hpp"
 #include "src/notebook.hpp"
+#include "src/texturepanel.hpp"
 
 #include "res/reset.xpm"
 #include "res/save.xpm"
@@ -34,8 +35,6 @@ MainFrame::MainFrame()
 
 	wxMenuItem *undo = new wxMenuItem(edit, wxID_UNDO);
 	wxMenuItem *redo = new wxMenuItem(edit, wxID_REDO);
-	wxMenuItem *show_history = new wxMenuItem(edit, ID::SHOW_HISTORY, "Show History", "", wxITEM_CHECK);
-	edit->Append(show_history);
 	edit->Append(undo);
 	edit->Append(redo);
 
@@ -47,20 +46,21 @@ MainFrame::MainFrame()
 	wxToolBar *toolbar = new ToolBar(this, wxID_ANY);
 	SetToolBar(toolbar);
 
-	HistoryList *hlist = new HistoryList(this);
+	m_sidebook = new wxNotebook(this, wxID_ANY);
+	HistoryList *hlist = new HistoryList(m_sidebook);
+	TexturePanel *tpanel = new TexturePanel(m_sidebook);
+	m_sidebook->AddPage(hlist, "History", true);
+	m_sidebook->AddPage(tpanel, "Textures", true);
+
 	Notebook *notebook = new Notebook(this, hlist);
 
 	wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
 	sizer->Add(notebook, 1, wxEXPAND);
-	sizer->Add(hlist, 0, wxEXPAND);
+	sizer->Add(m_sidebook, 0, wxEXPAND);
 	SetSizer(sizer);
 
-	m_notebook = notebook;
-	m_historylist = hlist;
+	Sidebook_Hide();
 
-	m_historylist->Hide();
-
-	Bind(wxEVT_MENU, &MainFrame::OnShowHistory, this, ID::SHOW_HISTORY);
 	Bind(wxEVT_MENU, &MainFrame::OnExit, this, wxID_EXIT);
 	Bind(wxEVT_MENU, &MainFrame::OnOpen, this, wxID_OPEN);
 	Bind(wxEVT_MENU, &MainFrame::OnSave, this, wxID_SAVE);
@@ -80,40 +80,25 @@ void MainFrame::OnOpen(wxCommandEvent &e)
 		return;
 	}
 
-	m_notebook->AddCanvas(dialog.GetPath());
+	Notebook::GetInstance()->AddCanvas(dialog.GetPath());
 }
 
 
 void MainFrame::OnSave(wxCommandEvent &e)
 {
-	m_notebook->Save(false);
+	Notebook::GetInstance()->Save(false);
 }
 
 
 void MainFrame::OnSaveAs(wxCommandEvent &e)
 {
-	m_notebook->Save(true);
+	Notebook::GetInstance()->Save(true);
 }
 
 
 void MainFrame::OnNew(wxCommandEvent &e)
 {
-	m_notebook->AddCanvas();
-}
-
-
-void MainFrame::OnShowHistory(wxCommandEvent &e)
-{
-	wxSizer *sizer = GetSizer();
-	if(e.IsChecked()) {
-		m_historylist->Show();
-	} else {
-		m_historylist->Hide();
-	}
-
-	sizer->Layout();
-
-	Refresh();
+	Notebook::GetInstance()->AddCanvas();
 }
 
 

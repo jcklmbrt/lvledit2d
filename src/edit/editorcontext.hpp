@@ -5,6 +5,7 @@
 #include <wx/filename.h>
 #include "src/toolbar.hpp"
 #include "src/geometry.hpp"
+#include "src/gltexturegeometry.hpp"
 
 class GLCanvas;
 class EditorContext;
@@ -89,6 +90,7 @@ public:
 	~EditorContext();
 	ConvexPolygon *ApplyAction(const EditAction &action);
 	void AppendAction(EditAction action);
+	void AddTexture(const wxFileName &filename);
 	void Undo();
 	void Redo();
 	bool Save();
@@ -101,6 +103,7 @@ public:
 	bool IsSnapToGrid() { return m_snaptogrid; }
 	std::vector<ConvexPolygon> &GetPolys() { return m_polys; }
 	std::vector<EditAction> &GetHistory() { return m_actions; }
+	std::vector<Texture> &GetTextures() { return m_textures;  }
 	ConvexPolygon *GetSelectedPoly() { return m_selected; };
 	void SetSelectedPoly(ConvexPolygon *poly) { m_selected = poly; }
 	EditAction &LastAction() { wxASSERT(m_history); return m_actions[m_history - 1]; };
@@ -110,6 +113,7 @@ public:
 private:
 	std::vector<ConvexPolygon> m_polys;
 	std::vector<EditAction> m_actions;
+	std::vector<Texture> m_textures;
 	size_t m_history = 0; /* replacement for m_actions.size() */
 	ConvexPolygon *m_selected = nullptr;
 	FILE *m_file = nullptr;
@@ -119,6 +123,7 @@ private:
 	/* additional options that just default to true.
 	   will add checkboxes later */
 	bool m_snaptogrid = true;
+private:
 };
 
 #endif
