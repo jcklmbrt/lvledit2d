@@ -3,8 +3,19 @@
 
 #include <wx/debug.h>
 
+class Immobile
+{
+public:
+	Immobile() = default;
+protected:
+	Immobile(const Immobile &other) = delete;
+	Immobile &operator=(const Immobile &other) = delete;
+	Immobile(Immobile &&other) = delete;
+	Immobile &operator=(Immobile &&other) = delete;
+};
+
 template<class T>
-class Singleton
+class Singleton : public Immobile
 {
 protected:
 	Singleton()

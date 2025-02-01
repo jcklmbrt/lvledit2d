@@ -57,8 +57,6 @@ GLTextureGeometry::GLTextureGeometry()
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void *)offsetof(TextureVertex, uv));
 	glEnableVertexAttribArray(2);
-
-	CopyBuffers();
 }
 
 
@@ -71,23 +69,21 @@ GLTextureGeometry::~GLTextureGeometry()
 }
 
 
-void GLTextureGeometry::CopyBuffers()
+void GLTextureGeometry::CopyBuffersAndDrawElements()
 {
-	glBindBuffer(GL_ARRAY_BUFFER, m_vtxbuf);
-	glBufferData(GL_ARRAY_BUFFER, m_vtx.size() * sizeof(TextureVertex), m_vtx.data(), GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_idxbuf);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_idx.size() * sizeof(GLuint), m_idx.data(), GL_STATIC_DRAW);
-}
-
-
-void GLTextureGeometry::DrawElements(Texture &texture)
-{
-	texture.Bind();
-
 	glUseProgram(m_program);
 	glBindVertexArray(m_vao);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_idxbuf);
-	glDrawElements(GL_TRIANGLES, m_idx.size(), GL_UNSIGNED_INT, 0);
+
+	for(auto &[tex_id, vtc] : m_batches) {
+		glBindBuffer(GL_ARRAY_BUFFER, m_vtxbuf);
+		glBufferData(GL_ARRAY_BUFFER, vtc.vtx.size() * sizeof(TextureVertex), vtc.vtx.data(), GL_STATIC_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_idxbuf);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, vtc.idx.size() * sizeof(GLuint), vtc.idx.data(), GL_STATIC_DRAW);
+
+		glBindTexture(GL_TEXTURE_2D, tex_id);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_idxbuf);
+		glDrawElements(GL_TRIANGLES, vtc.idx.size(), GL_UNSIGNED_INT, 0);
+	}
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -95,8 +91,7 @@ void GLTextureGeometry::DrawElements(Texture &texture)
 
 void GLTextureGeometry::ClearBuffers()
 {
-	m_idx.clear();
-	m_vtx.clear();
+	m_batches.clear();
 }
 
 
@@ -106,16 +101,6 @@ void GLTextureGeometry::SetMatrices(const Matrix4 &proj, const Matrix4 &view)
 	Matrix4 mvp = proj * view;
 	int pos = glGetUniformLocation(m_program, "mvp");
 	glUniformMatrix4fv(pos, 1, GL_FALSE, glm::value_ptr(mvp));
-}
-
-
-static TextureVertex SetVertex(const Point2D &pt, const Color &color, float spacing)
-{
-	TextureVertex vtx;
-	vtx.position = pt;
-	vtx.color = color;
-	vtx.uv = pt / spacing;
-	return vtx;
 }
 
 
@@ -132,30 +117,26 @@ static TextureVertex SetVertex(const Point2D &pt, const Color &color, const Rect
 }
 
 
-void GLTextureGeometry::AddPolygon(const Point2D pts[], size_t npts, Texture &texture, const Color &color)
+void GLTextureGeometry::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color)
 {
-	Rect2D aabb;
-	aabb.FitPoints(pts, npts);
+	GLuint t = texture.GetTextureObject();
+	TextureVertices &vtc = m_batches[t];
 
-	TextureVertex start = SetVertex(pts[0], color, aabb);
+	TextureVertex start = SetVertex(pts[0], color, uv);
 
-	m_vtx.push_back(start);
-	size_t start_idx = m_vtx.size() - 1;
+	vtc.vtx.push_back(start);
+	size_t start_idx = vtc.vtx.size() - 1;
 
 	for(size_t i = 1; i < npts; i++) {
 		Point2D a = pts[i];
 		Point2D b = pts[(i + 1) % npts];
-		m_vtx.push_back(SetVertex(a, color, aabb));
-		m_vtx.push_back(SetVertex(b, color, aabb));
+		vtc.vtx.push_back(SetVertex(a, color, uv));
+		vtc.vtx.push_back(SetVertex(b, color, uv));
 
-		m_idx.push_back(start_idx);
-		m_idx.push_back(start_idx + (i * 2) - 1);
-		m_idx.push_back(start_idx + (i * 2));
+		vtc.idx.push_back(start_idx);
+		vtc.idx.push_back(start_idx + (i * 2) - 1);
+		vtc.idx.push_back(start_idx + (i * 2));
 	}
-
-	CopyBuffers();
-	DrawElements(texture);
-	ClearBuffers();
 }
 
 
@@ -168,29 +149,44 @@ void GLTextureGeometry::AddPolygon(const ConvexPolygon &poly, const Color &color
 
 	const std::vector<Point2D> &pts = poly.GetPoints();
 
-	const Rect2D &aabb = poly.GetAABB();
+	const Rect2D &aabb = poly.GetUV();
 
 	size_t npoints = pts.size();
 	TextureVertex start = SetVertex(pts[0], color, aabb);
 
-	m_vtx.push_back(start);
-	size_t start_idx = m_vtx.size() - 1;
+	if(!glIsTexture(texture->m_texture)) {
+		texture->InitTextureObject();
+	}
+
+	GLuint t = texture->GetTextureObject();
+	TextureVertices &vtc = m_batches[t];
+
+	vtc.vtx.push_back(start);
+	size_t start_idx = vtc.vtx.size() - 1;
 
 	for(size_t i = 1; i < npoints; i++) {
 		Point2D a = pts[i];
 		Point2D b = pts[(i + 1) % npoints];
-		m_vtx.push_back(SetVertex(a, color, aabb));
-		m_vtx.push_back(SetVertex(b, color, aabb));
+		vtc.vtx.push_back(SetVertex(a, color, aabb));
+		vtc.vtx.push_back(SetVertex(b, color, aabb));
 
-		m_idx.push_back(start_idx);
-		m_idx.push_back(start_idx + (i * 2) - 1);
-		m_idx.push_back(start_idx + (i * 2));
+		vtc.idx.push_back(start_idx);
+		vtc.idx.push_back(start_idx + (i * 2) - 1);
+		vtc.idx.push_back(start_idx + (i * 2));
 	}
-
-	CopyBuffers();
-	DrawElements(*texture);
-	ClearBuffers();
 }
+
+
+static int bit_ceil_512(int n)
+{
+	n = std::min(n, 512);
+	int i = 1;
+	while(i < n) {
+		i <<= 1;
+	}
+	return i;
+}
+
 
 Texture::Texture(const wxFileName &filename)
 	: m_filename(filename)
@@ -206,6 +202,22 @@ Texture::Texture(const wxFileName &filename)
 	} else {
 		m_pixelwidth = 3;
 	}
+
+	wxBitmap bmp(img);
+
+	TextureList *tlist = TextureList::GetInstance();
+	wxImageList *ilist = tlist->GetImageList(wxIMAGE_LIST_SMALL);
+
+	wxSize size = img.GetSize();
+	size.y = bit_ceil_512(size.y);
+	size.x = bit_ceil_512(size.x);
+
+	/* bananas */
+	wxBitmap::Rescale(bmp, size);
+	img = bmp.ConvertToImage();
+
+	wxBitmap::Rescale(bmp, wxSize(THUMB_SIZE_X, THUMB_SIZE_Y));
+	m_index = ilist->Add(bmp);
 
 	m_width = img.GetWidth();
 	m_height = img.GetHeight();
@@ -224,12 +236,7 @@ Texture::Texture(const wxFileName &filename)
 		}
 	}
 
-	TextureList *tlist = TextureList::GetInstance();
-	wxImageList *ilist = tlist->GetImageList(wxIMAGE_LIST_SMALL);
-
-	wxBitmap bmp(img);
-	wxBitmap::Rescale(bmp, wxSize(THUMB_SIZE_X, THUMB_SIZE_Y));
-	m_index = ilist->Add(bmp);
+	m_hash = FNV1A();
 }
 
 
@@ -258,19 +265,67 @@ void Texture::InitTextureObject()
 }
 
 
-Texture::~Texture()
+uint32_t Texture::FNV1A()
 {
-	//glDeleteTextures(1, &m_texture);
-	//wxASSERT_MSG(true, "We shouldn't be deleting textures (yet)");
-	//wxMessageBox("Destructor Called");
-	//delete[] m_data;
+	constexpr uint32_t FNV_OFFSET_BASIS = 0x811c9dc5;
+	constexpr uint32_t FNV_PRIME = 0x01000193;
+
+	size_t nbytes = m_width * m_height * m_pixelwidth;
+	size_t hash = FNV_OFFSET_BASIS;
+
+	for(size_t i = 0; i < nbytes; i++) {
+		hash ^= m_data[i];
+		hash *= FNV_PRIME;
+	}
+
+	return hash;
 }
 
-void Texture::Bind()
+
+bool Texture::operator==(const Texture &other)
+{
+	/* broad phase */
+	if(m_hash != other.m_hash 
+	|| m_width != other.m_width 
+	|| m_height != other.m_height
+	|| m_pixelwidth != other.m_pixelwidth) {
+		return false;
+	}
+
+	/* narrow phase */
+	size_t nbytes = m_width * m_height * m_pixelwidth;
+	return memcmp(m_data, other.m_data, nbytes) == 0;
+}
+
+
+Texture::Texture(Texture &&other) noexcept
+{
+	/* default copy */
+	this->operator=(other);
+
+	other.m_data = nullptr;
+	other.m_texture = 0;
+	other.m_filename.Clear();
+}
+
+
+Texture::~Texture()
+{
+	if(glIsTexture(m_texture)) {
+		glDeleteTextures(1, &m_texture);
+	}
+	
+	if(m_data != nullptr) {
+		delete[] m_data;
+	}
+}
+
+
+GLuint Texture::GetTextureObject()
 {
 	if(!glIsTexture(m_texture)) {
 		InitTextureObject();
 	}
 
-	glBindTexture(GL_TEXTURE_2D, m_texture);
+	return m_texture;
 }

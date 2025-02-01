@@ -1,14 +1,14 @@
 #ifndef _TEXTUREEDIT_HPP
 #define _TEXTUREEDIT_HPP
 
+#include "src/edit/editorcontext.hpp"
 
 class TextureEdit : public IBaseEdit
 {
 public:
 	TextureEdit(GLCanvas *panel);
 	void OnMouseLeftDown(wxMouseEvent &e);
-	void OnMouseLeftUp(wxMouseEvent &e);
-	void OnMouseMotion(wxMouseEvent &e);
+	void OnMouseRightDown(wxMouseEvent &e);
 private:
 };
 

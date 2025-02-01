@@ -13,13 +13,20 @@
 class wxWindow;
 class wxItemAttr;
 class TextureList;
+class wxStaticText;
+class wxSlider;
 
-
-class TexturePanel : public wxPanel
+class TexturePanel : public wxPanel,
+                     public Singleton<TexturePanel>
 {
 public:
 	TexturePanel(wxWindow *parent);
 	void OnOpen(wxCommandEvent &e);
+	void OnSlider(wxCommandEvent &e);
+	int GetSliderValue();
+private:
+	wxSlider *m_slider;
+	wxStaticText *m_label;
 };
 
 
@@ -27,6 +34,13 @@ class TextureList : public wxListCtrl,
                     public Singleton<TextureList>
 {
 	static constexpr int ICON_SIZE = 32;
+	enum ColumnID 
+	{
+		PREVIEW,
+		NAME,
+		SIZE,
+		TYPE
+	};
 public:
 	TextureList(wxWindow *parent);
 	wxString OnGetItemText(long item, long col) const;

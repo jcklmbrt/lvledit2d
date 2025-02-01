@@ -15,13 +15,18 @@ struct TextureVertex
 #define THUMB_SIZE_X 32
 #define THUMB_SIZE_Y 32
 
+#define TEXTURE_SIZE_X 512
+#define TEXTURE_SIZE_Y 512
+
 class Texture
 {
 public:
 	Texture(const wxFileName &filename);
+	Texture(Texture &&other) noexcept;
 	~Texture();
 	void Bind();
 	void InitTextureObject();
+	GLuint GetTextureObject();
 	const wxFileName &GetFileName() const { return m_filename; }
 	size_t GetIndex() { return m_index; }
 	GLuint m_texture = 0;
@@ -31,6 +36,14 @@ public:
 	size_t m_height;
 	wxFileName m_filename;
 	size_t m_index;
+private:
+	uint32_t FNV1A();
+	uint32_t m_hash;
+public:
+	bool operator==(const Texture &other);
+private:
+	Texture(const Texture &) = delete;
+	Texture &operator=(const Texture &) = default;
 };
 
 
@@ -40,20 +53,24 @@ public:
 	GLTextureGeometry();
 	~GLTextureGeometry();
 	void ClearBuffers();
-	void CopyBuffers();
-	void DrawElements(Texture &texture);
+	void CopyBuffersAndDrawElements();
 	void SetMatrices(const Matrix4 &proj, const Matrix4 &view);
 public:
 	void AddPolygon(const ConvexPolygon &poly, const Color &color);
-	void AddPolygon(const Point2D pts[], size_t npts, Texture &texture, const Color &color);
+	void AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color);
 private:
 	GLuint m_vtxbuf;
 	GLuint m_idxbuf;
 	GLuint m_vao;
 	GLuint m_program;
 private:
-	std::vector<TextureVertex> m_vtx;
-	std::vector<GLuint> m_idx;
+	struct TextureVertices
+	{
+		std::vector<TextureVertex> vtx;
+		std::vector<GLuint> idx;
+	};
+
+	std::unordered_map<GLuint, TextureVertices> m_batches;
 };
 
 #endif

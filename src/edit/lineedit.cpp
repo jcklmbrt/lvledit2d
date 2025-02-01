@@ -124,7 +124,12 @@ void LineEdit::Slice_OnDraw()
 	m_canvas->OutlinePoly(m_points.data(), m_points.size(), 1.0, GREEN);
 
 	if(poly->GetTexture() != nullptr) {
-		m_canvas->TexturePoly(m_points.data(), m_points.size(), *poly->GetTexture(), WHITE);
+
+		Rect2D r;
+		r.FitPoints(m_points.data(), m_points.size());
+		r = poly->GetUV(r);
+
+		m_canvas->TexturePoly(m_points.data(), m_points.size(), r, *poly->GetTexture(), WHITE);
 	}
 }
 

@@ -106,6 +106,9 @@ public:
 	bool Contains(const Point2D &pt) const;
 	Texture *GetTexture() const;
 	void SetTexture(size_t i) { m_texture = i; }
+	Rect2D GetUV() const;
+	Rect2D GetUV(const Rect2D &aabb) const;
+	void SetScale(int i) { m_texturescale = i; }
 private:
 	Rect2D m_aabb;
 	std::vector<Plane2D> m_planes;
@@ -113,6 +116,7 @@ private:
 	std::vector<Point2D> m_points;
 
 	size_t m_texture = -1;
+	int m_texturescale = 1;
 };
 
 #endif

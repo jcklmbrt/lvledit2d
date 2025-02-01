@@ -381,7 +381,15 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 
 void EditorContext::AddTexture(const wxFileName &filename)
 {
-	m_textures.emplace_back(filename);
+	Texture new_texture(filename);
+
+	for(const Texture &texture : m_textures) {
+		if(new_texture == texture) {
+			return;
+		}
+	}
+
+	m_textures.push_back(std::move(new_texture));
 	TextureList *tlist = TextureList::GetInstance();
 	tlist->SetItemCount(m_textures.size());
 	tlist->Refresh();

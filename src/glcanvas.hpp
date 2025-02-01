@@ -22,7 +22,7 @@ public:
 	void OutlineRect(const Rect2D &rect, float thickness, const Color &color);
 	void OutlinePoly(const Point2D points[], size_t npoints, float thickness, const Color &color);
 	void TexturePoly(const ConvexPolygon &p, const Color &color);
-	void TexturePoly(const Point2D pts[], size_t npts, Texture &texture, const Color &color);
+	void TexturePoly(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color);
 	void DrawLine(const Point2D &a, const Point2D &b, float thickness, const Color &color);
 public:
 	int  GetGridSpacing() { return 50; }

@@ -1,5 +1,7 @@
 #include <array>
 #include <algorithm>
+#include "src/glcanvas.hpp"
+#include "src/glbackgroundgrid.hpp"
 #include "src/geometry.hpp"
 
 
@@ -249,11 +251,37 @@ void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<Point2D> &out) const
 	plane.Clip(m_points, out);
 }
 
-#include "src/glcanvas.hpp"
-Texture *ConvexPolygon::GetTexture() const {
+
+Texture *ConvexPolygon::GetTexture() const 
+{
 	GLCanvas *canvas = GLCanvas::GetCurrent();
-	if(canvas == nullptr) return nullptr;
+	if(canvas == nullptr) { 
+		return nullptr;
+	}
 	std::vector<Texture> &textures = canvas->GetEditor().GetTextures();
-	if(m_texture == -1) return nullptr;
+	if(m_texture == -1) {
+		return nullptr;
+	}
 	return &textures[m_texture];
+}
+
+
+Rect2D ConvexPolygon::GetUV(const Rect2D &aabb) const
+{
+	Rect2D rect = aabb;
+	if(m_texturescale != 0) {
+		float scale = static_cast<float>(m_texturescale * GLBackgroundGrid::SPACING);
+		Point2D mins = { 0.0f, 0.0f };
+		Point2D maxs = { scale, scale };
+
+		rect.SetMins(mins);
+		rect.SetMaxs(maxs);
+	}
+	return rect;
+}
+
+
+Rect2D ConvexPolygon::GetUV() const
+{
+	return GetUV(m_aabb);
 }

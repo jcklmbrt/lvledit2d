@@ -26,7 +26,7 @@ public:
 	void AddRect(const Rect2D &rect, const Color &color);
 	void AddLine(const Point2D &a, const Point2D &b, float thickness, const Color &color);
 	void AddPolygon(const ConvexPolygon &poly, const Color &color);
-	void AddPolygon(const Point2D pts[], size_t npts, Texture &texture, const Color &color);
+	void AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color);
 	static GLuint CompileShaders(const char *fs_src, const char *vs_src);
 private:
 	GLBackgroundGrid *m_grid;

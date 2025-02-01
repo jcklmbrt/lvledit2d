@@ -3,18 +3,47 @@
 #include "src/texturepanel.hpp"
 
 
+static void SetScaleLabel(wxStaticText *label, int scale)
+{
+	wxString s;
+	if(scale == 0) {
+		s.Printf("Texture Scale: Fit Bounding-Box");
+	} else {
+		s.Printf("Texture Scale: %d", scale);
+	}
+
+	label->SetLabel(s);
+}
+
+
 TexturePanel::TexturePanel(wxWindow *parent) 
 	: wxPanel(parent)
 {
 	wxListCtrl *list = new TextureList(this);
 	wxButton *open = new wxButton(this, wxID_OPEN, "Open");
+	wxStaticText *label = new wxStaticText(this, wxID_ANY, wxEmptyString);
+	wxSlider *slider = new wxSlider(this, wxID_ANY, 0, 0, 10);
 
 	wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
 	sizer->Add(open, 0, wxEXPAND);
+	sizer->Add(label, 0, wxEXPAND);
+	sizer->Add(slider, 0, wxEXPAND);
 	sizer->Add(list, 1, wxEXPAND);
 	SetSizer(sizer);
 
+	m_label = label;
+	m_slider = slider;
+
+	SetScaleLabel(m_label, m_slider->GetValue());
+
 	Bind(wxEVT_BUTTON, &TexturePanel::OnOpen, this, wxID_OPEN);
+	Bind(wxEVT_SLIDER, &TexturePanel::OnSlider, this);
+}
+
+
+void TexturePanel::OnSlider(wxCommandEvent &e)
+{
+	SetScaleLabel(m_label, m_slider->GetValue());
 }
 
 
@@ -37,14 +66,23 @@ void TexturePanel::OnOpen(wxCommandEvent &e)
 	canvas->GetEditor().AddTexture(dialog.GetPath());
 }
 
+int TexturePanel::GetSliderValue()
+{
+	return m_slider->GetValue();
+}
+
 
 TextureList::TextureList(wxWindow *parent)
 	: wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-		wxLC_VIRTUAL | wxLC_REPORT | wxLC_SINGLE_SEL | wxLC_NO_HEADER)
+		wxLC_VIRTUAL | wxLC_REPORT | wxLC_SINGLE_SEL)
 {
 	wxImageList *imglist = new wxImageList(ICON_SIZE, ICON_SIZE);
 	AssignImageList(imglist, wxIMAGE_LIST_SMALL);
-	InsertColumn(0, wxEmptyString, wxLIST_FORMAT_CENTER, wxLIST_AUTOSIZE_USEHEADER);
+	InsertColumn(ColumnID::PREVIEW, "Preview", wxLIST_FORMAT_CENTER, ICON_SIZE + 8);
+	InsertColumn(ColumnID::NAME, "Name", wxLIST_FORMAT_CENTER, wxLIST_AUTOSIZE);
+	InsertColumn(ColumnID::SIZE, "Size", wxLIST_FORMAT_CENTER, wxLIST_AUTOSIZE);
+	InsertColumn(ColumnID::TYPE, "Type", wxLIST_FORMAT_CENTER, wxLIST_AUTOSIZE);
+
 }
 
 
@@ -52,7 +90,22 @@ wxString TextureList::OnGetItemText(long item, long col) const
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
 	std::vector<Texture> &textures = canvas->GetEditor().GetTextures();
-	return textures[item].GetFileName().GetName();
+
+	wxString s;
+
+	switch(col) {
+	case ColumnID::PREVIEW:
+		return wxEmptyString;
+	case ColumnID::NAME:
+		return textures[item].GetFileName().GetName();
+	case ColumnID::SIZE:
+		s.Printf("%llux%llu", textures[item].m_width, textures[item].m_height);
+		return s;
+	case ColumnID::TYPE:
+		return textures[item].GetFileName().GetExt();
+	}
+
+	return wxEmptyString;
 };
 
 

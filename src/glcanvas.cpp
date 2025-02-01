@@ -87,9 +87,9 @@ void GLCanvas::DrawLine(const Point2D &a, const Point2D &b, float thickness, con
 	GLContext::GetInstance()->AddLine(a, b, thickness, color);
 }
 
-void GLCanvas::TexturePoly(const Point2D pts[], size_t npts, Texture &texture, const Color &color)
+void GLCanvas::TexturePoly(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color)
 {
-	GLContext::GetInstance()->AddPolygon(pts, npts, texture, color);
+	GLContext::GetInstance()->AddPolygon(pts, npts, uv, texture, color);
 }
 
 void GLCanvas::TexturePoly(const ConvexPolygon &p, const Color &color)

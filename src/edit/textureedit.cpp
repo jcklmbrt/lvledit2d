@@ -8,10 +8,7 @@ TextureEdit::TextureEdit(GLCanvas *canvas)
 	: IBaseEdit(canvas)
 {
 	Bind(wxEVT_LEFT_DOWN, &TextureEdit::OnMouseLeftDown, this);
-	Bind(wxEVT_MOTION, &TextureEdit::OnMouseMotion, this);
-	Bind(wxEVT_LEFT_UP, &TextureEdit::OnMouseLeftUp, this);
-
-	m_context->SetSelectedPoly(nullptr);
+	Bind(wxEVT_RIGHT_DOWN, &TextureEdit::OnMouseRightDown, this);
 };
 
 void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
@@ -19,9 +16,11 @@ void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 	Point2D wpos = m_view.MouseToWorld(e);
 	ConvexPolygon *poly = m_context->SelectPoly(wpos);
 	TextureList *tlist = TextureList::GetInstance();
+	TexturePanel *tpanel = TexturePanel::GetInstance();
 
-	if(poly != nullptr && tlist != nullptr) {
+	if(poly != nullptr) {
 		poly->SetTexture(tlist->GetSelected());
+		poly->SetScale(tpanel->GetSliderValue());
 	}
 
 	m_canvas->Refresh(true);
@@ -29,14 +28,19 @@ void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 	e.Skip();
 }
 
-
-void TextureEdit::OnMouseMotion(wxMouseEvent &e)
+void TextureEdit::OnMouseRightDown(wxMouseEvent &e)
 {
+	Point2D wpos = m_view.MouseToWorld(e);
+	ConvexPolygon *poly = m_context->SelectPoly(wpos);
+	TexturePanel *tpanel = TexturePanel::GetInstance();
+
+	if(poly != nullptr && tpanel != nullptr) {
+		poly->SetTexture(-1);
+		poly->SetScale(tpanel->GetSliderValue());
+	}
+
+	m_canvas->Refresh(true);
+
 	e.Skip();
 }
 
-
-void TextureEdit::OnMouseLeftUp(wxMouseEvent &e)
-{
-	e.Skip();
-}

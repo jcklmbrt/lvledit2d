@@ -83,7 +83,7 @@ void GLContext::SetMatrices(const Matrix4 &proj, const Matrix4 &view)
 void GLContext::DrawElements()
 {
 	m_grid->DrawGrid();
-	//m_texture->DrawElements();
+	m_texture->CopyBuffersAndDrawElements();
 	m_solid->DrawElements();
 }
 
@@ -91,7 +91,7 @@ void GLContext::DrawElements()
 void GLContext::ClearBuffers()
 {
 	m_solid->ClearBuffers();
-	//m_texture->ClearBuffers();
+	m_texture->ClearBuffers();
 }
 
 
@@ -111,16 +111,15 @@ void GLContext::AddPolygon(const ConvexPolygon &poly, const Color &color)
 	m_texture->AddPolygon(poly, color);
 }
 
-void GLContext::AddPolygon(const Point2D pts[], size_t npts, Texture &texture, const Color &color)
+void GLContext::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color)
 {
-	m_texture->AddPolygon(pts, npts, texture, color);
+	m_texture->AddPolygon(pts, npts, uv, texture, color);
 }
 
 
 void GLContext::CopyBuffers()
 {
 	m_solid->CopyBuffers();
-	m_texture->CopyBuffers();
 }
 
 
