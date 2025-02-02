@@ -1,8 +1,8 @@
-#include "src/glbackgroundgrid.hpp"
-#include "src/glcontext.hpp"
+#include "src/gl/glbackgroundgrid.hpp"
+#include "src/gl/glcontext.hpp"
 
 
-GLBackgroundGrid::GLBackgroundGrid()
+void GLBackgroundGrid::Init()
 {
 	static const char *fs_src = R"(
 		#version 330 core

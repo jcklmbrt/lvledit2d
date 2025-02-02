@@ -1,7 +1,7 @@
 #include <wx/event.h>
 
-#include "src/glcanvas.hpp"
-#include "src/glbackgroundgrid.hpp"
+#include "src/gl/glcanvas.hpp"
+#include "src/gl/glbackgroundgrid.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/rectangleedit.hpp"
 
@@ -84,14 +84,12 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 
 	if(mpos.x > m_start.x) {
 		m_rect.SetRight(mpos.x);
-	}
-	else {
+	} else {
 		m_rect.SetLeft(mpos.x);
 	}
 	if(mpos.y > m_start.y) {
 		m_rect.SetBottom(mpos.y);
-	}
-	else {
+	} else {
 		m_rect.SetTop(mpos.y);
 	}
 }

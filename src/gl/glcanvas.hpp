@@ -6,7 +6,7 @@
 #include <wx/glcanvas.h>
 
 #include "src/edit/editorcontext.hpp"
-#include "src/glcontext.hpp"
+#include "src/gl/glcontext.hpp"
 #include "src/viewmatrix.hpp"
 
 class Notebook;

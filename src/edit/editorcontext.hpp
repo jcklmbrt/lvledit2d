@@ -3,9 +3,10 @@
 
 #include <vector>
 #include <wx/filename.h>
+#include "src/gl/texture.hpp"
 #include "src/toolbar.hpp"
 #include "src/geometry.hpp"
-#include "src/gltexturegeometry.hpp"
+#include "src/gl/gltexturegeometry.hpp"
 
 class GLCanvas;
 class EditorContext;

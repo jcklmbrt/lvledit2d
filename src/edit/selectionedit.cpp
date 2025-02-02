@@ -2,7 +2,7 @@
 #include <cmath>
 #include <wx/event.h>
 
-#include "src/glcanvas.hpp"
+#include "src/gl/glcanvas.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/selectionedit.hpp"
 

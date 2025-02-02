@@ -3,6 +3,7 @@
 #define _VIEWMATRIX_HPP
 
 #include <wx/event.h>
+#include "src/singleton.hpp"
 #include "src/geometry.hpp"
 
 #define MAX_PAN_X  10000.0
@@ -12,7 +13,7 @@
 #define MAX_ZOOM 10.0
 #define MIN_ZOOM 0.01
 
-class ViewMatrix
+class ViewMatrix : Immobile
 {
 public:
 	ViewMatrix();

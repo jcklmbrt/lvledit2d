@@ -1,6 +1,6 @@
 #include <wx/wx.h>
 
-#include "src/glcanvas.hpp"
+#include "src/gl/glcanvas.hpp"
 #include "src/historylist.hpp"
 #include "src/edit/editorcontext.hpp"
 

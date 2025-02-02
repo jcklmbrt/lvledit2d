@@ -3,8 +3,8 @@
 #include <wx/geometry.h>
 
 #include "src/geometry.hpp"
-#include "src/glcanvas.hpp"
-#include "src/glbackgroundgrid.hpp"
+#include "src/gl/glcanvas.hpp"
+#include "src/gl/glbackgroundgrid.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/lineedit.hpp"
 

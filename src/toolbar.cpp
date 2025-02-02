@@ -3,7 +3,7 @@
 #include <wx/wx.h>
 #include "src/toolbar.hpp"
 #include "src/lvledit2d.hpp"
-#include "src/glcanvas.hpp"
+#include "src/gl/glcanvas.hpp"
 
 #include "res/line.xpm"
 #include "res/quad.xpm"

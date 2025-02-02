@@ -2,6 +2,7 @@
 #define _GLSOLIDGEOMETRY_HPP
 
 #include <glad/gl.h>
+#include "src/singleton.hpp"
 #include "src/geometry.hpp"
 
 struct SolidVertex
@@ -10,10 +11,10 @@ struct SolidVertex
 	Color color;
 };
 
-class GLSolidGeometry
+class GLSolidGeometry : Immobile
 {
 public:
-	GLSolidGeometry();
+	void Init();
 	~GLSolidGeometry();
 	void ClearBuffers();
 	void CopyBuffers();

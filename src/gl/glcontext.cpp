@@ -2,11 +2,11 @@
 #include <glad/gl.h>
 #include <wx/wx.h>
 
-#include "src/glsolidgeometry.hpp"
-#include "src/glbackgroundgrid.hpp"
-#include "src/gltexturegeometry.hpp"
+#include "src/gl/glsolidgeometry.hpp"
+#include "src/gl/glbackgroundgrid.hpp"
+#include "src/gl/gltexturegeometry.hpp"
+#include "src/gl/glcontext.hpp"
 #include "src/geometry.hpp"
-#include "src/glcontext.hpp"
 
 
 GLuint GLContext::CompileShaders(const char *fs_src, const char *vs_src)
@@ -75,51 +75,51 @@ void GLContext::Clear(const Color &color)
 
 void GLContext::SetMatrices(const Matrix4 &proj, const Matrix4 &view)
 {
-	m_solid->SetMatrices(proj, view);
-	m_texture->SetMatrices(proj, view);
-	m_grid->SetMatrices(proj, view);
+	m_solid.SetMatrices(proj, view);
+	m_texture.SetMatrices(proj, view);
+	m_grid.SetMatrices(proj, view);
 }
 
 void GLContext::DrawElements()
 {
-	m_grid->DrawGrid();
-	m_texture->CopyBuffersAndDrawElements();
-	m_solid->DrawElements();
+	m_grid.DrawGrid();
+	m_texture.CopyBuffersAndDrawElements();
+	m_solid.DrawElements();
 }
 
 
 void GLContext::ClearBuffers()
 {
-	m_solid->ClearBuffers();
-	m_texture->ClearBuffers();
+	m_solid.ClearBuffers();
+	m_texture.ClearBuffers();
 }
 
 
 void GLContext::AddRect(const Rect2D &rect, const Color &color)
 {
-	m_solid->AddRect(rect, color);
+	m_solid.AddRect(rect, color);
 }
 
 
 void GLContext::AddLine(const Point2D &a, const Point2D &b, float thickness, const Color &color)
 {
-	m_solid->AddLine(a, b, thickness, color);
+	m_solid.AddLine(a, b, thickness, color);
 }
 
 void GLContext::AddPolygon(const ConvexPolygon &poly, const Color &color)
 {
-	m_texture->AddPolygon(poly, color);
+	m_texture.AddPolygon(poly, color);
 }
 
 void GLContext::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color)
 {
-	m_texture->AddPolygon(pts, npts, uv, texture, color);
+	m_texture.AddPolygon(pts, npts, uv, texture, color);
 }
 
 
 void GLContext::CopyBuffers()
 {
-	m_solid->CopyBuffers();
+	m_solid.CopyBuffers();
 }
 
 
@@ -136,16 +136,7 @@ GLContext::GLContext(wxGLCanvas *parent)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_MULTISAMPLE);
 
-	m_grid = new GLBackgroundGrid();
-	m_solid = new GLSolidGeometry();
-	m_texture = new GLTextureGeometry();
+	m_grid.Init();
+	m_solid.Init();
+	m_texture.Init();
 }
-
-
-GLContext::~GLContext()
-{
-	delete m_grid;
-	delete m_solid;
-	delete m_texture;
-}
-

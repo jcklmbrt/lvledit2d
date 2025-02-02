@@ -2,9 +2,9 @@
 #include "src/edit/editorcontext.hpp"
 #include "src/historylist.hpp"
 #include "src/texturepanel.hpp"
-#include "src/glcanvas.hpp"
+#include "src/gl/glcanvas.hpp"
+#include "src/gl/glcontext.hpp"
 #include "src/mainframe.hpp"
-#include "src/glcontext.hpp"
 #include "src/notebook.hpp"
 
 

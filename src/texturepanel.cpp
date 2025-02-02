@@ -1,5 +1,6 @@
 #include <wx/wx.h>
-#include "src/glcanvas.hpp"
+#include "src/gl/texture.hpp"
+#include "src/gl/glcanvas.hpp"
 #include "src/texturepanel.hpp"
 
 
@@ -7,9 +8,9 @@ static void SetScaleLabel(wxStaticText *label, int scale)
 {
 	wxString s;
 	if(scale == 0) {
-		s.Printf("Texture Scale: Fit Bounding-Box");
+		s.Printf("Texture Scale: Fit Bounding Box");
 	} else {
-		s.Printf("Texture Scale: %d", scale);
+		s.Printf("Texture Scale: %d x Background Grid", scale);
 	}
 
 	label->SetLabel(s);
@@ -90,6 +91,7 @@ wxString TextureList::OnGetItemText(long item, long col) const
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
 	std::vector<Texture> &textures = canvas->GetEditor().GetTextures();
+	const Texture &texture = textures[item];
 
 	wxString s;
 
@@ -97,12 +99,12 @@ wxString TextureList::OnGetItemText(long item, long col) const
 	case ColumnID::PREVIEW:
 		return wxEmptyString;
 	case ColumnID::NAME:
-		return textures[item].GetFileName().GetName();
+		return texture.GetFileName().GetName();
 	case ColumnID::SIZE:
-		s.Printf("%llux%llu", textures[item].m_width, textures[item].m_height);
+		s.Printf("%llux%llu", texture.GetWidth(), texture.GetHeight());
 		return s;
 	case ColumnID::TYPE:
-		return textures[item].GetFileName().GetExt();
+		return texture.GetFileName().GetExt();
 	}
 
 	return wxEmptyString;

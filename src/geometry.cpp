@@ -1,7 +1,7 @@
 #include <array>
 #include <algorithm>
-#include "src/glcanvas.hpp"
-#include "src/glbackgroundgrid.hpp"
+#include "src/gl/glcanvas.hpp"
+#include "src/gl/glbackgroundgrid.hpp"
 #include "src/geometry.hpp"
 
 

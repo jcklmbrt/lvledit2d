@@ -1,6 +1,6 @@
 #include "src/viewmatrix.hpp"
 #include "src/texturepanel.hpp"
-#include "src/glcanvas.hpp"
+#include "src/gl/glcanvas.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/textureedit.hpp"
 

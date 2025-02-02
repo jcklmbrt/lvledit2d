@@ -4,7 +4,7 @@
 
 #include "src/geometry.hpp"
 #include "src/lvledit2d.hpp"
-#include "src/glcanvas.hpp"
+#include "src/gl/glcanvas.hpp"
 #include "src/edit/selectionedit.hpp"
 #include "src/edit/rectangleedit.hpp"
 #include "src/edit/lineedit.hpp"

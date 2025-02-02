@@ -5,8 +5,8 @@
 #include <wx/glcanvas.h>
 #include "src/lvledit2d.hpp"
 #include "src/notebook.hpp"
-#include "src/glcontext.hpp"
-#include "src/glcanvas.hpp"
+#include "src/gl/glcontext.hpp"
+#include "src/gl/glcanvas.hpp"
 
 
 GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)

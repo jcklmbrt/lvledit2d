@@ -6,10 +6,10 @@
 
 #include "src/geometry.hpp"
 #include "src/singleton.hpp"
+#include "src/gl/glsolidgeometry.hpp"
+#include "src/gl/gltexturegeometry.hpp"
+#include "src/gl/glbackgroundgrid.hpp"
 
-class GLSolidGeometry;
-class GLTextureGeometry;
-class GLBackgroundGrid;
 class wxFileName;
 
 class GLContext : public wxGLContext,
@@ -17,7 +17,6 @@ class GLContext : public wxGLContext,
 {
 public:
 	GLContext(wxGLCanvas *parent);
-	virtual ~GLContext();
 	void ClearBuffers();
 	void CopyBuffers();
 	void Clear(const Color &color);
@@ -29,9 +28,9 @@ public:
 	void AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color);
 	static GLuint CompileShaders(const char *fs_src, const char *vs_src);
 private:
-	GLBackgroundGrid *m_grid;
-	GLSolidGeometry *m_solid;
-	GLTextureGeometry *m_texture;
+	GLBackgroundGrid m_grid;
+	GLSolidGeometry m_solid;
+	GLTextureGeometry m_texture;
 };
 
 #endif

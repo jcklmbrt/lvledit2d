@@ -4,7 +4,7 @@
 #include "src/mainframe.hpp"
 #include "src/historylist.hpp"
 #include "src/lvledit2d.hpp"
-#include "src/glcanvas.hpp"
+#include "src/gl/glcanvas.hpp"
 #include "src/notebook.hpp"
 #include "src/texturepanel.hpp"
 

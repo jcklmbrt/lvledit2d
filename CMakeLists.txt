@@ -45,9 +45,13 @@ target_sources(lvledit2d PRIVATE
 	"src/edit/lineedit.cpp"
 	"src/edit/editorcontext.cpp"
 	"src/historylist.cpp"
-    "src/glcanvas.cpp"
-	"src/glcontext.cpp"
+    "src/gl/glcanvas.cpp"
+	"src/gl/glcontext.cpp"
 	"src/notebook.cpp"
-	"src/glbackgroundgrid.cpp"
-	"src/glsolidgeometry.cpp"
-	"src/gltexturegeometry.cpp" "src/edit/textureedit.cpp" "src/texturepanel.cpp")
+	"src/gl/glbackgroundgrid.cpp"
+	"src/gl/glsolidgeometry.cpp"
+	"src/gl/gltexturegeometry.cpp" 
+	"src/edit/textureedit.cpp" 
+	"src/texturepanel.cpp" 
+	"src/gl/texture.cpp"
+)

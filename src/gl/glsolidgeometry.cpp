@@ -1,8 +1,8 @@
-#include "src/glcontext.hpp"
-#include "src/glsolidgeometry.hpp"
+#include "src/gl/glcontext.hpp"
+#include "src/gl/glsolidgeometry.hpp"
 
 
-GLSolidGeometry::GLSolidGeometry()
+void GLSolidGeometry::Init()
 {
 	static const char *vs_src = R"(
 		#version 330 core

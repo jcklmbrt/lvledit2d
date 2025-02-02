@@ -8,7 +8,7 @@ class LvlEdit2D : public wxApp
 {
 public:
 	virtual bool OnInit();
-	virtual int  OnExit();
+	virtual int OnExit();
 };
 
 DECLARE_APP(LvlEdit2D)
