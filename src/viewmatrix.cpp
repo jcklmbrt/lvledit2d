@@ -4,13 +4,13 @@
 #include "src/viewmatrix.hpp"
 
 
-ViewMatrix::ViewMatrix()
+ViewMatrixBase::ViewMatrixBase()
 {
 	m_view = glm::identity<Matrix4>();
 }
 
 
-wxPoint ViewMatrix::WorldToScreen(Point2D world) const
+wxPoint ViewMatrixBase::WorldToScreen(Point2D world) const
 {
 	wxPoint screen;
 	world = m_view * glm::vec4(world, 0.0, 1.0);
@@ -20,7 +20,7 @@ wxPoint ViewMatrix::WorldToScreen(Point2D world) const
 }
 
 
-Point2D ViewMatrix::ScreenToWorld(wxPoint screen) const
+Point2D ViewMatrixBase::ScreenToWorld(wxPoint screen) const
 {
 	Point2D s;
 	s.x = static_cast<float>(screen.x);
@@ -29,14 +29,14 @@ Point2D ViewMatrix::ScreenToWorld(wxPoint screen) const
 }
 
 
-Point2D ViewMatrix::MouseToWorld(wxMouseEvent &e) const
+Point2D ViewMatrixBase::MouseToWorld(wxMouseEvent &e) const
 {
 	wxPoint mpos = e.GetPosition();
 	return ScreenToWorld(e.GetPosition());
 }
 
 
-void ViewMatrix::SetupMatrix()
+void ViewMatrixBase::SetupMatrix()
 {
 	glm::vec3 zoom = { m_zoom, m_zoom, 1.0 };
 	glm::vec3 pan = { m_pan, 0.0 };
@@ -47,7 +47,7 @@ void ViewMatrix::SetupMatrix()
 }
 
 
-void ViewMatrix::Zoom(Point2D p, float factor)
+void ViewMatrixBase::Zoom(Point2D p, float factor)
 {
 	float zoom = m_zoom * factor;
 	if(zoom > MAX_ZOOM || zoom < MIN_ZOOM) {
@@ -68,7 +68,7 @@ void ViewMatrix::Zoom(Point2D p, float factor)
 }
 
 
-void ViewMatrix::Pan(Point2D delta)
+void ViewMatrixBase::Pan(Point2D delta)
 {
 	Point2D pan = m_pan + delta / m_zoom;
 	if(pan.x > MAX_PAN_X || pan.x < MIN_PAN_X ||

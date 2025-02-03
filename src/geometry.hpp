@@ -85,7 +85,7 @@ private:
 	float m_a, m_b, m_c;
 };
 
-class Texture;
+class GLTexture;
 
 class ConvexPolygon
 {
@@ -104,11 +104,14 @@ public:
 	bool Intersects(const ConvexPolygon &other) const;
 	bool Intersects(const Rect2D &rect) const;
 	bool Contains(const Point2D &pt) const;
-	Texture *GetTexture() const;
-	void SetTexture(size_t i) { m_texture = i; }
+	GLTexture *GetTexture() const;
+	void SetTexture(size_t index, int scale)
+	{
+		m_texture = index;
+		m_texturescale = scale;
+	}
 	Rect2D GetUV() const;
 	Rect2D GetUV(const Rect2D &aabb) const;
-	void SetScale(int i) { m_texturescale = i; }
 private:
 	Rect2D m_aabb;
 	std::vector<Plane2D> m_planes;
@@ -116,7 +119,7 @@ private:
 	std::vector<Point2D> m_points;
 
 	size_t m_texture = -1;
-	int m_texturescale = 1;
+	int m_texturescale; 
 };
 
 #endif

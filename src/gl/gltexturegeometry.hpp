@@ -29,7 +29,7 @@ public:
 	void SetMatrices(const Matrix4 &proj, const Matrix4 &view);
 public:
 	void AddPolygon(const ConvexPolygon &poly, const Color &color);
-	void AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color);
+	void AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color);
 private:
 	GLuint m_vtxbuf;
 	GLuint m_idxbuf;

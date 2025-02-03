@@ -111,7 +111,7 @@ void GLContext::AddPolygon(const ConvexPolygon &poly, const Color &color)
 	m_texture.AddPolygon(poly, color);
 }
 
-void GLContext::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color)
+void GLContext::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color)
 {
 	m_texture.AddPolygon(pts, npts, uv, texture, color);
 }
@@ -134,7 +134,7 @@ GLContext::GLContext(wxGLCanvas *parent)
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_MULTISAMPLE);
+	glDisable(GL_MULTISAMPLE);
 
 	m_grid.Init();
 	m_solid.Init();

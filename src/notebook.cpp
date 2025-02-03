@@ -31,7 +31,7 @@ void Notebook::Save(bool force_rename)
 
 	EditorContext &edit = dp->GetEditor();
 
-	if(!edit.HasFile() || force_rename) {
+	if(edit.File == nullptr || force_rename) {
 		wxFileDialog dialog(GetParent(), "Save file", "", "",
 			"LvlEdit2d files (*.l2d)|*.l2d", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 
@@ -50,13 +50,13 @@ void Notebook::Save(bool force_rename)
 	}
 
 	int sel = GetSelection();
-	SetPageText(sel, edit.GetName());
+	SetPageText(sel, edit.Name);
 }
 
 
 bool Notebook::AddCanvas(GLCanvas *canvas)
 {
-	wxString name = canvas->GetEditor().GetName();
+	wxString name = canvas->GetEditor().Name;
 
 	GLContext *ctx;
 
@@ -125,8 +125,8 @@ void Notebook::OnPageChange(wxAuiNotebookEvent &e)
 	MainFrame::GetInstance()->Sidebook_Show();
 
 	if(dp != nullptr) {
-		tlist->SetItemCount(dp->GetEditor().GetTextures().size());
-		hlist->SetItemCount(dp->GetEditor().GetHistory().size());
+		tlist->SetItemCount(dp->Editor.Textures.size());
+		hlist->SetItemCount(dp->Editor.Actions.size());
 	}
 	else {
 		hlist->SetItemCount(0);

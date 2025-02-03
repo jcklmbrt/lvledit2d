@@ -1,6 +1,7 @@
 #include <wx/image.h>
 #include <wx/listctrl.h>
 #include <wx/bitmap.h>
+#include "glad/gl.h"
 #include "src/gl/texture.hpp"
 #include "src/gl/glcanvas.hpp"
 #include "src/gl/glcontext.hpp"
@@ -120,10 +121,13 @@ static TextureVertex SetVertex(const Point2D &pt, const Color &color, const Rect
 }
 
 
-void GLTextureGeometry::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color)
+void GLTextureGeometry::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color)
 {
-	GLuint t = texture.GetTextureObject();
-	TextureVertices &vtc = m_batches[t];
+	if(!glIsTexture(texture.TextureObject)) {
+		InitTextureObject(&texture);
+	}
+
+	TextureVertices &vtc = m_batches[texture.TextureObject];
 
 	TextureVertex start = SetVertex(pts[0], color, uv);
 
@@ -145,7 +149,7 @@ void GLTextureGeometry::AddPolygon(const Point2D pts[], size_t npts, const Rect2
 
 void GLTextureGeometry::AddPolygon(const ConvexPolygon &poly, const Color &color)
 {
-	Texture *texture = poly.GetTexture();
+	GLTexture *texture = poly.GetTexture();
 	if(texture == nullptr) {
 		return;
 	}
@@ -157,8 +161,11 @@ void GLTextureGeometry::AddPolygon(const ConvexPolygon &poly, const Color &color
 	size_t npoints = pts.size();
 	TextureVertex start = SetVertex(pts[0], color, aabb);
 
-	GLuint t = texture->GetTextureObject();
-	TextureVertices &vtc = m_batches[t];
+	if(!glIsTexture(texture->TextureObject)) {
+		InitTextureObject(texture);
+	}
+
+	TextureVertices &vtc = m_batches[texture->TextureObject];
 
 	vtc.vtx.push_back(start);
 	size_t start_idx = vtc.vtx.size() - 1;

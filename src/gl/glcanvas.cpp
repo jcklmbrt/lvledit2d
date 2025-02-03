@@ -11,8 +11,8 @@
 
 GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
 	: wxGLCanvas(parent, attrs),
-	  m_editor(this),
-	  m_view(this)
+	  Editor(this),
+	  ViewMatrix(this)
 {
 	wxASSERT(wxGLCanvas::IsDisplaySupported(attrs));
 
@@ -20,7 +20,7 @@ GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
 
 	float width = static_cast<float>(size.x);
 	float height = static_cast<float>(size.y);
-	m_proj = glm::ortho(0.0f, width, height, 0.0f);
+	ProjectionMatrix = glm::ortho(0.0f, width, height, 0.0f);
 
 	Bind(wxEVT_SIZE, &GLCanvas::OnSize, this);
 	Bind(wxEVT_PAINT, &GLCanvas::OnPaint, this);
@@ -31,15 +31,15 @@ GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
 	Bind(wxEVT_MOUSEWHEEL, &GLCanvas::OnMouse, this);
 	Bind(wxEVT_MOTION, &GLCanvas::OnMouse, this);
 
-	PushEventHandler(&m_editor);
-	PushEventHandler(&m_view);
+	PushEventHandler(&Editor);
+	PushEventHandler(&ViewMatrix);
 }
 
 
 GLCanvas::~GLCanvas()
 {
-	RemoveEventHandler(&m_view);
-	RemoveEventHandler(&m_editor);
+	RemoveEventHandler(&ViewMatrix);
+	RemoveEventHandler(&Editor);
 }
 
 
@@ -60,7 +60,7 @@ GLCanvas *GLCanvas::GetCurrent()
 
 void GLCanvas::OnMouse(wxMouseEvent &e)
 {
-	m_mousepos = m_view.MouseToWorld(e);
+	MousePosition = ViewMatrix.MouseToWorld(e);
 	Refresh(false);
 }
 
@@ -72,7 +72,7 @@ void GLCanvas::OutlineRect(const Rect2D &rect, float thickness, const Color &col
 	Point2D rb = rect.GetRightBottom();
 	Point2D rt = rect.GetRightTop();
 
-	thickness /= m_view.GetZoom();
+	thickness /= ViewMatrix.GetZoom();
 	GLContext *ctx = GLContext::GetInstance();
 	ctx->AddLine(lt, rt, thickness, color);
 	ctx->AddLine(rt, rb, thickness, color);
@@ -83,11 +83,11 @@ void GLCanvas::OutlineRect(const Rect2D &rect, float thickness, const Color &col
 
 void GLCanvas::DrawLine(const Point2D &a, const Point2D &b, float thickness, const Color &color)
 {
-	thickness /= m_view.GetZoom();
+	thickness /= ViewMatrix.GetZoom();
 	GLContext::GetInstance()->AddLine(a, b, thickness, color);
 }
 
-void GLCanvas::TexturePoly(const Point2D pts[], size_t npts, const Rect2D &uv, Texture &texture, const Color &color)
+void GLCanvas::TexturePoly(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color)
 {
 	GLContext::GetInstance()->AddPolygon(pts, npts, uv, texture, color);
 }
@@ -100,7 +100,7 @@ void GLCanvas::TexturePoly(const ConvexPolygon &p, const Color &color)
 
 void GLCanvas::DrawPoint(const Point2D &pt, const Color &color)
 {
-	float thickness = 1.0 / m_view.GetZoom();
+	float thickness = 1.0 / ViewMatrix.GetZoom();
 	Point2D mins = { pt.x - thickness * 3.0f, pt.y - thickness * 3.0f };
 	Point2D maxs = { pt.x + thickness * 3.0f, pt.y + thickness * 3.0f };
 	Rect2D rect = Rect2D(mins, maxs);
@@ -116,7 +116,7 @@ void GLCanvas::DrawPoint(const Point2D &pt, const Color &color)
 
 void GLCanvas::OutlinePoly(const Point2D points[], size_t npoints, float thickness, const Color &color)
 {
-	thickness /= m_view.GetZoom();
+	thickness /= ViewMatrix.GetZoom();
 
 	for(size_t i = 0; i < npoints; i++) {
 		Point2D a = points[i];
@@ -139,10 +139,10 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 	ctx->Clear(bg);
 	ctx->ClearBuffers();
 
-	m_editor.OnDraw();
+	Editor.OnDraw();
 
 	ctx->CopyBuffers();
-	ctx->SetMatrices(m_proj, m_view.GetMatrix());
+	ctx->SetMatrices(ProjectionMatrix, ViewMatrix.GetMatrix());
 	ctx->DrawElements();
 
 	SwapBuffers();
@@ -161,5 +161,5 @@ void GLCanvas::OnSize(wxSizeEvent &e)
 
 	float width = static_cast<float>(size.x);
 	float height = static_cast<float>(size.y);
-	m_proj = glm::ortho(0.0f, width, height, 0.0f);
+	ProjectionMatrix = glm::ortho(0.0f, width, height, 0.0f);
 }

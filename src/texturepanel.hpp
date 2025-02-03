@@ -38,8 +38,7 @@ class TextureList : public wxListCtrl,
 	{
 		PREVIEW,
 		NAME,
-		SIZE,
-		TYPE
+		SIZE
 	};
 public:
 	TextureList(wxWindow *parent);

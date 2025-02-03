@@ -6,36 +6,24 @@
 
 #define THUMB_SIZE_X 32
 #define THUMB_SIZE_Y 32
+#define MAX_TEXTURE_NAME 32
 
-class Texture
+struct GLTexture
 {
-public:
-	Texture(const wxFileName &filename);
-	Texture(Texture &&other) noexcept;
-	~Texture();
-	void InitTextureObject();
-	GLuint GetTextureObject();
-	const wxFileName &GetFileName() const { return m_filename; }
-	size_t GetWidth() const { return m_width; }
-	size_t GetHeight() const { return m_height; }
-	size_t GetIndex() const { return m_index; }
-	bool operator==(const Texture &other);
-private:
-	uint32_t FNV1A();
-	uint32_t m_hash;
-
-	/* disable copying */
-	Texture(const Texture &) = delete;
-	Texture &operator=(const Texture &) = default;
-
-	GLuint m_texture = 0;
-	unsigned char *m_data;
-	size_t m_pixelwidth;
-	size_t m_width;
-	size_t m_height;
-	wxFileName m_filename;
-	size_t m_index;
+	GLuint TextureObject = 0;
+	unsigned char *Data;
+	size_t PixelWidth;
+	size_t Width;
+	size_t Height;
+	char Name[MAX_TEXTURE_NAME];
+	size_t ThumbIndex;
+	uint32_t HashValue;
 };
 
+void LoadTextureFromMemory(GLTexture *Texture, size_t Width, size_t Height, size_t PixelWidth, const char *Name, unsigned char *Data);
+void LoadTextureFromFile(GLTexture *Texture, const wxFileName &FileName);
+void DeleteTexture(GLTexture *Texture);
+void InitTextureObject(GLTexture *Texture);
+bool EqualTextures(GLTexture *A, GLTexture *B);
 
 #endif

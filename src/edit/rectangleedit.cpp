@@ -15,16 +15,15 @@ RectangleEdit::RectangleEdit(GLCanvas *canvas)
 
 void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	Point2D world_pos = m_view.MouseToWorld(e);
+	Point2D world_pos = View.MouseToWorld(e);
 
 	e.Skip(true);
 
-	std::vector<ConvexPolygon> &polys = m_context->GetPolys();
 	bool intersects = false;
 
 	if(m_inedit) {
 		/* 2nd left click */
-		for(ConvexPolygon &poly : polys) {
+		for(ConvexPolygon &poly : Context->Polygons) {
 			if(poly.Intersects(m_rect)) {
 				intersects = true;
 				break;
@@ -34,12 +33,12 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 		if(!intersects && !m_onepoint) {
 			EditAction_Rect action;
 			action.rect = m_rect;
-			m_context->AppendAction(action);
+			Context->AppendAction(action);
 			m_inedit = false;
 		}
 	} else {
 		/* 1st left click*/
-		for(ConvexPolygon &poly : polys) {
+		for(ConvexPolygon &poly : Context->Polygons) {
 			if(poly.Contains(world_pos)) {
 				intersects = true;
 				break;
@@ -47,7 +46,7 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 		}
 
 		if(!intersects) {
-			if(m_canvas->IsSnapToGrid()) {
+			if(Canvas->IsSnapToGrid()) {
 				GLBackgroundGrid::Snap(world_pos);
 			}
 
@@ -67,9 +66,9 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 		return;
 	}
 
-	Point2D mpos = m_view.MouseToWorld(e);
+	Point2D mpos = View.MouseToWorld(e);
 
-	if(m_canvas->IsSnapToGrid()) {
+	if(Canvas->IsSnapToGrid()) {
 		GLBackgroundGrid::Snap(mpos);
 	}
 
@@ -98,30 +97,28 @@ void RectangleEdit::OnDraw()
 {
 	Color color;
 
-	Point2D mpos = m_canvas->GetMousePos();
+	Point2D mpos = Canvas->GetMousePos();
 
-	if(m_canvas->IsSnapToGrid()) {
+	if(Canvas->IsSnapToGrid()) {
 		GLBackgroundGrid::Snap(mpos);
 	}
-
-	std::vector<ConvexPolygon> &polys = m_context->GetPolys();
 
 	if(m_inedit && !m_onepoint) {
 
 		color = WHITE;
 
-		for(ConvexPolygon &poly : polys) {
+		for(ConvexPolygon &poly : Context->Polygons) {
 			if(poly.Intersects(m_rect)) {
 				color = RED;
 			}
 		}
 
-		m_canvas->OutlineRect(m_rect, 3.0, BLACK);
-		m_canvas->OutlineRect(m_rect, 1.0, color);
+		Canvas->OutlineRect(m_rect, 3.0, BLACK);
+		Canvas->OutlineRect(m_rect, 1.0, color);
 	}
 
 	bool intersects = false;
-	for(ConvexPolygon &poly : polys) {
+	for(ConvexPolygon &poly : Context->Polygons) {
 		if(poly.Contains(mpos)) {
 			intersects = true;
 			break;
@@ -133,6 +130,6 @@ void RectangleEdit::OnDraw()
 		color = RED;
 	}
 
-	m_canvas->DrawPoint(mpos, color);
-	m_canvas->DrawPoint(m_start, color);
+	Canvas->DrawPoint(mpos, color);
+	Canvas->DrawPoint(m_start, color);
 }

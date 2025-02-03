@@ -1,3 +1,4 @@
+#include <wx/listbase.h>
 #include <wx/wx.h>
 #include "src/gl/texture.hpp"
 #include "src/gl/glcanvas.hpp"
@@ -82,16 +83,13 @@ TextureList::TextureList(wxWindow *parent)
 	InsertColumn(ColumnID::PREVIEW, "Preview", wxLIST_FORMAT_CENTER, ICON_SIZE + 8);
 	InsertColumn(ColumnID::NAME, "Name", wxLIST_FORMAT_CENTER, wxLIST_AUTOSIZE);
 	InsertColumn(ColumnID::SIZE, "Size", wxLIST_FORMAT_CENTER, wxLIST_AUTOSIZE);
-	InsertColumn(ColumnID::TYPE, "Type", wxLIST_FORMAT_CENTER, wxLIST_AUTOSIZE);
-
 }
 
 
 wxString TextureList::OnGetItemText(long item, long col) const
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
-	std::vector<Texture> &textures = canvas->GetEditor().GetTextures();
-	const Texture &texture = textures[item];
+	const GLTexture &texture = canvas->Editor.Textures[item];
 
 	wxString s;
 
@@ -99,12 +97,10 @@ wxString TextureList::OnGetItemText(long item, long col) const
 	case ColumnID::PREVIEW:
 		return wxEmptyString;
 	case ColumnID::NAME:
-		return texture.GetFileName().GetName();
+		return texture.Name;
 	case ColumnID::SIZE:
-		s.Printf("%llux%llu", texture.GetWidth(), texture.GetHeight());
+		s.Printf("%llux%llu", texture.Width, texture.Height);
 		return s;
-	case ColumnID::TYPE:
-		return texture.GetFileName().GetExt();
 	}
 
 	return wxEmptyString;
@@ -114,8 +110,7 @@ wxString TextureList::OnGetItemText(long item, long col) const
 int TextureList::OnGetItemImage(long item) const
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
-	std::vector<Texture> &textures = canvas->GetEditor().GetTextures();
-	return textures[item].GetIndex();
+	return canvas->Editor.Textures[item].ThumbIndex;
 }
 
 

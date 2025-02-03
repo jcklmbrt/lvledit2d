@@ -13,10 +13,11 @@
 #define MAX_ZOOM 10.0
 #define MIN_ZOOM 0.01
 
-class ViewMatrix : Immobile
+
+class ViewMatrixBase : Immobile
 {
 public:
-	ViewMatrix();
+	ViewMatrixBase();
 	void Pan(Point2D point);
 	void Zoom(Point2D point, float factor);
 	float GetZoom() const { return m_zoom; }
@@ -33,7 +34,7 @@ private:
 
 
 class ViewMatrixCtrl : public wxEvtHandler,
-                       public ViewMatrix
+                       public ViewMatrixBase
 {
 public:
 	ViewMatrixCtrl(wxWindow *parent);

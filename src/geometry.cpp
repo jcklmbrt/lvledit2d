@@ -252,17 +252,16 @@ void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<Point2D> &out) const
 }
 
 
-Texture *ConvexPolygon::GetTexture() const 
+GLTexture *ConvexPolygon::GetTexture() const 
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
 	if(canvas == nullptr) { 
 		return nullptr;
 	}
-	std::vector<Texture> &textures = canvas->GetEditor().GetTextures();
 	if(m_texture == -1) {
 		return nullptr;
 	}
-	return &textures[m_texture];
+	return &canvas->Editor.Textures[m_texture];
 }
 
 

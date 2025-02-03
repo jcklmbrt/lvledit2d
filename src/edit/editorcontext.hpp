@@ -10,37 +10,36 @@
 
 class GLCanvas;
 class EditorContext;
-class ViewMatrix;
+class ViewMatrixBase;
 
 
-enum class EditActionType_t
+enum EditActionType_t
 {
 	/* User actions */
 	LINE,
 	RECT,
-	MOVE
+	MOVE,
+	TEXTURE
 };
 
 
-class EditAction_Base
+
+struct EditAction_Base
 {
-public:
 	EditActionType_t type;
 	size_t poly;
 };
 
 
-class EditAction_Rect : EditAction_Base
+struct EditAction_Rect : EditAction_Base
 {
-public:
 	EditAction_Rect() { type = EditActionType_t::RECT; }
 	Rect2D rect;
 };
 
 
-class EditAction_Line : EditAction_Base
+struct EditAction_Line : EditAction_Base
 {
-public:
 	EditAction_Line() { type = EditActionType_t::LINE; }
 	Rect2D aabb;
 	Point2D start;
@@ -49,24 +48,33 @@ public:
 };
 
 
-class EditAction_Move : EditAction_Base
+struct EditAction_Move : EditAction_Base
 {
-public:
 	EditAction_Move() { type = EditActionType_t::MOVE; }
 	Point2D delta;
 };
 
 
+struct EditAction_Texture : EditAction_Base
+{
+	EditAction_Texture() { type = EditActionType_t::TEXTURE; }
+	size_t Index;
+	int Scale;
+};
+
+
 union EditAction
 {
-	EditAction() {}
+	EditAction() {};
 	EditAction(EditAction_Line &line) : line(line) {}
 	EditAction(EditAction_Rect &rect) : rect(rect) {}
 	EditAction(EditAction_Move &move) : move(move) {}
+	EditAction(EditAction_Texture &texture) : texture(texture) {}
 	EditAction_Base base;
 	EditAction_Rect rect;
 	EditAction_Line line;
 	EditAction_Move move;
+	EditAction_Texture texture;
 };
 
 
@@ -78,9 +86,9 @@ public:
 	virtual void OnDraw();
 	virtual ~IBaseEdit();
 protected:
-	GLCanvas *m_canvas;
-	EditorContext *m_context;
-	const ViewMatrix &m_view;
+	GLCanvas *Canvas;
+	EditorContext *Context;
+	const ViewMatrixBase &View;
 };
 
 
@@ -101,30 +109,39 @@ public:
 	void ResetPoly(size_t i);
 	void OnToolSelect(ToolBar::ID id);
 	void OnDraw();
-	bool IsSnapToGrid() { return m_snaptogrid; }
-	std::vector<ConvexPolygon> &GetPolys() { return m_polys; }
-	std::vector<EditAction> &GetHistory() { return m_actions; }
-	std::vector<Texture> &GetTextures() { return m_textures;  }
-	ConvexPolygon *GetSelectedPoly() { return m_selected; };
-	void SetSelectedPoly(ConvexPolygon *poly) { m_selected = poly; }
-	EditAction &LastAction() { wxASSERT(m_history); return m_actions[m_history - 1]; };
-	size_t HistorySize() { return m_history; }
-	wxString GetName() { return m_name; }
-	bool HasFile() { return m_file != nullptr; }
-private:
-	std::vector<ConvexPolygon> m_polys;
-	std::vector<EditAction> m_actions;
-	std::vector<Texture> m_textures;
-	size_t m_history = 0; /* replacement for m_actions.size() */
-	ConvexPolygon *m_selected = nullptr;
-	FILE *m_file = nullptr;
-	wxString m_name;
-	IBaseEdit *m_state;
-	GLCanvas *m_canvas;
+	ConvexPolygon *GetSelectedPoly();
+	void SetSelectedPoly(ConvexPolygon *P);
+
+	std::vector<ConvexPolygon> Polygons;
+	std::vector<EditAction> Actions;
+	std::vector<GLTexture> Textures;
+	size_t History = 0; /* replacement for m_actions.size() */
+	size_t SelectedPolygon = -1;
+	FILE *File = nullptr;
+	wxString Name;
+	IBaseEdit *State;
+	GLCanvas *Canvas;
 	/* additional options that just default to true.
 	   will add checkboxes later */
-	bool m_snaptogrid = true;
-private:
+	bool SnapToGrid = true;
 };
+
+inline ConvexPolygon *EditorContext::GetSelectedPoly()
+{
+	size_t i = SelectedPolygon;
+	if(i >= 0 && i < Polygons.size()) {
+		return &Polygons[i];
+	} else {
+		return nullptr;
+	}
+}
+
+inline void EditorContext::SetSelectedPoly(ConvexPolygon *P)
+{
+	size_t Idx = P - Polygons.data();
+	if(Idx > 0 && Idx < Polygons.size()) {
+		SelectedPolygon = Idx;
+	}
+}
 
 #endif

@@ -2,6 +2,7 @@
 #include <cmath>
 #include <wx/event.h>
 
+#include "src/gl/glbackgroundgrid.hpp"
 #include "src/gl/glcanvas.hpp"
 #include "src/edit/editorcontext.hpp"
 #include "src/edit/selectionedit.hpp"
@@ -16,14 +17,14 @@ SelectionEdit::SelectionEdit(GLCanvas *canvas)
 
 void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	Point2D world_pos = m_view.MouseToWorld(e);
+	Point2D world_pos = View.MouseToWorld(e);
 
-	ConvexPolygon *poly = m_context->SelectPoly(world_pos);
+	ConvexPolygon *poly = Context->SelectPoly(world_pos);
 
 	if(poly != nullptr) {
 		m_inedit = true;
 		m_editstart = world_pos;
-		m_context->SetSelectedPoly(poly);
+		Context->SetSelectedPoly(poly);
 	}
 
 	e.Skip(true);
@@ -38,14 +39,14 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		return;
 	}
 
-	Point2D world_pos = m_view.MouseToWorld(e);
+	Point2D world_pos = View.MouseToWorld(e);
 	Point2D delta = world_pos - m_editstart;
 
-	if(m_canvas->IsSnapToGrid()) {
+	if(Canvas->IsSnapToGrid()) {
 		/* Move by at least the size of a grid spacing.
 		   Only works if the polygon is already aligned with the grid,
 		   TODO: make sure points are aligned to the grid, or AABB is aligned to grid? */
-		double spacing = static_cast<double>(m_canvas->GetGridSpacing());
+		float spacing = static_cast<float>(GLBackgroundGrid::SPACING);
 		if(delta.x * delta.x > spacing * spacing) { 
 			delta.x -= fmod(delta.x, spacing); 
 			m_editstart.x = world_pos.x; 
@@ -62,12 +63,12 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		m_editstart = world_pos;
 	}
 
-	ConvexPolygon *selected = m_context->GetSelectedPoly();
+	ConvexPolygon *selected = Context->GetSelectedPoly();
 
 	selected->MoveBy(delta);
 
 	bool intersects = false;
-	for(ConvexPolygon &poly : m_context->GetPolys()) {
+	for(ConvexPolygon &poly : Context->Polygons) {
 		if(&poly != selected && selected->Intersects(poly)) {
 			intersects = true;
 			break;
@@ -80,10 +81,10 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 	if(!intersects) {
 		EditAction_Move action;
 		action.delta = delta;
-		m_context->AppendAction(action);
+		Context->AppendAction(action);
 	}
 
-	m_canvas->Refresh(true);
+	Canvas->Refresh(true);
 }
 
 

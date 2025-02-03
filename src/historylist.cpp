@@ -1,8 +1,8 @@
 #include <wx/wx.h>
-
 #include "src/gl/glcanvas.hpp"
 #include "src/historylist.hpp"
 #include "src/edit/editorcontext.hpp"
+
 
 HistoryList::HistoryList(wxWindow *parent)
 	: wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
@@ -29,7 +29,7 @@ wxItemAttr *HistoryList::OnGetItemAttr(long item) const
 
 	GLCanvas *dp = GLCanvas::GetCurrent();
 	if(dp != nullptr) {
-		if(dp->GetEditor().HistorySize() > item) {
+		if(dp->Editor.History > item) {
 			attr.SetBackgroundColour(*wxWHITE);
 		}
 	}
@@ -45,10 +45,9 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 	wxString s;
 
 	if(dp != nullptr) {
-		std::vector<EditAction> history = dp->GetEditor().GetHistory();
-		wxASSERT(item >= 0 && item <= history.size());
+		wxASSERT(item >= 0 && item <= dp->Editor.Actions.size());
 		Point2D lt, rb;
-		const EditAction &action = history[item];
+		const EditAction &action = dp->Editor.Actions[item];
 		if(col == ColumnID::ACTION) {
 			switch(action.base.type) {
 			case EditActionType_t::LINE:
@@ -60,21 +59,27 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 			case EditActionType_t::MOVE:
 				s.Printf("MOVE");
 				break;
+			case EditActionType_t::TEXTURE:
+				s.Printf("TEXTURE");
+				break;
 			}
 		} else if(col == ColumnID::VALUE) {
 			switch(action.base.type) {
 			case EditActionType_t::LINE:
-				s.Printf("x0:%.1lf,y0:%.1lf,x1:%.1lf,y1:%.1lf", action.line.start.x, action.line.start.y, action.line.end.x, action.line.end.y);
+				s.Printf("x0:%.1f,y0:%.1f,x1:%.1f,y1:%.1f", action.line.start.x, action.line.start.y, action.line.end.x, action.line.end.y);
 				break;
 			case EditActionType_t::RECT:
 				lt = action.rect.rect.GetLeftTop();
 				rb = action.rect.rect.GetRightBottom();
-				s.Printf("x:%.1lf,y:%.1lf,w:%.1lf,h:%.1lf", lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
+				s.Printf("x:%.1f,y:%.1f,w:%.1f,h:%.1f", lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
 				break;
 			case EditActionType_t::MOVE:
-				s.Printf("x:%.1lf,y:%.1lf", action.move.delta.x,
+				s.Printf("x:%.1f,y:%.1f", action.move.delta.x,
 					 action.move.delta.y);
 				break;
+			case EditActionType_t::TEXTURE:
+				s.Printf("index: %llu, scale: %d", action.texture.Index,
+					 action.texture.Scale);
 			}
 		}
 	}
