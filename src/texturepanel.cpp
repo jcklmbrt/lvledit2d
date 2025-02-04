@@ -23,20 +23,17 @@ TexturePanel::TexturePanel(wxWindow *parent)
 {
 	wxListCtrl *list = new TextureList(this);
 	wxButton *open = new wxButton(this, wxID_OPEN, "Open");
-	wxStaticText *label = new wxStaticText(this, wxID_ANY, wxEmptyString);
-	wxSlider *slider = new wxSlider(this, wxID_ANY, 0, 0, 10);
+	text = new wxStaticText(this, wxID_ANY, wxEmptyString);
+	slider = new wxSlider(this, wxID_ANY, 0, 0, 10);
 
 	wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
 	sizer->Add(open, 0, wxEXPAND);
-	sizer->Add(label, 0, wxEXPAND);
+	sizer->Add(text, 0, wxEXPAND);
 	sizer->Add(slider, 0, wxEXPAND);
 	sizer->Add(list, 1, wxEXPAND);
 	SetSizer(sizer);
 
-	m_label = label;
-	m_slider = slider;
-
-	SetScaleLabel(m_label, m_slider->GetValue());
+	SetScaleLabel(text, slider->GetValue());
 
 	Bind(wxEVT_BUTTON, &TexturePanel::OnOpen, this, wxID_OPEN);
 	Bind(wxEVT_SLIDER, &TexturePanel::OnSlider, this);
@@ -45,7 +42,7 @@ TexturePanel::TexturePanel(wxWindow *parent)
 
 void TexturePanel::OnSlider(wxCommandEvent &e)
 {
-	SetScaleLabel(m_label, m_slider->GetValue());
+	SetScaleLabel(text, slider->GetValue());
 }
 
 
@@ -65,12 +62,7 @@ void TexturePanel::OnOpen(wxCommandEvent &e)
 		return;
 	}
 
-	canvas->GetEditor().AddTexture(dialog.GetPath());
-}
-
-int TexturePanel::GetSliderValue()
-{
-	return m_slider->GetValue();
+	canvas->editor.AddTexture(dialog.GetPath());
 }
 
 
@@ -89,7 +81,7 @@ TextureList::TextureList(wxWindow *parent)
 wxString TextureList::OnGetItemText(long item, long col) const
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
-	const GLTexture &texture = canvas->Editor.Textures[item];
+	const GLTexture &texture = canvas->editor.textures[item];
 
 	wxString s;
 
@@ -97,9 +89,9 @@ wxString TextureList::OnGetItemText(long item, long col) const
 	case ColumnID::PREVIEW:
 		return wxEmptyString;
 	case ColumnID::NAME:
-		return texture.Name;
+		return texture.name;
 	case ColumnID::SIZE:
-		s.Printf("%llux%llu", texture.Width, texture.Height);
+		s.Printf("%llux%llu", texture.width, texture.height);
 		return s;
 	}
 
@@ -110,7 +102,7 @@ wxString TextureList::OnGetItemText(long item, long col) const
 int TextureList::OnGetItemImage(long item) const
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
-	return canvas->Editor.Textures[item].ThumbIndex;
+	return canvas->editor.textures[item].thumb;
 }
 
 

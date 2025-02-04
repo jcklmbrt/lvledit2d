@@ -104,22 +104,20 @@ void MainFrame::OnNew(wxCommandEvent &e)
 
 void MainFrame::OnUndo(wxCommandEvent &e)
 {
-	GLCanvas *canvas = GLCanvas::GetCurrent();
-	if(canvas != nullptr) {
-		EditorContext &editor = canvas->GetEditor();
-		editor.Undo();
-		canvas->Refresh();
+	GLCanvas *Canvas = GLCanvas::GetCurrent();
+	if(Canvas != nullptr) {
+		Canvas->editor.Undo();
+		Canvas->Refresh();
 	}
 }
 
 
 void MainFrame::OnRedo(wxCommandEvent &e)
 {
-	GLCanvas *canvas = GLCanvas::GetCurrent();
-	if(canvas != nullptr) {
-		EditorContext &editor = canvas->GetEditor();
-		editor.Redo();
-		canvas->Refresh();
+	GLCanvas *Canvas = GLCanvas::GetCurrent();
+	if(Canvas != nullptr) {
+		Canvas->editor.Redo();
+		Canvas->Refresh();
 	}
 }
 

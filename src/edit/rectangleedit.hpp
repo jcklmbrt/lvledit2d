@@ -11,7 +11,7 @@ public:
 	void OnMouseLeftDown(wxMouseEvent &e);
 	void OnMouseMotion(wxMouseEvent &e);
 	void OnDraw();
-private:
+
 	bool m_inedit = false;
 	bool m_onepoint = false;
 	Point2D m_start;

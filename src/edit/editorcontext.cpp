@@ -30,47 +30,73 @@ struct L2dHeader
 /* stripped down version of GLTexture */
 struct TexInfo 
 {
-	char Name[MAX_TEXTURE_NAME];
-	uint32_t Width;
-	uint32_t Height;
-	uint8_t PixelWidth;
-	uint32_t DataOffset;
+	char name[MAX_TEXTURE_NAME];
+	uint32_t width;
+	uint32_t height;
+	uint8_t pixelwidth;
+	uint32_t dataoffset;
 };
 
 bool EditorContext::Load(const wxFileName &path)
 {
 	wxASSERT(path.FileExists());
 
-	Name = path.GetName();
-	File = fopen(path.GetFullPath(), "rb");
+	name = path.GetName();
+	file = fopen(path.GetFullPath(), "rb");
 
 	L2dHeader hdr;
-	rewind(File);
-	fread(&hdr, sizeof(L2dHeader), 1, File);
+	rewind(file);
+	fread(&hdr, sizeof(L2dHeader), 1, file);
 
 	if(hdr.magic[0] != 'L' && hdr.magic[1] != '2') {
-		fclose(File);
-		File = nullptr;
+		fclose(file);
+		file = nullptr;
 		return false;
 	}
 
 	size_t num_actions = hdr.actions_size / sizeof(EditAction);
-	Actions.resize(num_actions);
-	History = hdr.actions_index;
+	actions.resize(num_actions);
+	history = hdr.actions_index;
 
-	fseek(File, hdr.actions_offset, SEEK_SET);
-	fread(Actions.data(), hdr.actions_size, 1, File);
+	fseek(file, hdr.actions_offset, SEEK_SET);
+	fread(actions.data(), hdr.actions_size, 1, file);
 
-	for(size_t i = 0; i < History; i++) {
-		ApplyAction(Actions[i]);
+	std::vector<TexInfo> texinfo;
+	texinfo.resize(hdr.texinfo_size / sizeof(TexInfo));
+	fseek(file, hdr.texinfo_offset, SEEK_SET);
+	fread(texinfo.data(), hdr.texinfo_size, 1, file);
+
+	std::vector<unsigned char> texdata;
+	texdata.resize(hdr.texdata_size);
+	fseek(file, hdr.texdata_offset, SEEK_SET);
+	fread(texdata.data(), hdr.texdata_size, 1, file);
+
+	for(TexInfo &info : texinfo) {
+		size_t nbytes = info.width * info.height * info.pixelwidth;
+		unsigned char *data = new unsigned char[nbytes];
+
+		memcpy(data, texdata.data() + info.dataoffset, nbytes);
+
+		GLTexture texture;
+		texture.Load(info.width, info.height, info.pixelwidth, info.name, data);
+
+		textures.push_back(texture);
 	}
 
+	for(size_t i = 0; i < history; i++) {
+		ApplyAction(actions[i]);
+	}
+
+	TextureList *tlist = TextureList::GetInstance();
+	tlist->SetItemCount(textures.size());
+	tlist->Refresh();
+
 	HistoryList *hlist = HistoryList::GetInstance();
-	hlist->SetItemCount(Actions.size());
+	hlist->SetItemCount(actions.size());
 	hlist->Refresh();
 
 	/* reopen our file for writing */
-	freopen(path.GetFullPath(), "wb", File);
+	freopen(path.GetFullPath(), "wb", file);
 
 	return true;
 }
@@ -78,22 +104,49 @@ bool EditorContext::Load(const wxFileName &path)
 
 bool EditorContext::Save()
 {
-	if(File == nullptr) {
+	if(file == nullptr) {
 		return false;
+	}
+
+	std::vector<unsigned char> texdata;
+	std::vector<TexInfo> texinfo;
+
+
+	for(GLTexture &texture : textures) {
+		TexInfo &info = texinfo.emplace_back();
+		strncpy(info.name, texture.name, MAX_TEXTURE_NAME);
+		info.width = texture.width;
+		info.height = texture.height;
+		info.pixelwidth = texture.pixelwidth;
+
+		info.dataoffset = texdata.size();
+		size_t nbytes = texture.width * texture.height * texture.pixelwidth;
+		texdata.resize(texdata.size() + nbytes);
+		memcpy(texdata.data() + info.dataoffset, texture.data, nbytes);
 	}
 
 	L2dHeader hdr;
 	hdr.magic[0] = 'L';
 	hdr.magic[1] = '2';
 	hdr.actions_offset = sizeof(L2dHeader);
-	hdr.actions_size = Actions.size() * sizeof(EditAction);
-	hdr.actions_index = History;
+	hdr.actions_size = actions.size() * sizeof(EditAction);
+	hdr.actions_index = history;
+	hdr.texinfo_offset = hdr.actions_offset + hdr.actions_size;
+	hdr.texinfo_size = texinfo.size() * sizeof(TexInfo);
+	hdr.texdata_offset = hdr.texinfo_offset + hdr.texinfo_size;
+	hdr.texdata_size = texdata.size();
 
-	rewind(File);
-	fwrite(&hdr, sizeof(L2dHeader), 1, File);
+	rewind(file);
+	fwrite(&hdr, sizeof(L2dHeader), 1, file);
 
-	fseek(File, hdr.actions_offset, SEEK_SET);
-	fwrite(Actions.data(), hdr.actions_size, 1, File);
+	fseek(file, hdr.actions_offset, SEEK_SET);
+	fwrite(actions.data(), hdr.actions_size, 1, file);
+
+	fseek(file, hdr.texinfo_offset, SEEK_SET);
+	fwrite(texinfo.data(), hdr.texinfo_size, 1, file);
+
+	fseek(file, hdr.texdata_offset, SEEK_SET);
+	fwrite(texdata.data(), hdr.texdata_size, 1, file);
 
 	return true;
 }
@@ -103,14 +156,14 @@ bool EditorContext::Save(const wxFileName &path)
 {
 	wxASSERT(path.GetExt() == "l2d");
 
-	if(File != nullptr) {
-		fclose(File);
+	if(file != nullptr) {
+		fclose(file);
 	}
 
-	Name = path.GetName();
-	File = fopen(path.GetFullPath(), "wb");
+	name = path.GetName();
+	file = fopen(path.GetFullPath(), "wb");
 
-	wxASSERT(File != nullptr);
+	wxASSERT(file != nullptr);
 
 	return Save();
 }
@@ -118,21 +171,21 @@ bool EditorContext::Save(const wxFileName &path)
 
 void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 {
-	if(p == Context->GetSelectedPoly()) {
-		Rect2D aabb = p->GetAABB();
-		Canvas->OutlineRect(aabb, 1.0f, BLUE);
+	if(p == context->GetSelectedPoly()) {
+		Rect2D aabb = p->aabb;
+		canvas->OutlineRect(aabb, 1.0f, BLUE);
 
 		/* inflate aabb to illustrate planes */
 		aabb.Inset(-100, -100);
 
 		std::array aabbpts = {
-			aabb.GetLeftTop(),
+			aabb.mins,
 			aabb.GetRightTop(),
-			aabb.GetRightBottom(),
+			aabb.maxs,
 			aabb.GetLeftBottom()
 		};
 
-		for(const Plane2D &plane : p->GetPlanes()) {
+		for(const Plane2D &plane : p->planes) {
 			Point2D line[2];
 			int n = 0;
 			size_t naabbpts = aabbpts.size();
@@ -159,34 +212,34 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 			}
 
 			wxASSERT(n == 2);
-			Canvas->DrawLine(line[0], line[1], 1.0, RED);
+			canvas->DrawLine(line[0], line[1], 1.0, RED);
 		}
 	}
 
-	const std::vector<Point2D> &pts = p->GetPoints();
+	const std::vector<Point2D> &pts = p->points;
 
-	Canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
+	canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
 
-	if(p == Context->GetSelectedPoly()) {
-		Canvas->OutlinePoly(pts.data(), pts.size(), 1.0, GREEN);
+	if(p == context->GetSelectedPoly()) {
+		canvas->OutlinePoly(pts.data(), pts.size(), 1.0, GREEN);
 		for(const Point2D &pt : pts) {
-			Canvas->DrawPoint(pt, WHITE);
+			canvas->DrawPoint(pt, WHITE);
 		}
 	}
 	else {
-		Canvas->OutlinePoly(pts.data(), pts.size(), 1.0, WHITE);
+		canvas->OutlinePoly(pts.data(), pts.size(), 1.0, WHITE);
 	}
 
 	if(p->GetTexture() != nullptr) {
-		Canvas->TexturePoly(*p, WHITE);
+		canvas->TexturePoly(*p, WHITE);
 	}
 }
 
 
 IBaseEdit::IBaseEdit(GLCanvas *canvas)
-	: Canvas(canvas),
-	  Context(&Canvas->Editor),
-	  View(Canvas->ViewMatrix)
+	: canvas(canvas),
+	  context(&canvas->editor),
+	  view(canvas->view)
 {
 }
 
@@ -204,44 +257,44 @@ void IBaseEdit::OnDraw()
 
 
 EditorContext::EditorContext(GLCanvas *canvas)
-	: Canvas(canvas),
-	  Name("untitled")
+	: canvas(canvas),
+	  name("untitled")
 {
-	State = nullptr;
+	state = nullptr;
 }
 
 
 EditorContext::~EditorContext()
 {
-	if(State != nullptr) {
-		Canvas->RemoveEventHandler(State);
-		delete State;
+	if(state != nullptr) {
+		canvas->RemoveEventHandler(state);
+		delete state;
 	}
 
-	if(File != nullptr) {
+	if(file != nullptr) {
 		Save();
-		fclose(File);
+		fclose(file);
 	}
 }
 
 
 void EditorContext::OnDraw()
 {
-	if(State != nullptr) {
+	if(state != nullptr) {
 
-		ConvexPolygon *Selected = GetSelectedPoly();
+		ConvexPolygon *spoly = GetSelectedPoly();
 
-		for(ConvexPolygon &p : Polygons) {
-			if(&p != Selected) {
-				State->DrawPolygon(&p);
+		for(ConvexPolygon &p : polys) {
+			if(&p != spoly) {
+				state->DrawPolygon(&p);
 			}
 		}
 
-		if(Selected != nullptr) {
-			State->DrawPolygon(Selected);
+		if(spoly != nullptr) {
+			state->DrawPolygon(spoly);
 		}
 
-		State->OnDraw();
+		state->OnDraw();
 	}
 }
 
@@ -263,34 +316,34 @@ void EnqueueEventHandler(wxWindowBase *window, wxEvtHandler *handler)
 
 void EditorContext::OnToolSelect(ToolBar::ID id)
 {
-	if(State != nullptr) {
-		if(State != nullptr) {
-			Canvas->RemoveEventHandler(State);
-			delete State;
+	if(state != nullptr) {
+		if(state != nullptr) {
+			canvas->RemoveEventHandler(state);
+			delete state;
 		}
-		State = nullptr;
-		Canvas->Refresh(false);
+		state = nullptr;
+		canvas->Refresh(false);
 	}
 
-	if(State == nullptr) {
+	if(state == nullptr) {
 		switch(id) {
 		case ToolBar::ID::SELECT:
-			State = new SelectionEdit(Canvas);
+			state = new SelectionEdit(canvas);
 			break;
 		case ToolBar::ID::QUAD:
-			State = new RectangleEdit(Canvas);
+			state = new RectangleEdit(canvas);
 			break;
 		case ToolBar::ID::LINE:
-			State = new LineEdit(Canvas);
+			state = new LineEdit(canvas);
 			break;
 		case ToolBar::ID::TEXTURE:
-			State = new TextureEdit(Canvas);
+			state = new TextureEdit(canvas);
 			break;
 		default:
 			break;
 		}
-		if(State != nullptr) {
-			EnqueueEventHandler(Canvas, State);
+		if(state != nullptr) {
+			EnqueueEventHandler(canvas, state);
 		}
 	}
 }
@@ -298,7 +351,7 @@ void EditorContext::OnToolSelect(ToolBar::ID id)
 
 ConvexPolygon *EditorContext::SelectPoly(Point2D wpos)
 {
-	for(ConvexPolygon &p : Polygons) {
+	for(ConvexPolygon &p : polys) {
 		if(p.Contains(wpos)) {
 			return &p;
 		}
@@ -312,8 +365,8 @@ void EditorContext::ResetPoly(size_t i)
 {
 	ConvexPolygon *poly = nullptr;
 
-	for(size_t act = 0; act < History; act++) {
-		const EditAction &action = Actions[act];
+	for(size_t act = 0; act < history; act++) {
+		const EditAction &action = actions[act];
 		if(action.base.poly == i) {
 			switch(action.base.type) {
 			case EditActionType_t::LINE:
@@ -326,12 +379,12 @@ void EditorContext::ResetPoly(size_t i)
 				break;
 			case EditActionType_t::TEXTURE:
 				wxASSERT(poly);
-				poly->SetTexture(action.texture.Index,
-						 action.texture.Scale);
+				poly->texindex = action.texture.index;
+				poly->texscale = action.texture.scale;
 				break;
 			case EditActionType_t::RECT:
-				Polygons[i] = action.rect.rect;
-				poly = &Polygons[i];
+				polys[i] = action.rect.rect;
+				poly = &polys[i];
 				break;
 			}
 		}
@@ -344,14 +397,14 @@ void EditorContext::ResetPoly(size_t i)
 
 void EditorContext::Undo()
 {
-	if(History == 0) {
+	if(history == 0) {
 		return;
 	}
 
-	EditAction &back = Actions[History - 1];
-	ConvexPolygon &poly = Polygons[back.base.poly];
+	EditAction &back = actions[history - 1];
+	ConvexPolygon &poly = polys[back.base.poly];
 
-	History--;
+	history--;
 
 	switch(back.base.type) {
 	case EditActionType_t::TEXTURE:
@@ -362,15 +415,15 @@ void EditorContext::Undo()
 		poly.MoveBy(-back.move.delta);
 		break;
 	case EditActionType_t::RECT:
-		if(SelectedPolygon == back.base.poly) {
-			SelectedPolygon = -1;
+		if(selected == back.base.poly) {
+			selected = -1;
 		}
-		Polygons.erase(Polygons.begin() + back.base.poly);
+		polys.erase(polys.begin() + back.base.poly);
 		break;
 	}
 
 	HistoryList *hlist = HistoryList::GetInstance();
-	hlist->SetItemCount(Actions.size());
+	hlist->SetItemCount(actions.size());
 	hlist->Refresh();
 }
 
@@ -380,26 +433,26 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 
 	switch(action.base.type) {
 	case EditActionType_t::LINE:
-		poly = &Polygons[action.base.poly];
+		poly = &polys[action.base.poly];
 		poly->Slice(action.line.plane);
 		poly->PurgePlanes();
 		poly->ResizeAABB();
 		break;
 	case EditActionType_t::MOVE:
-		poly = &Polygons[action.base.poly];
+		poly = &polys[action.base.poly];
 		poly->MoveBy(action.move.delta);
 		break;
 	case EditActionType_t::RECT:
-		Polygons.push_back(action.rect.rect);
-		poly = &Polygons.back();
+		polys.push_back(action.rect.rect);
+		poly = &polys.back();
 		break;
 	case EditActionType_t::TEXTURE:
-		poly = &Polygons[action.base.poly];
-		poly->SetTexture(action.texture.Index,
-				 action.texture.Scale);
+		poly = &polys[action.base.poly];
+		poly->texindex = action.texture.index;
+		poly->texscale = action.texture.scale;
 	}
 
-	wxASSERT_MSG(action.base.poly == poly - &Polygons.front(),
+	wxASSERT_MSG(action.base.poly == poly - &polys.front(),
 		"Polygon indices out of order.");
 
 	return poly;
@@ -408,35 +461,35 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 
 void EditorContext::AddTexture(const wxFileName &filename)
 {
-	GLTexture NewTexture;
-	LoadTextureFromFile(&NewTexture, filename);
+	GLTexture texture;
+	texture.Load(filename);
 
-	for(GLTexture &T : Textures) {
-		if(EqualTextures(&NewTexture, &T)) {
+	for(GLTexture &t : textures) {
+		if(texture == t) {
 			return;
 		}
 	}
 
-	Textures.push_back(NewTexture);
+	textures.push_back(texture);
 
 	TextureList *tlist = TextureList::GetInstance();
-	tlist->SetItemCount(Textures.size());
+	tlist->SetItemCount(textures.size());
 	tlist->Refresh();
 }
 
 
 void EditorContext::Redo()
 {
-	if(History >= Actions.size()) {
+	if(history >= actions.size()) {
 		return;
 	}
 
-	History++;
-	EditAction &last = Actions[History - 1];
+	history++;
+	EditAction &last = actions[history - 1];
 	ApplyAction(last);
 
 	HistoryList *hlist = HistoryList::GetInstance();
-	hlist->SetItemCount(Actions.size());
+	hlist->SetItemCount(actions.size());
 	hlist->Refresh();
 }
 
@@ -455,23 +508,23 @@ void EditorContext::AppendAction(EditAction action)
 		Selected->MoveBy(action.move.delta);
 		break;
 	case EditActionType_t::RECT:
-		Polygons.push_back(action.rect.rect);
-		SelectedPolygon = Polygons.size() - 1; 
+		polys.push_back(action.rect.rect);
+		selected = polys.size() - 1; 
 		break;
 	case EditActionType_t::TEXTURE:
-		Selected->SetTexture(action.texture.Index,
-				     action.texture.Scale);
+		Selected->texindex = action.texture.index;
+		Selected->texscale = action.texture.scale;
 		break;
 	}
 
-	action.base.poly = SelectedPolygon;
+	action.base.poly = selected;
 
 	HistoryList *hlist = HistoryList::GetInstance();
-	hlist->SetItemCount(Actions.size());
+	hlist->SetItemCount(actions.size());
 	hlist->Refresh();
 
-	if(!Actions.empty() && History) {
-		EditAction &back = Actions[History - 1];
+	if(!actions.empty() && history) {
+		EditAction &back = actions[history - 1];
 		if(back.base.type == EditActionType_t::MOVE && action.base.type == EditActionType_t::MOVE) {
 			/* we don't want to spam a move action for each pixel moved */
 			if(back.base.poly == action.base.poly) {
@@ -484,14 +537,14 @@ void EditorContext::AppendAction(EditAction action)
 	}
 
 	/* remove future */
-	while(Actions.size() > History) {
-		Actions.pop_back();
+	while(actions.size() > history) {
+		actions.pop_back();
 	}
 
-	Actions.push_back(action);
-	History = Actions.size();
+	actions.push_back(action);
+	history = actions.size();
 
-	hlist->SetItemCount(Actions.size());
+	hlist->SetItemCount(actions.size());
 	hlist->Refresh();
 
 	Save();

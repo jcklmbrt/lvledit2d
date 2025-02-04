@@ -18,60 +18,61 @@ constexpr Color RED = Color(1.0f, 0.0f, 0.0f, 1.0f);
 constexpr Color BLUE = Color(0.0f, 0.0f, 1.0f, 1.0f);
 constexpr Color GREEN = Color(0.0f, 1.0f, 0.0f, 1.0f);
 
-class Rect2D
+struct Rect2D
 {
-public:
 	Rect2D() = default;
 	Rect2D(const Point2D &mins, const Point2D &maxs)
-		: m_mins(mins),
-		  m_maxs(maxs)
+		: mins(mins),
+		  maxs(maxs)
 	{
 		wxASSERT(maxs.x >= mins.x);
 		wxASSERT(maxs.y >= mins.y);
 	}
 	void Offset(const Point2D &delta) 
 	{
-		m_mins += delta;
-		m_maxs += delta;
+		mins += delta;
+		maxs += delta;
 	}
 	
-	Point2D GetLeftTop() const { return m_mins; }
-	Point2D GetRightBottom() const { return m_maxs; }
-	Point2D GetLeftBottom() const { return { m_mins.x, m_maxs.y }; }
-	Point2D GetRightTop() const { return { m_maxs.x, m_mins.y }; }
-	Point2D GetSize() const { return m_maxs - m_mins; }
 	bool Intersects(const Rect2D &other) const 
 	{
-		return m_mins.x < other.m_maxs.x && other.m_mins.x < m_maxs.x &&
-		       m_mins.y < other.m_maxs.y && other.m_mins.y < m_maxs.y;
+		return mins.x < other.maxs.x && other.mins.x < maxs.x &&
+		       mins.y < other.maxs.y && other.mins.y < maxs.y;
 	};
 	bool Contains(const Point2D &pt) const 
 	{
-		return pt.x > m_mins.x && pt.y > m_mins.y &&
-		       pt.x < m_maxs.x && pt.y < m_maxs.y;
+		return pt.x > mins.x && pt.y > mins.y &&
+		       pt.x < maxs.x && pt.y < maxs.y;
 	};
 
 	void Inset(float x, float y)
 	{
 		Point2D delta = { x * 0.5, y * 0.5 };
-		m_mins = m_mins + delta;
-		m_maxs = m_maxs - delta;
+		mins = mins + delta;
+		maxs = maxs - delta;
 	}
+
+	Point2D GetLeftTop() const { return mins; }
+	Point2D GetRightTop() const { return { maxs.x, mins.y }; }
+	Point2D GetLeftBottom() const { return { mins.x, maxs.y }; }
+	Point2D GetRightBottom() const { return maxs; }
+
 	void FitPoints(const Point2D pts[], size_t npts);
-	void SetMins(const Point2D &mins) { m_mins = mins; }
-	void SetMaxs(const Point2D &maxs) { m_maxs = maxs; }
-	void SetRight(float r) { m_maxs.x = r; }
-	void SetLeft(float l) { m_mins.x = l; }
-	void SetBottom(float b) { m_maxs.y = b; }
-	void SetTop(float t) { m_mins.y = t; }
-private:
-	Point2D m_mins;
-	Point2D m_maxs;
+	void SetRight(float r) { maxs.x = r; }
+	void SetLeft(float l) { mins.x = l; }
+	void SetBottom(float b) { maxs.y = b; }
+	void SetTop(float t) { mins.y = t; }
+	Point2D mins, maxs;
 };
 
-class Plane2D
+static bool Intersects(const Rect2D &a, const Rect2D &b)
 {
-public:
+	return a.mins.x < b.maxs.x && b.mins.x < a.maxs.x &&
+	       a.mins.y < b.maxs.y && b.mins.y < a.maxs.y;
+}
+
+struct Plane2D
+{
 	Plane2D() = default;
 	Plane2D(const Point2D &start, const Point2D &end);
 	float SignedDistance(const Point2D &p) const;
@@ -80,46 +81,36 @@ public:
 	void Offset(const Point2D &pt);
 	void Clip(const std::vector<Point2D> &points, std::vector<Point2D> &out);
 	bool operator==(const Plane2D &other) const;
-private:
 	/* Ax + By + C = 0 */
-	float m_a, m_b, m_c;
+	float a, b, c;
 };
 
-class GLTexture;
+struct GLTexture;
 
-class ConvexPolygon
+struct ConvexPolygon
 {
-public:
 	ConvexPolygon(const Rect2D &rect);
 	void MoveBy(Point2D delta);
 	void Slice(Plane2D plane);
 	void ImposePlane(Plane2D plane, std::vector<Point2D> &out) const;
 	static bool AllPointsBehind(const Plane2D &plane, const Point2D points[], size_t npoints);
 	bool AllPointsBehind(const Plane2D &plane) const;
-	const Rect2D &GetAABB() const { return m_aabb; }
-	const std::vector<Plane2D> &GetPlanes() const { return m_planes; }
-	const std::vector<Point2D> &GetPoints() const { return m_points; }
 	void ResizeAABB();
 	void PurgePlanes();
 	bool Intersects(const ConvexPolygon &other) const;
 	bool Intersects(const Rect2D &rect) const;
 	bool Contains(const Point2D &pt) const;
 	GLTexture *GetTexture() const;
-	void SetTexture(size_t index, int scale)
-	{
-		m_texture = index;
-		m_texturescale = scale;
-	}
 	Rect2D GetUV() const;
 	Rect2D GetUV(const Rect2D &aabb) const;
-private:
-	Rect2D m_aabb;
-	std::vector<Plane2D> m_planes;
-	/* internal representation of polygon */
-	std::vector<Point2D> m_points;
 
-	size_t m_texture = -1;
-	int m_texturescale; 
+	Rect2D aabb;
+	std::vector<Plane2D> planes;
+	/* internal representation of polygon */
+	std::vector<Point2D> points;
+
+	size_t texindex = -1;
+	int texscale; 
 };
 
 #endif

@@ -1,7 +1,6 @@
 #include <cstring>
 #include <wx/bitmap.h>
 #include <wx/filename.h>
-#include <wx/gtk/bitmap.h>
 #include <wx/image.h>
 #include "src/edit/editorcontext.hpp"
 #include "src/gl/texture.hpp"
@@ -12,93 +11,99 @@
 #define FNV_PRIME 0x01000193
 
 
-static uint32_t FNV1A(unsigned char *Data, size_t Size)
+static uint32_t FNV1A(unsigned char *data, size_t size)
 {
-	size_t Hash = FNV_OFFSET_BASIS;
+	size_t hash = FNV_OFFSET_BASIS;
 
-	for(size_t i = 0; i < Size; i++) {
-		Hash ^= Data[i];
-		Hash *= FNV_PRIME;
+	for(size_t i = 0; i < size; i++) {
+		hash ^= data[i];
+		hash *= FNV_PRIME;
 	}
 
-	return Hash;
+	return hash;
 }
 
-static int BitCeil512(int N)
+static int BitCeil512(int n)
 {
-	N = std::min(N, 512);
+	n = std::min(n, 512);
 	int i = 1;
-	while(i < N) {
+	while(i < n) {
 		i <<= 1;
 	}
 	return i;
 }
 
-void LoadTextureFromMemory(GLTexture *Texture, size_t Width, size_t Height, size_t PixelWidth, const char *Name, unsigned char *Data)
+void GLTexture::Load(size_t width, size_t height, size_t pixelwidth, const char *name, unsigned char *data)
 {
-	memset(Texture->Name, 0, sizeof(Texture->Name));
-	strncpy(Texture->Name, Name, sizeof(Texture->Name));
+	strncpy(this->name, name, sizeof(this->name));
 
-	wxImage img(Width, Height, Data);
+	wxImage img(width, height, data);
 	wxBitmap bmp(img);
 	TextureList *tlist = TextureList::GetInstance();
 	wxImageList *ilist = tlist->GetImageList(wxIMAGE_LIST_SMALL);
 	wxBitmap::Rescale(bmp, wxSize(THUMB_SIZE_X, THUMB_SIZE_Y));
-	Texture->ThumbIndex = ilist->Add(bmp);
+	this->thumb = ilist->Add(bmp);
 
-	size_t NumBytes = Width * Height * PixelWidth;
+	size_t nbytes = width * height * pixelwidth;
 
-	Texture->Width = Width;
-	Texture->Height = Height;
-	Texture->PixelWidth = PixelWidth;
-	Texture->Data = Data;
-	Texture->HashValue = FNV1A(Texture->Data, NumBytes);
+	this->width = width;
+	this->height = height;
+	this->pixelwidth = pixelwidth;
+
+	/* We have to force a copy here. ~wxBitMapData() will delete our data. WTF. */
+	this->data = new unsigned char[nbytes];
+	memcpy(this->data, data, nbytes);
+
+	this->hash = FNV1A(this->data, nbytes);
 }
 
-void LoadTextureFromFile(GLTexture *Texture, const wxFileName &FileName)
+void GLTexture::Load(const wxFileName &filename)
 {
-	wxASSERT(FileName.IsOk() && FileName.Exists());
+	wxASSERT(filename.IsOk() && filename.Exists());
 
-	wxImage img(FileName.GetFullPath());
+	wxImage img(filename.GetFullPath());
 
 	wxASSERT(img.IsOk());
 
-	size_t PixelWidth = 3;
+	wxSize size = img.GetSize();
+	size.x = BitCeil512(size.x);
+	size.y = BitCeil512(size.y);
+	img.Rescale(size.x, size.y);
+
 	if(img.HasAlpha()) {
-		PixelWidth = 4;
+		pixelwidth = 4;
+	} else {
+		pixelwidth = 3;
 	}
 
-	wxSize size = img.GetSize();
-	size.y = BitCeil512(size.y);
-	size.x = BitCeil512(size.x);
-	img = img.Rescale(size.x, size.y);
+	width = img.GetWidth();
+	height = img.GetHeight();
+	size_t npix = width * height;
 
-	size_t Width = img.GetWidth();
-	size_t Height = img.GetHeight();
-	size_t NumPixels = Width * Height;
+	unsigned char *alpha = img.GetAlpha();
+	unsigned char *rgb = img.GetData();
 
-	unsigned char *A = img.GetAlpha();
-	unsigned char *RGB = img.GetData();
-	unsigned char *Data = new unsigned char[NumPixels * PixelWidth];
-	const char *Name = FileName.GetName().c_str();
+	data = new unsigned char[npix * pixelwidth];
 
-	for(size_t i = 0; i < NumPixels; i++) {
-		Data[i * PixelWidth + 0] = RGB[i * 3 + 0];
-		Data[i * PixelWidth + 1] = RGB[i * 3 + 1];
-		Data[i * PixelWidth + 2] = RGB[i * 3 + 2];
-		if(PixelWidth == 4) {
-			Data[i * 4 + 3] = A[i];
+	wxString name = filename.GetName();
+
+	for(size_t i = 0; i < npix; i++) {
+		data[i * pixelwidth + 0] = rgb[i * 3 + 0];
+		data[i * pixelwidth + 1] = rgb[i * 3 + 1];
+		data[i * pixelwidth + 2] = rgb[i * 3 + 2];
+		if(pixelwidth == 4) {
+			data[i * 4 + 3] = alpha[i];
 		}
 	}
 
-	LoadTextureFromMemory(Texture, Width, Height, PixelWidth, Name, Data);
+	Load(width, height, pixelwidth, name.c_str(), data);
 }
 
 
-void InitTextureObject(GLTexture *Texture)
+void GLTexture::InitTextureObject()
 {
-	glGenTextures(1, &Texture->TextureObject);
-	glBindTexture(GL_TEXTURE_2D, Texture->TextureObject);
+	glGenTextures(1, &gltex);
+	glBindTexture(GL_TEXTURE_2D, gltex);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
@@ -108,44 +113,44 @@ void InitTextureObject(GLTexture *Texture)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	if(Texture->PixelWidth == 4) {
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Texture->Width, Texture->Height, 0,
-			GL_RGBA, GL_UNSIGNED_BYTE, Texture->Data);
+	if(pixelwidth == 4) {
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+			GL_RGBA, GL_UNSIGNED_BYTE, data);
 	}
 	else {
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Texture->Width, Texture->Height, 0,
-			GL_RGB, GL_UNSIGNED_BYTE, Texture->Data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0,
+			GL_RGB, GL_UNSIGNED_BYTE, data);
 	}
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-bool EqualTextures(GLTexture *A, GLTexture *B)
+
+bool GLTexture::operator==(const GLTexture &other)
 {
 	/* broad phase */
-	if(A->HashValue != B->HashValue) {
+	if(hash != other.hash) {
 		return false;
 	}
 
-	size_t A_NumBytes = A->Width * A->Height * A->PixelWidth;
-	size_t B_NumBytes = B->Width * B->Height * B->PixelWidth;
+	size_t nbytes = width * height * pixelwidth;
 
-	if(A_NumBytes != B_NumBytes) {
+	if(nbytes != other.width * other.height * other.pixelwidth) {
 		return false;
 	}
 
 	/* narrow phase */
-	return memcmp(A->Data, B->Data, A_NumBytes) == 0;
+	return memcmp(data, other.data, nbytes) == 0;
 }
 
 
-void DeleteTexture(GLTexture *Texture)
+void GLTexture::Delete()
 {
-	if(glIsTexture(Texture->TextureObject)) {
-		glDeleteTextures(1, &Texture->TextureObject);
+	if(glIsTexture(gltex)) {
+		glDeleteTextures(1, &gltex);
 	}
 
-	if(Texture->Data != nullptr) {
-		delete[] Texture->Data;
+	if(data != nullptr) {
+		delete[] data;
 	}
 }

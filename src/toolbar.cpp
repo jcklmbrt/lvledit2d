@@ -48,6 +48,6 @@ void ToolBar::OnSelect(wxCommandEvent &e)
 	GLCanvas *dp = GLCanvas::GetCurrent();
 
 	if(dp != nullptr) {
-		dp->GetEditor().OnToolSelect(m_selected);
+		dp->editor.OnToolSelect(m_selected);
 	}
 }

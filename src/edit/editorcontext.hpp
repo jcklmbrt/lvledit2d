@@ -8,12 +8,12 @@
 #include "src/geometry.hpp"
 #include "src/gl/gltexturegeometry.hpp"
 
-class GLCanvas;
+struct GLCanvas;
 class EditorContext;
 class ViewMatrixBase;
 
 
-enum EditActionType_t
+enum class EditActionType_t
 {
 	/* User actions */
 	LINE,
@@ -58,8 +58,8 @@ struct EditAction_Move : EditAction_Base
 struct EditAction_Texture : EditAction_Base
 {
 	EditAction_Texture() { type = EditActionType_t::TEXTURE; }
-	size_t Index;
-	int Scale;
+	size_t index;
+	int scale;
 };
 
 
@@ -86,9 +86,9 @@ public:
 	virtual void OnDraw();
 	virtual ~IBaseEdit();
 protected:
-	GLCanvas *Canvas;
-	EditorContext *Context;
-	const ViewMatrixBase &View;
+	GLCanvas *canvas;
+	EditorContext *context;
+	const ViewMatrixBase &view;
 };
 
 
@@ -112,35 +112,35 @@ public:
 	ConvexPolygon *GetSelectedPoly();
 	void SetSelectedPoly(ConvexPolygon *P);
 
-	std::vector<ConvexPolygon> Polygons;
-	std::vector<EditAction> Actions;
-	std::vector<GLTexture> Textures;
-	size_t History = 0; /* replacement for m_actions.size() */
-	size_t SelectedPolygon = -1;
-	FILE *File = nullptr;
-	wxString Name;
-	IBaseEdit *State;
-	GLCanvas *Canvas;
+	std::vector<ConvexPolygon> polys;
+	std::vector<EditAction> actions;
+	std::vector<GLTexture> textures;
+	size_t history = 0; /* replacement for actions.size() */
+	size_t selected = -1;
+	FILE *file = nullptr;
+	wxString name;
+	IBaseEdit *state;
+	GLCanvas *canvas;
 	/* additional options that just default to true.
 	   will add checkboxes later */
-	bool SnapToGrid = true;
+	bool snaptogrid = true;
 };
 
 inline ConvexPolygon *EditorContext::GetSelectedPoly()
 {
-	size_t i = SelectedPolygon;
-	if(i >= 0 && i < Polygons.size()) {
-		return &Polygons[i];
+	size_t i = selected;
+	if(i >= 0 && i < polys.size()) {
+		return &polys[i];
 	} else {
 		return nullptr;
 	}
 }
 
-inline void EditorContext::SetSelectedPoly(ConvexPolygon *P)
+inline void EditorContext::SetSelectedPoly(ConvexPolygon *p)
 {
-	size_t Idx = P - Polygons.data();
-	if(Idx > 0 && Idx < Polygons.size()) {
-		SelectedPolygon = Idx;
+	size_t i = p - polys.data();
+	if(i >= 0 && i < polys.size()) {
+		selected = i;
 	}
 }
 

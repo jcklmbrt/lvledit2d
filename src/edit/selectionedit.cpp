@@ -17,14 +17,14 @@ SelectionEdit::SelectionEdit(GLCanvas *canvas)
 
 void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	Point2D world_pos = View.MouseToWorld(e);
+	Point2D world_pos = view.MouseToWorld(e);
 
-	ConvexPolygon *poly = Context->SelectPoly(world_pos);
+	ConvexPolygon *poly = context->SelectPoly(world_pos);
 
 	if(poly != nullptr) {
 		m_inedit = true;
 		m_editstart = world_pos;
-		Context->SetSelectedPoly(poly);
+		context->SetSelectedPoly(poly);
 	}
 
 	e.Skip(true);
@@ -39,10 +39,10 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		return;
 	}
 
-	Point2D world_pos = View.MouseToWorld(e);
+	Point2D world_pos = view.MouseToWorld(e);
 	Point2D delta = world_pos - m_editstart;
 
-	if(Canvas->IsSnapToGrid()) {
+	if(canvas->editor.snaptogrid) {
 		/* Move by at least the size of a grid spacing.
 		   Only works if the polygon is already aligned with the grid,
 		   TODO: make sure points are aligned to the grid, or AABB is aligned to grid? */
@@ -63,12 +63,12 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		m_editstart = world_pos;
 	}
 
-	ConvexPolygon *selected = Context->GetSelectedPoly();
+	ConvexPolygon *selected = context->GetSelectedPoly();
 
 	selected->MoveBy(delta);
 
 	bool intersects = false;
-	for(ConvexPolygon &poly : Context->Polygons) {
+	for(ConvexPolygon &poly : context->polys) {
 		if(&poly != selected && selected->Intersects(poly)) {
 			intersects = true;
 			break;
@@ -81,10 +81,10 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 	if(!intersects) {
 		EditAction_Move action;
 		action.delta = delta;
-		Context->AppendAction(action);
+		context->AppendAction(action);
 	}
 
-	Canvas->Refresh(true);
+	canvas->Refresh(true);
 }
 
 

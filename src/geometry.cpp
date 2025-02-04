@@ -9,23 +9,23 @@ Plane2D::Plane2D(const Point2D &start, const Point2D &end)
 {
 	Point2D delta = start - end;
 	delta = normalize(delta);
-	m_a = -delta.y;
-	m_b = +delta.x;
-	m_c = -(m_a * start.x + m_b * start.y);
+	a = -delta.y;
+	b = +delta.x;
+	c = -(a * start.x + b * start.y);
 }
 
 
 void Plane2D::Flip()
 {
-	m_a = -m_a;
-	m_b = -m_b;
-	m_c = -m_c;
+	a = -a;
+	b = -b;
+	c = -c;
 }
 
 
 void Plane2D::Offset(const Point2D &pt)
 {
-	m_c -= m_a * pt.x + m_b * pt.y;
+	c -= a * pt.x + b * pt.y;
 }
 
 
@@ -54,57 +54,57 @@ void Plane2D::Clip(const std::vector<Point2D> &points, std::vector<Point2D> &out
 }
 
 
-bool Plane2D::Line(const Point2D &a, const Point2D &b, Point2D &out) const
+bool Plane2D::Line(const Point2D &p0, const Point2D &p1, Point2D &out) const
 {
-	Point2D dir = b - a;
+	Point2D dir = p1 - p0;
 
-	float denom = m_a * dir.x + m_b * dir.y;
+	float denom = a * dir.x + b * dir.y;
 
 	if(denom == 0) {
 		return false;
 	}
 
-	float t = -(m_a * a.x + m_b * a.y + m_c) / denom;
+	float t = -(a * p0.x + b * p0.y + c) / denom;
 
-	out = a + t * dir;
+	out = p0 + t * dir;
 	return true;
 }
 
 
 float Plane2D::SignedDistance(const Point2D &p) const
 {
-	return m_a * p.x + m_b * p.y + m_c;
+	return a * p.x + b * p.y + c;
 }
 
 
 bool Plane2D::operator==(const Plane2D &other) const
 {
-	return other.m_a == m_a && other.m_b == m_b && other.m_c == m_c;
+	return other.a == a && other.b == b && other.c == c;
 }
 
 
 ConvexPolygon::ConvexPolygon(const Rect2D &rect)
 {
-	m_aabb = rect;
+	aabb = rect;
 	/* Start off with our bounding box */
-	m_points.push_back(rect.GetLeftTop());
-	m_points.push_back(rect.GetRightTop());
-	m_points.push_back(rect.GetRightBottom());
-	m_points.push_back(rect.GetLeftBottom());
+	points.push_back(rect.GetLeftTop());
+	points.push_back(rect.GetRightTop());
+	points.push_back(rect.GetRightBottom());
+	points.push_back(rect.GetLeftBottom());
 }
 
 
 void ConvexPolygon::MoveBy(Point2D delta)
 {
-	for(Plane2D &plane : m_planes) {
+	for(Plane2D &plane : planes) {
 		plane.Offset(delta);
 	}
 
-	for(Point2D &point : m_points) {
+	for(Point2D &point : points) {
 		point += delta;
 	}
 
-	m_aabb.Offset(delta);
+	aabb.Offset(delta);
 }
 
 
@@ -121,7 +121,7 @@ bool ConvexPolygon::AllPointsBehind(const Plane2D &plane, const Point2D points[]
 
 bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 {
-	return AllPointsBehind(plane, m_points.data(), m_points.size());
+	return AllPointsBehind(plane, points.data(), points.size());
 }
 
 
@@ -129,8 +129,8 @@ void Rect2D::FitPoints(const Point2D pts[], size_t npts)
 {
 	wxASSERT_MSG(npts >= 2, "Cannot construct a rect from less than two points.");
 
-	Point2D mins = { DBL_MAX, DBL_MAX };
-	Point2D maxs = { DBL_MIN, DBL_MIN };
+	mins = { DBL_MAX, DBL_MAX };
+	maxs = { DBL_MIN, DBL_MIN };
 
 	for(size_t i = 0; i < npts; i++) {
 		Point2D pt = pts[i];
@@ -147,21 +147,19 @@ void Rect2D::FitPoints(const Point2D pts[], size_t npts)
 			maxs.y = pt.y;
 		}
 	}
-	SetMins(mins);
-	SetMaxs(maxs);
 }
 
 
 void ConvexPolygon::ResizeAABB()
 {
-	m_aabb.FitPoints(m_points.data(), m_points.size());
+	aabb.FitPoints(points.data(), points.size());
 }
 
 
 bool ConvexPolygon::Intersects(const Rect2D &rect) const 
 {
 	/* Broad phase */
-	if(!m_aabb.Intersects(rect)) {
+	if(!aabb.Intersects(rect)) {
 		return false;
 	}
 
@@ -172,7 +170,7 @@ bool ConvexPolygon::Intersects(const Rect2D &rect) const
 		rect.GetLeftBottom()
 	};
 
-	for(const Plane2D &plane : m_planes) {
+	for(const Plane2D &plane : planes) {
 		if(AllPointsBehind(plane, points.data(), points.size())) {
 			return false;
 		}
@@ -184,11 +182,11 @@ bool ConvexPolygon::Intersects(const Rect2D &rect) const
 
 bool ConvexPolygon::Contains(const Point2D &pt) const
 {
-	if(!m_aabb.Contains(pt)) {
+	if(!aabb.Contains(pt)) {
 		return false;
 	}
 
-	for(const Plane2D &plane : m_planes) {
+	for(const Plane2D &plane : planes) {
 		if(plane.SignedDistance(pt) <= 0.0) {
 			return false;
 		}
@@ -200,17 +198,17 @@ bool ConvexPolygon::Contains(const Point2D &pt) const
 
 bool ConvexPolygon::Intersects(const ConvexPolygon &other) const
 {
-	if(!m_aabb.Intersects(other.GetAABB())) {
+	if(!aabb.Intersects(other.aabb)) {
 		return false;
 	}
 
-	for(const Plane2D &plane : other.GetPlanes()) {
+	for(const Plane2D &plane : other.planes) {
 		if(AllPointsBehind(plane)) {
 			return false;
 		}
 	}
 
-	for(const Plane2D &plane : m_planes) {
+	for(const Plane2D &plane : planes) {
 		if(other.AllPointsBehind(plane)) {
 			return false;
 		}
@@ -223,32 +221,32 @@ bool ConvexPolygon::Intersects(const ConvexPolygon &other) const
 void ConvexPolygon::PurgePlanes()
 {
 	/* remove all planes that aren't touching any points */
-	m_planes.erase(std::remove_if(m_planes.begin(), m_planes.end(), [this](Plane2D plane) {
+	planes.erase(std::remove_if(planes.begin(), planes.end(), [this](Plane2D plane) {
 		constexpr float EPSILON = 0.001f;
-		for(const Point2D &pt : m_points) {
+		for(const Point2D &pt : points) {
 			if(plane.SignedDistance(pt) < EPSILON) {
 				return false;
 			}
 		}
 		return true;
-	}), m_planes.end());
+	}), planes.end());
 }
 
 
 void ConvexPolygon::Slice(Plane2D plane)
 {
-	m_planes.push_back(plane);
+	planes.push_back(plane);
 
 	std::vector<Point2D> new_points;
 	ImposePlane(plane, new_points);
 
-	m_points = new_points;
+	points = new_points;
 }
 
 
 void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<Point2D> &out) const
 {
-	plane.Clip(m_points, out);
+	plane.Clip(points, out);
 }
 
 
@@ -258,23 +256,23 @@ GLTexture *ConvexPolygon::GetTexture() const
 	if(canvas == nullptr) { 
 		return nullptr;
 	}
-	if(m_texture == -1) {
+	if(texindex == -1) {
 		return nullptr;
 	}
-	return &canvas->Editor.Textures[m_texture];
+	return &canvas->editor.textures[texindex];
 }
 
 
 Rect2D ConvexPolygon::GetUV(const Rect2D &aabb) const
 {
 	Rect2D rect = aabb;
-	if(m_texturescale != 0) {
-		float scale = static_cast<float>(m_texturescale * GLBackgroundGrid::SPACING);
+	if(texscale != 0) {
+		float scale = static_cast<float>(texscale * GLBackgroundGrid::SPACING);
 		Point2D mins = { 0.0f, 0.0f };
 		Point2D maxs = { scale, scale };
 
-		rect.SetMins(mins);
-		rect.SetMaxs(maxs);
+		rect.mins = { 0.0f, 0.0f };
+		rect.maxs = { scale, scale };
 	}
 	return rect;
 }
@@ -282,5 +280,5 @@ Rect2D ConvexPolygon::GetUV(const Rect2D &aabb) const
 
 Rect2D ConvexPolygon::GetUV() const
 {
-	return GetUV(m_aabb);
+	return GetUV(aabb);
 }

@@ -3,14 +3,13 @@
 
 #include <wx/wx.h>
 
+
 class ToolBar : public wxToolBar
 {
 public:
 	enum ID : int 
 	{
-		/* private: */
 		MASK = 0x80,
-		/* public: */
 		SELECT,
 		LINE,
 		QUAD,

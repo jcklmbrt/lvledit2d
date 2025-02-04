@@ -10,20 +10,21 @@
 
 struct GLTexture
 {
-	GLuint TextureObject = 0;
-	unsigned char *Data;
-	size_t PixelWidth;
-	size_t Width;
-	size_t Height;
-	char Name[MAX_TEXTURE_NAME];
-	size_t ThumbIndex;
-	uint32_t HashValue;
-};
+	void Load(size_t width, size_t height, size_t pixelwidth, const char *name, unsigned char *data);
+	void Load(const wxFileName &filename);
+	void Delete();
+	void InitTextureObject();
 
-void LoadTextureFromMemory(GLTexture *Texture, size_t Width, size_t Height, size_t PixelWidth, const char *Name, unsigned char *Data);
-void LoadTextureFromFile(GLTexture *Texture, const wxFileName &FileName);
-void DeleteTexture(GLTexture *Texture);
-void InitTextureObject(GLTexture *Texture);
-bool EqualTextures(GLTexture *A, GLTexture *B);
+	bool operator==(const GLTexture &other);
+
+	GLuint gltex = 0;
+	unsigned char *data;
+	size_t pixelwidth;
+	size_t width;
+	size_t height;
+	char name[MAX_TEXTURE_NAME];
+	size_t thumb;
+	uint32_t hash;
+};
 
 #endif

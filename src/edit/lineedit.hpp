@@ -8,7 +8,7 @@
 #include <wx/mousestate.h>
 #include "src/edit/editorcontext.hpp"
 
-class ConvexPolygon;
+struct ConvexPolygon;
 
 enum class LineEditState_t 
 {

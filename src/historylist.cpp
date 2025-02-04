@@ -29,7 +29,7 @@ wxItemAttr *HistoryList::OnGetItemAttr(long item) const
 
 	GLCanvas *dp = GLCanvas::GetCurrent();
 	if(dp != nullptr) {
-		if(dp->Editor.History > item) {
+		if(dp->editor.history > item) {
 			attr.SetBackgroundColour(*wxWHITE);
 		}
 	}
@@ -45,9 +45,9 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 	wxString s;
 
 	if(dp != nullptr) {
-		wxASSERT(item >= 0 && item <= dp->Editor.Actions.size());
+		wxASSERT(item >= 0 && item <= dp->editor.actions.size());
 		Point2D lt, rb;
-		const EditAction &action = dp->Editor.Actions[item];
+		const EditAction &action = dp->editor.actions[item];
 		if(col == ColumnID::ACTION) {
 			switch(action.base.type) {
 			case EditActionType_t::LINE:
@@ -78,8 +78,8 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 					 action.move.delta.y);
 				break;
 			case EditActionType_t::TEXTURE:
-				s.Printf("index: %llu, scale: %d", action.texture.Index,
-					 action.texture.Scale);
+				s.Printf("index: %llu, scale: %d", action.texture.index,
+					 action.texture.scale);
 			}
 		}
 	}

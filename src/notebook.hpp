@@ -8,7 +8,7 @@
 class HistoryList;
 class wxGLCanvas;
 class GLContext;
-class GLCanvas;
+struct GLCanvas;
 
 class Notebook : public wxAuiNotebook,
                  public Singleton<Notebook>

@@ -13,37 +13,37 @@ TextureEdit::TextureEdit(GLCanvas *canvas)
 
 void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	Point2D wpos = View.MouseToWorld(e);
-	ConvexPolygon *poly = Context->SelectPoly(wpos);
+	Point2D wpos = canvas->view.MouseToWorld(e);
+	ConvexPolygon *poly = canvas->editor.SelectPoly(wpos);
 	TextureList *tlist = TextureList::GetInstance();
 	TexturePanel *tpanel = TexturePanel::GetInstance();
 
 	if(poly != nullptr) {
 		EditAction_Texture act;
-		act.Index = tlist->GetSelected();
-		act.Scale = tpanel->GetSliderValue();
-		Context->AppendAction(act);
+		act.index = tlist->GetSelected();
+		act.scale = tpanel->slider->GetValue();
+		canvas->editor.AppendAction(act);
 	}
 
-	Canvas->Refresh(true);
+	canvas->Refresh(true);
 
 	e.Skip();
 }
 
 void TextureEdit::OnMouseRightDown(wxMouseEvent &e)
 {
-	Point2D wpos = View.MouseToWorld(e);
-	ConvexPolygon *poly = Context->SelectPoly(wpos);
+	Point2D wpos = canvas->view.MouseToWorld(e);
+	ConvexPolygon *poly = canvas->editor.SelectPoly(wpos);
 	TexturePanel *tpanel = TexturePanel::GetInstance();
 
 	if(poly != nullptr && tpanel != nullptr) {
 		EditAction_Texture act;
-		act.Index = -1;
-		act.Scale = 0;
-		Context->AppendAction(act);
+		act.index = -1;
+		act.scale = 0;
+		canvas->editor.AppendAction(act);
 	}
 
-	Canvas->Refresh(true);
+	canvas->Refresh(true);
 
 	e.Skip();
 }
