@@ -1,3 +1,4 @@
+#include <wx/listbase.h>
 #include <wx/wx.h>
 #include "src/gl/glcanvas.hpp"
 #include "src/historylist.hpp"
@@ -12,7 +13,7 @@ HistoryList::HistoryList(wxWindow *parent)
 	InsertColumn(ColumnID::ACTION, "Action", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
 	InsertColumn(ColumnID::VALUE,  "Value", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE_USEHEADER);
 #ifndef _WIN32 
-	wxSize size = GetSize() * 0.5;
+	wxSize size = GetSize() * 0.7;
 	wxListItem valcol;
 	GetColumn(ColumnID::VALUE, valcol);
 	valcol.SetWidth(size.GetWidth());

@@ -13,19 +13,18 @@
 
 
 ToolBar::ToolBar(wxWindow *parent, wxWindowID id)
-	: wxToolBar(parent, id, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL | wxTB_LEFT)
+	: wxToolBar(parent, id, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL | wxTB_LEFT),
+	  selected(ID::SELECT)
 {
-	AddRadioTool(ID::SELECT,  "Select",  hand_xpm);
-	AddRadioTool(ID::LINE,    "Line",    line_xpm);
-	AddRadioTool(ID::QUAD,    "Quad",    quad_xpm);
+	AddRadioTool(ID::SELECT, "Select", hand_xpm);
+	AddRadioTool(ID::LINE, "Line", line_xpm);
+	AddRadioTool(ID::QUAD, "Quad", quad_xpm);
 	AddRadioTool(ID::TEXTURE, "Texture", texture_xpm);
-	AddRadioTool(ID::ENTITY,  "Entity",  pawn_xpm);
+	AddRadioTool(ID::ENTITY, "Entity",  pawn_xpm);
 
 	Realize();
-
-	m_selected = ID::SELECT;
 	/* make select tool default, wont call events */
-	ToggleTool(m_selected, true);
+	ToggleTool(selected, true);
 
 	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::SELECT);
 	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::LINE);
@@ -34,20 +33,14 @@ ToolBar::ToolBar(wxWindow *parent, wxWindowID id)
 	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::ENTITY);
 }
 
-wxToolBarToolBase *ToolBar::GetSelected()
-{
-	int pos = GetToolPos(m_selected);
-	return GetToolByPos(pos);
-}
-
 
 void ToolBar::OnSelect(wxCommandEvent &e)
 {
 	int id = e.GetId();
-	m_selected = static_cast<ID>(id);
+	selected = static_cast<ID>(id);
 	GLCanvas *dp = GLCanvas::GetCurrent();
 
 	if(dp != nullptr) {
-		dp->editor.OnToolSelect(m_selected);
+		dp->editor.OnToolSelect(selected);
 	}
 }

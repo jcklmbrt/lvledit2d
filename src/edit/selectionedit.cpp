@@ -19,7 +19,7 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	Point2D world_pos = view.MouseToWorld(e);
 
-	ConvexPolygon *poly = context->SelectPoly(world_pos);
+	ConvexPolygon *poly = context->FindPoly(world_pos);
 
 	if(poly != nullptr) {
 		m_inedit = true;
@@ -83,8 +83,6 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		action.delta = delta;
 		context->AppendAction(action);
 	}
-
-	canvas->Refresh(true);
 }
 
 

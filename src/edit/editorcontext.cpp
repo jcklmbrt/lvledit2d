@@ -1,6 +1,9 @@
 #include <array>
 #include <cfloat>
+#include <cstdio>
+#include <fcntl.h>
 #include <wx/debug.h>
+#include <wx/listbase.h>
 #include <wx/msgdlg.h>
 #include <wx/utils.h>
 
@@ -37,15 +40,17 @@ struct TexInfo
 	uint32_t dataoffset;
 };
 
-bool EditorContext::Load(const wxFileName &path)
+bool EditorContext::Load(const wxFileName &filename)
 {
-	wxASSERT(path.FileExists());
+	wxASSERT(filename.FileExists());
 
-	name = path.GetName();
-	file = fopen(path.GetFullPath(), "rb");
+	name = filename.GetName();
+	path = filename.GetFullPath();
+	has_file = true;
+	FILE *file = fopen(path.c_str(), "rb");
 
 	L2dHeader hdr;
-	rewind(file);
+	fseek(file, 0, SEEK_SET);
 	fread(&hdr, sizeof(L2dHeader), 1, file);
 
 	if(hdr.magic[0] != 'L' && hdr.magic[1] != '2') {
@@ -95,8 +100,7 @@ bool EditorContext::Load(const wxFileName &path)
 	hlist->SetItemCount(actions.size());
 	hlist->Refresh();
 
-	/* reopen our file for writing */
-	freopen(path.GetFullPath(), "wb", file);
+	canvas->Refresh(true);
 
 	return true;
 }
@@ -104,13 +108,14 @@ bool EditorContext::Load(const wxFileName &path)
 
 bool EditorContext::Save()
 {
-	if(file == nullptr) {
+	if(!has_file) {
 		return false;
 	}
 
+	FILE *file = fopen(path.c_str(), "wb");
+
 	std::vector<unsigned char> texdata;
 	std::vector<TexInfo> texinfo;
-
 
 	for(GLTexture &texture : textures) {
 		TexInfo &info = texinfo.emplace_back();
@@ -136,7 +141,7 @@ bool EditorContext::Save()
 	hdr.texdata_offset = hdr.texinfo_offset + hdr.texinfo_size;
 	hdr.texdata_size = texdata.size();
 
-	rewind(file);
+	fseek(file, 0, SEEK_SET);
 	fwrite(&hdr, sizeof(L2dHeader), 1, file);
 
 	fseek(file, hdr.actions_offset, SEEK_SET);
@@ -152,18 +157,13 @@ bool EditorContext::Save()
 }
 
 
-bool EditorContext::Save(const wxFileName &path)
+bool EditorContext::Save(const wxFileName &filename)
 {
-	wxASSERT(path.GetExt() == "l2d");
+	wxASSERT(filename.GetExt() == "l2d");
 
-	if(file != nullptr) {
-		fclose(file);
-	}
-
-	name = path.GetName();
-	file = fopen(path.GetFullPath(), "wb");
-
-	wxASSERT(file != nullptr);
+	name = filename.GetName();
+	path = filename.GetFullPath();
+	has_file = true;
 
 	return Save();
 }
@@ -258,9 +258,10 @@ void IBaseEdit::OnDraw()
 
 EditorContext::EditorContext(GLCanvas *canvas)
 	: canvas(canvas),
-	  name("untitled")
+	  name("untitled"),
+	  has_file(false),
+	  state(nullptr)
 {
-	state = nullptr;
 }
 
 
@@ -271,9 +272,8 @@ EditorContext::~EditorContext()
 		delete state;
 	}
 
-	if(file != nullptr) {
+	if(has_file) {
 		Save();
-		fclose(file);
 	}
 }
 
@@ -349,7 +349,7 @@ void EditorContext::OnToolSelect(ToolBar::ID id)
 }
 
 
-ConvexPolygon *EditorContext::SelectPoly(Point2D wpos)
+ConvexPolygon *EditorContext::FindPoly(Point2D wpos)
 {
 	for(ConvexPolygon &p : polys) {
 		if(p.Contains(wpos)) {
@@ -450,8 +450,10 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 		poly = &polys[action.base.poly];
 		poly->texindex = action.texture.index;
 		poly->texscale = action.texture.scale;
+		break;
 	}
 
+	wxASSERT(poly);
 	wxASSERT_MSG(action.base.poly == poly - &polys.front(),
 		"Polygon indices out of order.");
 
@@ -474,6 +476,7 @@ void EditorContext::AddTexture(const wxFileName &filename)
 
 	TextureList *tlist = TextureList::GetInstance();
 	tlist->SetItemCount(textures.size());
+	tlist->selected = textures.size() - 1;
 	tlist->Refresh();
 }
 
@@ -496,24 +499,24 @@ void EditorContext::Redo()
 
 void EditorContext::AppendAction(EditAction action)
 {
-	ConvexPolygon *Selected = GetSelectedPoly();
+	ConvexPolygon *poly = GetSelectedPoly();
 
 	switch(action.base.type) {
 	case EditActionType_t::LINE:
-		Selected->Slice(action.line.plane);
-		Selected->PurgePlanes();
-		Selected->ResizeAABB();
+		poly->Slice(action.line.plane);
+		poly->PurgePlanes();
+		poly->ResizeAABB();
 		break;
 	case EditActionType_t::MOVE:
-		Selected->MoveBy(action.move.delta);
+		poly->MoveBy(action.move.delta);
 		break;
 	case EditActionType_t::RECT:
 		polys.push_back(action.rect.rect);
 		selected = polys.size() - 1; 
 		break;
 	case EditActionType_t::TEXTURE:
-		Selected->texindex = action.texture.index;
-		Selected->texscale = action.texture.scale;
+		poly->texindex = action.texture.index;
+		poly->texscale = action.texture.scale;
 		break;
 	}
 
@@ -531,6 +534,14 @@ void EditorContext::AppendAction(EditAction action)
 				back.move.delta += action.move.delta;
 				hlist->Refresh(false);
 				Save();
+				return;
+			}
+		}
+		/* don't bother saving repeat texture actions */
+		if(back.base.type == EditActionType_t::TEXTURE && action.base.type == EditActionType_t::TEXTURE) {
+			if(back.base.poly == action.base.poly
+			&& action.texture.index == back.texture.index
+			&& action.texture.scale == back.texture.scale) {
 				return;
 			}
 		}

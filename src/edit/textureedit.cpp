@@ -14,13 +14,15 @@ TextureEdit::TextureEdit(GLCanvas *canvas)
 void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	Point2D wpos = canvas->view.MouseToWorld(e);
-	ConvexPolygon *poly = canvas->editor.SelectPoly(wpos);
+	ConvexPolygon *poly = canvas->editor.FindPoly(wpos);
 	TextureList *tlist = TextureList::GetInstance();
 	TexturePanel *tpanel = TexturePanel::GetInstance();
 
-	if(poly != nullptr) {
+	canvas->editor.SetSelectedPoly(poly);
+
+	if(poly != nullptr && tlist->selected != -1) {
 		EditAction_Texture act;
-		act.index = tlist->GetSelected();
+		act.index = tlist->selected;
 		act.scale = tpanel->slider->GetValue();
 		canvas->editor.AppendAction(act);
 	}
@@ -33,8 +35,10 @@ void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 void TextureEdit::OnMouseRightDown(wxMouseEvent &e)
 {
 	Point2D wpos = canvas->view.MouseToWorld(e);
-	ConvexPolygon *poly = canvas->editor.SelectPoly(wpos);
+	ConvexPolygon *poly = canvas->editor.FindPoly(wpos);
 	TexturePanel *tpanel = TexturePanel::GetInstance();
+
+	canvas->editor.SetSelectedPoly(poly);
 
 	if(poly != nullptr && tpanel != nullptr) {
 		EditAction_Texture act;

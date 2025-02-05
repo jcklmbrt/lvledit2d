@@ -6,7 +6,6 @@
 #include "src/gl/texture.hpp"
 #include "src/toolbar.hpp"
 #include "src/geometry.hpp"
-#include "src/gl/gltexturegeometry.hpp"
 
 struct GLCanvas;
 class EditorContext;
@@ -21,7 +20,6 @@ enum class EditActionType_t
 	MOVE,
 	TEXTURE
 };
-
 
 
 struct EditAction_Base
@@ -105,7 +103,7 @@ public:
 	bool Save();
 	bool Save(const wxFileName &path);
 	bool Load(const wxFileName &path);
-	ConvexPolygon *SelectPoly(Point2D wpos);
+	ConvexPolygon *FindPoly(Point2D wpos);
 	void ResetPoly(size_t i);
 	void OnToolSelect(ToolBar::ID id);
 	void OnDraw();
@@ -117,8 +115,9 @@ public:
 	std::vector<GLTexture> textures;
 	size_t history = 0; /* replacement for actions.size() */
 	size_t selected = -1;
-	FILE *file = nullptr;
 	wxString name;
+	wxString path;
+	bool has_file;
 	IBaseEdit *state;
 	GLCanvas *canvas;
 	/* additional options that just default to true.

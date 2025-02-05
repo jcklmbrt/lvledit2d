@@ -1,10 +1,12 @@
 #ifndef _TOOLBAR_HPP
 #define _TOOLBAR_HPP
 
+#include "src/singleton.hpp"
 #include <wx/wx.h>
 
 
-class ToolBar : public wxToolBar
+class ToolBar : public wxToolBar,
+                public Singleton<ToolBar>
 {
 public:
 	enum ID : int 
@@ -17,10 +19,8 @@ public:
 		ENTITY
 	};
 	ToolBar(wxWindow *parent, wxWindowID id = wxID_ANY);
-	wxToolBarToolBase *GetSelected();
-private:
 	void OnSelect(wxCommandEvent &e);
-        ID m_selected = ID::SELECT;
+        ID selected = ID::SELECT;
 };
 
 

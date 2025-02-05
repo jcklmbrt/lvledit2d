@@ -34,8 +34,10 @@ public:
 	TextureList(wxWindow *parent);
 	wxString OnGetItemText(long item, long col) const;
 	int OnGetItemImage(long item) const;
-	size_t GetSelected();
+	wxItemAttr *OnGetItemAttr(long item) const;
+	void OnSelected(wxListEvent &e);
+	void OnFocused(wxListEvent &e);
+	size_t selected;
 };
-
 
 #endif

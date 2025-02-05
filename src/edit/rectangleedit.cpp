@@ -54,7 +54,6 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 			m_inedit = true;
 			m_onepoint = true;
 		}
-
 	}
 }
 

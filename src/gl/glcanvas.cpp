@@ -3,10 +3,10 @@
 
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
-#include "src/lvledit2d.hpp"
 #include "src/notebook.hpp"
 #include "src/gl/glcontext.hpp"
 #include "src/gl/glcanvas.hpp"
+#include "src/toolbar.hpp"
 
 
 GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
@@ -33,6 +33,9 @@ GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
 
 	PushEventHandler(&editor);
 	PushEventHandler(&view);
+
+	ToolBar *tb = ToolBar::GetInstance();
+	editor.OnToolSelect(tb->selected);
 }
 
 
@@ -61,7 +64,7 @@ GLCanvas *GLCanvas::GetCurrent()
 void GLCanvas::OnMouse(wxMouseEvent &e)
 {
 	mousepos = view.MouseToWorld(e);
-	Refresh(false);
+	Refresh(true);
 }
 
 

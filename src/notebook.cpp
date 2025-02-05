@@ -31,7 +31,7 @@ void Notebook::Save(bool force_rename)
 
 	EditorContext &edit = dp->editor;
 
-	if(edit.file == nullptr || force_rename) {
+	if(!edit.has_file || force_rename) {
 		wxFileDialog dialog(GetParent(), "Save file", "", "",
 			"LvlEdit2d files (*.l2d)|*.l2d", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 
@@ -90,10 +90,20 @@ bool Notebook::AddCanvas(const wxFileName &file)
 	GLCanvas *canvas = new GLCanvas(this, attrs);
 
 	EditorContext &edit = canvas->editor;
-	
-	edit.Load(file);
+	edit.name = file.GetName();
 
-	return AddCanvas(canvas);
+	bool ret = AddCanvas(canvas);
+
+	if(ret) {
+		ret &= edit.Load(file);
+	}
+
+	if(!ret) {
+		int page = FindPage(canvas);
+		DoRemovePage(page);
+	}
+
+	return ret;
 }
 
 
@@ -101,12 +111,15 @@ void Notebook::OnPageClose(wxAuiNotebookEvent &e)
 {
 	e.Skip();
 
-	HistoryList *hlist;
+	HistoryList *hlist = HistoryList::GetInstance();
+	TextureList *tlist = TextureList::GetInstance();
 
 	if(GetPageCount() <= 0) {
-		hlist = HistoryList::GetInstance();
+		tlist->selected = -1;
 		hlist->SetItemCount(0);
 		hlist->Refresh();
+		tlist->SetItemCount(0);
+		tlist->Refresh();
 		MainFrame::GetInstance()->Sidebook_Hide();
 	}
 }
@@ -119,18 +132,23 @@ void Notebook::OnPageChange(wxAuiNotebookEvent &e)
 	wxWindow *page = GetPage(e.GetSelection());
 	GLCanvas *dp = dynamic_cast<GLCanvas *>(page);
 
+	/* Jumping through hoops to keep our lists global
+	   it would be much worse if we created a new object for every page */
 	HistoryList *hlist = HistoryList::GetInstance();
 	TextureList *tlist = TextureList::GetInstance();
 
 	MainFrame::GetInstance()->Sidebook_Show();
 
 	if(dp != nullptr) {
-		tlist->SetItemCount(dp->editor.textures.size());
+		size_t ntex = dp->editor.textures.size();
+		tlist->SetItemCount(ntex);
+		tlist->selected = ntex - 1;
 		hlist->SetItemCount(dp->editor.actions.size());
 	}
 	else {
 		hlist->SetItemCount(0);
 		tlist->SetItemCount(0);
+		tlist->selected = -1;
 	}
 
 	hlist->Refresh();
