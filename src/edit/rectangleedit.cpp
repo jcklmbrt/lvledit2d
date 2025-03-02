@@ -94,7 +94,7 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 
 void RectangleEdit::OnDraw()
 {
-	Color color;
+	Color color = WHITE;
 
 	Point2D mpos = canvas->mousepos;
 
@@ -103,9 +103,6 @@ void RectangleEdit::OnDraw()
 	}
 
 	if(m_inedit && !m_onepoint) {
-
-		color = WHITE;
-
 		for(ConvexPolygon &poly : context->polys) {
 			if(poly.Intersects(m_rect)) {
 				color = RED;
@@ -116,19 +113,21 @@ void RectangleEdit::OnDraw()
 		canvas->OutlineRect(m_rect, 1.0, color);
 	}
 
-	bool intersects = false;
-	for(ConvexPolygon &poly : context->polys) {
-		if(poly.Contains(mpos)) {
-			intersects = true;
-			break;
+	if(!m_inedit) {
+		bool intersects = false;
+		for(ConvexPolygon &poly : context->polys) {
+			if(poly.Contains(mpos)) {
+				intersects = true;
+				break;
+			}
 		}
-	}
 
-	color = WHITE;
-	if(intersects || m_onepoint) {
-		color = RED;
+		if(intersects) {
+			color = RED;
+		}
+	} else {
+		canvas->DrawPoint(m_start, color);
 	}
 
 	canvas->DrawPoint(mpos, color);
-	canvas->DrawPoint(m_start, color);
 }

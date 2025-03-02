@@ -1,5 +1,11 @@
 #include <array>
 #include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <glm/glm.hpp>
+#include <limits>
+#include <wx/debug.h>
+
 #include "src/gl/glcanvas.hpp"
 #include "src/gl/glbackgroundgrid.hpp"
 #include "src/geometry.hpp"
@@ -28,6 +34,14 @@ void Plane2D::Offset(const Point2D &pt)
 	c -= a * pt.x + b * pt.y;
 }
 
+
+void Plane2D::Transform(const Matrix3 &t)
+{
+	glm::vec3 r = glm::vec3(a, b, c) * inverse(t);
+	a = r.x;
+	b = r.y;
+	c = r.z;
+}
 
 void Plane2D::Clip(const std::vector<Point2D> &points, std::vector<Point2D> &out) {
 
@@ -94,17 +108,43 @@ ConvexPolygon::ConvexPolygon(const Rect2D &rect)
 }
 
 
-void ConvexPolygon::MoveBy(Point2D delta)
+void ConvexPolygon::Transform(const Matrix3 &t)
 {
 	for(Plane2D &plane : planes) {
-		plane.Offset(delta);
+		plane.Transform(t);
 	}
 
 	for(Point2D &point : points) {
-		point += delta;
+		point = t * glm::vec3(point, 1.0f);
 	}
 
-	aabb.Offset(delta);
+	ResizeAABB();
+}
+
+void ConvexPolygon::Scale(const Point2D &origin, const Point2D &scale)
+{
+	Matrix3 t = { scale.x, 0.0f, 0.0f,
+		      0.0f, scale.y, 0.0f,
+		        origin.x * (1.0f - scale.x),
+		        origin.y * (1.0f - scale.y), 1.0f
+	};
+
+	Transform(t);
+}
+
+
+void ConvexPolygon::Rotate(const Point2D &origin, float angle)
+{
+	float cr = cos(angle);
+	float sr = sin(angle);
+
+	Matrix3 t = {  cr, sr, 0.0f,
+		       -sr, cr, 0.0f,
+		         origin.x * (1.0f - cr) + origin.y * sr,
+			 -origin.x * sr + origin.y * (1.0f - cr), 1.0f
+	};
+
+	Transform(t);
 }
 
 
@@ -127,10 +167,11 @@ bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 
 void Rect2D::FitPoints(const Point2D pts[], size_t npts)
 {
-	wxASSERT_MSG(npts >= 2, "Cannot construct a rect from less than two points.");
+	wxASSERT_MSG(npts >= 2,
+		     "Cannot construct a rect from less than two points.");
 
-	mins = { DBL_MAX, DBL_MAX };
-	maxs = { DBL_MIN, DBL_MIN };
+	mins = pts[0];
+	maxs = pts[0];
 
 	for(size_t i = 0; i < npts; i++) {
 		Point2D pt = pts[i];
@@ -147,6 +188,9 @@ void Rect2D::FitPoints(const Point2D pts[], size_t npts)
 			maxs.y = pt.y;
 		}
 	}
+
+	wxASSERT_MSG(mins.x < maxs.x && mins.y < maxs.y,
+		     "Cannot construct a rect from equal points.");
 }
 
 

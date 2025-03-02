@@ -1,6 +1,8 @@
 #include <wx/image.h>
 #include <wx/listctrl.h>
 #include <wx/bitmap.h>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "glad/gl.h"
 #include "src/gl/texture.hpp"
 #include "src/gl/glcanvas.hpp"

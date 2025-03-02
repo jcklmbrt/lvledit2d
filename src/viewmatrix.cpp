@@ -1,5 +1,5 @@
 #include <glm/glm.hpp>
-#include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <wx/event.h>
 #include "src/viewmatrix.hpp"
 

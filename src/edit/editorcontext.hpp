@@ -12,52 +12,57 @@ class EditorContext;
 class ViewMatrixBase;
 
 
-enum class EditActionType_t
+enum class EditActionType
 {
 	/* User actions */
 	LINE,
 	RECT,
-	MOVE,
+	TRANS,
+	DELETE,
 	TEXTURE
 };
 
 
 struct EditAction_Base
 {
-	EditActionType_t type;
+	EditActionType type;
 	size_t poly;
 };
 
 
 struct EditAction_Rect : EditAction_Base
 {
-	EditAction_Rect() { type = EditActionType_t::RECT; }
+	EditAction_Rect() { type = EditActionType::RECT; }
 	Rect2D rect;
 };
 
 
 struct EditAction_Line : EditAction_Base
 {
-	EditAction_Line() { type = EditActionType_t::LINE; }
+	EditAction_Line() { type = EditActionType::LINE; }
 	Rect2D aabb;
 	Point2D start;
 	Point2D end;
 	Plane2D plane;
 };
 
-
-struct EditAction_Move : EditAction_Base
+struct EditAction_Trans: EditAction_Base
 {
-	EditAction_Move() { type = EditActionType_t::MOVE; }
-	Point2D delta;
+	EditAction_Trans() { type = EditActionType::TRANS; }
+	Matrix3 matrix;
 };
 
 
 struct EditAction_Texture : EditAction_Base
 {
-	EditAction_Texture() { type = EditActionType_t::TEXTURE; }
+	EditAction_Texture() { type = EditActionType::TEXTURE; }
 	size_t index;
 	int scale;
+};
+
+struct EditAction_Delete : EditAction_Base
+{
+	EditAction_Delete() { type = EditActionType::DELETE; }
 };
 
 
@@ -66,12 +71,14 @@ union EditAction
 	EditAction() {};
 	EditAction(EditAction_Line &line) : line(line) {}
 	EditAction(EditAction_Rect &rect) : rect(rect) {}
-	EditAction(EditAction_Move &move) : move(move) {}
+	EditAction(EditAction_Trans &trans) : trans(trans) {}
 	EditAction(EditAction_Texture &texture) : texture(texture) {}
+	EditAction(EditAction_Delete &del) : del(del) {}
 	EditAction_Base base;
 	EditAction_Rect rect;
 	EditAction_Line line;
-	EditAction_Move move;
+	EditAction_Trans trans;
+	EditAction_Delete del;
 	EditAction_Texture texture;
 };
 
@@ -104,11 +111,11 @@ public:
 	bool Save(const wxFileName &path);
 	bool Load(const wxFileName &path);
 	ConvexPolygon *FindPoly(Point2D wpos);
-	void ResetPoly(size_t i);
+	void ResetPolys();
 	void OnToolSelect(ToolBar::ID id);
 	void OnDraw();
 	ConvexPolygon *GetSelectedPoly();
-	void SetSelectedPoly(ConvexPolygon *P);
+	void SetSelectedPoly(ConvexPolygon *p);
 
 	std::vector<ConvexPolygon> polys;
 	std::vector<EditAction> actions;

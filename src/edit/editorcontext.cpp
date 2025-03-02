@@ -1,7 +1,6 @@
 #include <array>
 #include <cfloat>
 #include <cstdio>
-#include <fcntl.h>
 #include <wx/debug.h>
 #include <wx/listbase.h>
 #include <wx/msgdlg.h>
@@ -88,10 +87,9 @@ bool EditorContext::Load(const wxFileName &filename)
 		textures.push_back(texture);
 	}
 
-	for(size_t i = 0; i < history; i++) {
-		ApplyAction(actions[i]);
-	}
+	ResetPolys();
 
+	wxPoint2DDouble d;
 	TextureList *tlist = TextureList::GetInstance();
 	tlist->SetItemCount(textures.size());
 	tlist->Refresh();
@@ -222,11 +220,7 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 
 	if(p == context->GetSelectedPoly()) {
 		canvas->OutlinePoly(pts.data(), pts.size(), 1.0, GREEN);
-		for(const Point2D &pt : pts) {
-			canvas->DrawPoint(pt, WHITE);
-		}
-	}
-	else {
+	} else {
 		canvas->OutlinePoly(pts.data(), pts.size(), 1.0, WHITE);
 	}
 
@@ -361,37 +355,16 @@ ConvexPolygon *EditorContext::FindPoly(Point2D wpos)
 }
 
 
-void EditorContext::ResetPoly(size_t i)
+void EditorContext::ResetPolys()
 {
-	ConvexPolygon *poly = nullptr;
+	polys.clear();
 
-	for(size_t act = 0; act < history; act++) {
-		const EditAction &action = actions[act];
-		if(action.base.poly == i) {
-			switch(action.base.type) {
-			case EditActionType_t::LINE:
-				wxASSERT(poly);
-				poly->Slice(action.line.plane);
-				break;
-			case EditActionType_t::MOVE:
-				wxASSERT(poly);
-				poly->MoveBy(action.move.delta);
-				break;
-			case EditActionType_t::TEXTURE:
-				wxASSERT(poly);
-				poly->texindex = action.texture.index;
-				poly->texscale = action.texture.scale;
-				break;
-			case EditActionType_t::RECT:
-				polys[i] = action.rect.rect;
-				poly = &polys[i];
-				break;
-			}
-		}
+	for(size_t i = 0; i < history; i++) {
+		ApplyAction(actions[i]);
 	}
 
-	poly->PurgePlanes();
-	poly->ResizeAABB();
+	//poly->PurgePlanes();
+	//poly->ResizeAABB();
 }
 
 
@@ -407,14 +380,15 @@ void EditorContext::Undo()
 	history--;
 
 	switch(back.base.type) {
-	case EditActionType_t::TEXTURE:
-	case EditActionType_t::LINE:
-		ResetPoly(back.base.poly);
+	case EditActionType::TEXTURE:
+	case EditActionType::LINE:
+	case EditActionType::DELETE:
+		ResetPolys();
 		break;
-	case EditActionType_t::MOVE:
-		poly.MoveBy(-back.move.delta);
+	case EditActionType::TRANS:
+		poly.Transform(inverse(back.trans.matrix));
 		break;
-	case EditActionType_t::RECT:
+	case EditActionType::RECT:
 		if(selected == back.base.poly) {
 			selected = -1;
 		}
@@ -432,21 +406,26 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 	ConvexPolygon *poly = nullptr;
 
 	switch(action.base.type) {
-	case EditActionType_t::LINE:
+	case EditActionType::LINE:
 		poly = &polys[action.base.poly];
 		poly->Slice(action.line.plane);
 		poly->PurgePlanes();
 		poly->ResizeAABB();
 		break;
-	case EditActionType_t::MOVE:
+	case EditActionType::TRANS:
 		poly = &polys[action.base.poly];
-		poly->MoveBy(action.move.delta);
+		poly->Transform(action.trans.matrix);
 		break;
-	case EditActionType_t::RECT:
+	case EditActionType::RECT:
 		polys.push_back(action.rect.rect);
 		poly = &polys.back();
 		break;
-	case EditActionType_t::TEXTURE:
+	case EditActionType::DELETE:
+		polys.erase(polys.begin() + action.base.poly);
+		poly = nullptr;
+		return nullptr;
+		break;
+	case EditActionType::TEXTURE:
 		poly = &polys[action.base.poly];
 		poly->texindex = action.texture.index;
 		poly->texscale = action.texture.scale;
@@ -502,19 +481,22 @@ void EditorContext::AppendAction(EditAction action)
 	ConvexPolygon *poly = GetSelectedPoly();
 
 	switch(action.base.type) {
-	case EditActionType_t::LINE:
+	case EditActionType::LINE:
 		poly->Slice(action.line.plane);
 		poly->PurgePlanes();
 		poly->ResizeAABB();
 		break;
-	case EditActionType_t::MOVE:
-		poly->MoveBy(action.move.delta);
+	case EditActionType::TRANS:
+		poly->Transform(action.trans.matrix);
 		break;
-	case EditActionType_t::RECT:
+	case EditActionType::RECT:
 		polys.push_back(action.rect.rect);
 		selected = polys.size() - 1; 
 		break;
-	case EditActionType_t::TEXTURE:
+	case EditActionType::DELETE:
+		polys.erase(polys.begin() + selected);
+		break;
+	case EditActionType::TEXTURE:
 		poly->texindex = action.texture.index;
 		poly->texscale = action.texture.scale;
 		break;
@@ -522,23 +504,28 @@ void EditorContext::AppendAction(EditAction action)
 
 	action.base.poly = selected;
 
+	if(action.base.type == EditActionType::DELETE) {
+		/* deselect on delete */
+		selected = -1;
+	}
+
 	HistoryList *hlist = HistoryList::GetInstance();
 	hlist->SetItemCount(actions.size());
 	hlist->Refresh();
 
 	if(!actions.empty() && history) {
 		EditAction &back = actions[history - 1];
-		if(back.base.type == EditActionType_t::MOVE && action.base.type == EditActionType_t::MOVE) {
+		if(back.base.type == EditActionType::TRANS && action.base.type == EditActionType::TRANS) {
 			/* we don't want to spam a move action for each pixel moved */
 			if(back.base.poly == action.base.poly) {
-				back.move.delta += action.move.delta;
+				back.trans.matrix = back.trans.matrix * action.trans.matrix;
 				hlist->Refresh(false);
 				Save();
 				return;
 			}
 		}
 		/* don't bother saving repeat texture actions */
-		if(back.base.type == EditActionType_t::TEXTURE && action.base.type == EditActionType_t::TEXTURE) {
+		if(back.base.type == EditActionType::TEXTURE && action.base.type == EditActionType::TEXTURE) {
 			if(back.base.poly == action.base.poly
 			&& action.texture.index == back.texture.index
 			&& action.texture.scale == back.texture.scale) {
@@ -559,4 +546,6 @@ void EditorContext::AppendAction(EditAction action)
 	hlist->Refresh();
 
 	Save();
+
+	canvas->Refresh();
 }

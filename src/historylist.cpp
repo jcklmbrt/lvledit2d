@@ -1,3 +1,4 @@
+#include <sstream>
 #include <wx/listbase.h>
 #include <wx/wx.h>
 #include "src/gl/glcanvas.hpp"
@@ -49,41 +50,53 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 		wxASSERT(item >= 0 && item <= dp->editor.actions.size());
 		Point2D lt, rb;
 		const EditAction &action = dp->editor.actions[item];
+		const Matrix3 &t = action.trans.matrix;
 		if(col == ColumnID::ACTION) {
 			switch(action.base.type) {
-			case EditActionType_t::LINE:
+			case EditActionType::LINE:
 				s.Printf("LINE");
 				break;
-			case EditActionType_t::RECT:
+			case EditActionType::RECT:
 				s.Printf("RECT");
 				break;
-			case EditActionType_t::MOVE:
-				s.Printf("MOVE");
+			case EditActionType::TRANS:
+				s.Printf("TRANS");
 				break;
-			case EditActionType_t::TEXTURE:
+			case EditActionType::TEXTURE:
 				s.Printf("TEXTURE");
+				break;
+			case EditActionType::DELETE:
+				s.Printf("DELETE");
 				break;
 			}
 		} else if(col == ColumnID::VALUE) {
 			switch(action.base.type) {
-			case EditActionType_t::LINE:
+			case EditActionType::LINE:
 				s.Printf("x0:%.1f,y0:%.1f,x1:%.1f,y1:%.1f", action.line.start.x, action.line.start.y, action.line.end.x, action.line.end.y);
 				break;
-			case EditActionType_t::RECT:
+			case EditActionType::RECT:
 				lt = action.rect.rect.GetLeftTop();
 				rb = action.rect.rect.GetRightBottom();
-				s.Printf("x:%.1f,y:%.1f,w:%.1f,h:%.1f", lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
+				s.Printf("%llu: x:%.1f,y:%.1f,w:%.1f,h:%.1f",
+					 action.base.poly,
+					 lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
 				break;
-			case EditActionType_t::MOVE:
-				s.Printf("x:%.1f,y:%.1f", action.move.delta.x,
-					 action.move.delta.y);
+			case EditActionType::TRANS:
+				s.Printf("%.1f, %.1f, %.1f, "
+					 "%.1f, %1.f, %.1f, "
+					 "%.1f, %1.f, %.1f",
+					 t[0][0], t[0][1], t[0][2],
+					 t[1][0], t[1][1], t[1][2],
+					 t[2][0], t[2][1], t[2][2]);
 				break;
-			case EditActionType_t::TEXTURE:
+			case EditActionType::TEXTURE:
 				s.Printf("index: %llu, scale: %d", action.texture.index,
 					 action.texture.scale);
+				break;
+			case EditActionType::DELETE:
+				s.Printf("index: %llu", action.base.poly);
 			}
 		}
 	}
-
 	return s;
 }
