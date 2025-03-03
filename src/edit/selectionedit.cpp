@@ -1,8 +1,6 @@
-
+#include <array>
 #include <cfloat>
 #include <cmath>
-#include <sys/select.h>
-#include <unistd.h>
 #include <wx/event.h>
 
 #include "src/geometry.hpp"
@@ -163,8 +161,8 @@ void SelectionEdit::OnScale(Matrix3 &t, const Point2D &wpos)
 	bool out_x = m_outcode & (RECT2D_LEFT | RECT2D_RIGHT);
 	bool out_y = m_outcode & (RECT2D_TOP | RECT2D_BOTTOM);
 	if(out_x && !out_y) scale.y = 1.0f;
-	if(out_y && !out_x) scale.x = 1.0f;
-
+	if(out_y && !out_x) scale.x = 1.0f; 
+	
 	t = ScaleAroundPoint(m_editstart, scale);
 
 	m_delta = delta;
@@ -189,8 +187,12 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		OnScale(t, wpos);
 	}
 
-	Point2D new_maxs = t * glm::vec3(selected->aabb.maxs, 1.0f);
-	Point2D new_mins = t * glm::vec3(selected->aabb.mins, 1.0f);
+	glm::mat2 linear = glm::mat2(t);
+	float det = glm::determinant(linear);
+	/* transformation will turn our polygon inside-out. */
+	if(det <= 0) {
+		return;
+	}
 
 	selected->Transform(t);
 

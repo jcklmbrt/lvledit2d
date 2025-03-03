@@ -65,8 +65,8 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 			case EditActionType::TEXTURE:
 				s.Printf("TEXTURE");
 				break;
-			case EditActionType::DELETE:
-				s.Printf("DELETE");
+			case EditActionType::DEL:
+				s.Printf("DEL");
 				break;
 			}
 		} else if(col == ColumnID::VALUE) {
@@ -93,7 +93,7 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 				s.Printf("index: %llu, scale: %d", action.texture.index,
 					 action.texture.scale);
 				break;
-			case EditActionType::DELETE:
+			case EditActionType::DEL:
 				s.Printf("index: %llu", action.base.poly);
 			}
 		}

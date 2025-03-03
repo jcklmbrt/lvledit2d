@@ -18,7 +18,7 @@ enum class EditActionType
 	LINE,
 	RECT,
 	TRANS,
-	DELETE,
+	DEL,
 	TEXTURE
 };
 
@@ -62,7 +62,7 @@ struct EditAction_Texture : EditAction_Base
 
 struct EditAction_Delete : EditAction_Base
 {
-	EditAction_Delete() { type = EditActionType::DELETE; }
+	EditAction_Delete() { type = EditActionType::DEL; }
 };
 
 

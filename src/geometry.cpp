@@ -168,29 +168,19 @@ bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 void Rect2D::FitPoints(const Point2D pts[], size_t npts)
 {
 	wxASSERT_MSG(npts >= 2,
-		     "Cannot construct a rect from less than two points.");
+		"Cannot construct a rect from less than two points.");
 
 	mins = pts[0];
 	maxs = pts[0];
 
-	for(size_t i = 0; i < npts; i++) {
+	for(size_t i = 1; i < npts; i++) {
 		Point2D pt = pts[i];
-		if(pt.x < mins.x) {
-			mins.x = pt.x;
-		}
-		if(pt.y < mins.y) {
-			mins.y = pt.y;
-		}
-		if(pt.x > maxs.x) {
-			maxs.x = pt.x;
-		}
-		if(pt.y > maxs.y) {
-			maxs.y = pt.y;
-		}
+		mins = glm::min(pt, mins);
+		maxs = glm::max(pt, maxs);
 	}
 
 	wxASSERT_MSG(mins.x < maxs.x && mins.y < maxs.y,
-		     "Cannot construct a rect from equal points.");
+		"Cannot construct a rect from equal points.");
 }
 
 

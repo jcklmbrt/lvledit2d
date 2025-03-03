@@ -375,18 +375,19 @@ void EditorContext::Undo()
 	}
 
 	EditAction &back = actions[history - 1];
-	ConvexPolygon &poly = polys[back.base.poly];
+	ConvexPolygon *poly;
 
 	history--;
 
 	switch(back.base.type) {
 	case EditActionType::TEXTURE:
 	case EditActionType::LINE:
-	case EditActionType::DELETE:
+	case EditActionType::DEL:
 		ResetPolys();
 		break;
 	case EditActionType::TRANS:
-		poly.Transform(inverse(back.trans.matrix));
+		poly = &polys[back.base.poly];
+		poly->Transform(inverse(back.trans.matrix));
 		break;
 	case EditActionType::RECT:
 		if(selected == back.base.poly) {
@@ -420,7 +421,7 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 		polys.push_back(action.rect.rect);
 		poly = &polys.back();
 		break;
-	case EditActionType::DELETE:
+	case EditActionType::DEL:
 		polys.erase(polys.begin() + action.base.poly);
 		poly = nullptr;
 		return nullptr;
@@ -493,7 +494,7 @@ void EditorContext::AppendAction(EditAction action)
 		polys.push_back(action.rect.rect);
 		selected = polys.size() - 1; 
 		break;
-	case EditActionType::DELETE:
+	case EditActionType::DEL:
 		polys.erase(polys.begin() + selected);
 		break;
 	case EditActionType::TEXTURE:
@@ -504,7 +505,7 @@ void EditorContext::AppendAction(EditAction action)
 
 	action.base.poly = selected;
 
-	if(action.base.type == EditActionType::DELETE) {
+	if(action.base.type == EditActionType::DEL) {
 		/* deselect on delete */
 		selected = -1;
 	}
