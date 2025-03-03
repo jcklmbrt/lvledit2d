@@ -6,17 +6,14 @@
 #include <glm/glm.hpp>
 #include <wx/debug.h>
 
-using Point2D = glm::vec2;
-using Color = glm::vec4;
-using Matrix4 = glm::mat4;
-using Matrix3 = glm::mat3;
+using glm_vec2 = glm::vec2;
 
-constexpr Color BLACK = Color(0.0f, 0.0f, 0.0f, 1.0f);
-constexpr Color WHITE = Color(1.0f, 1.0f, 1.0f, 1.0f);
-constexpr Color RED = Color(1.0f, 0.0f, 0.0f, 1.0f);
-constexpr Color BLUE = Color(0.0f, 0.0f, 1.0f, 1.0f);
-constexpr Color GREEN = Color(0.0f, 1.0f, 0.0f, 1.0f);
-constexpr Color YELLOW = Color(1.0f, 1.0f, 0.0f, 1.0f);
+constexpr glm::vec4 BLACK = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+constexpr glm::vec4 WHITE = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+constexpr glm::vec4 RED = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+constexpr glm::vec4 BLUE = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+constexpr glm::vec4 GREEN = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+constexpr glm::vec4 YELLOW = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
 
 constexpr int RECT2D_INSIDE = 0;
 constexpr int RECT2D_LEFT = 1;
@@ -27,14 +24,15 @@ constexpr int RECT2D_TOP = 8;
 struct Rect2D
 {
 	Rect2D() = default;
-	Rect2D(const Point2D &mins, const Point2D &maxs)
+	Rect2D(const glm::i32vec2 &mins, const glm::i32vec2 &maxs)
 		: mins(mins),
 		  maxs(maxs)
 	{
 		wxASSERT(maxs.x >= mins.x);
 		wxASSERT(maxs.y >= mins.y);
 	}
-	void Offset(const Point2D &delta) 
+
+	void Offset(const glm::i32vec2 &delta) 
 	{
 		mins += delta;
 		maxs += delta;
@@ -46,7 +44,7 @@ struct Rect2D
 		       mins.y < other.maxs.y && other.mins.y < maxs.y;
 	};
 
-	int GetOutCode(const Point2D &p) const
+	int GetOutCode(const glm::i32vec2 &p) const
         {
 		return (((p.x < mins.x) ? RECT2D_LEFT : 0) +
 		        ((p.x > maxs.x) ? RECT2D_RIGHT : 0) +
@@ -54,33 +52,30 @@ struct Rect2D
 		        ((p.y > maxs.y) ? RECT2D_BOTTOM : 0));
 	}
 
-	bool Contains(const Point2D &pt) const 
+	bool Contains(const glm::i32vec2 &pt) const 
 	{
 		return pt.x > mins.x && pt.y > mins.y &&
 		       pt.x < maxs.x && pt.y < maxs.y;
 	};
 
-	void Inset(float x, float y)
+	void Inset(int32_t x, int32_t y)
 	{
-		Point2D delta = { x * 0.5, y * 0.5 };
+		glm::i32vec2 delta = { x / 2, y / 2 };
 		mins = mins + delta;
 		maxs = maxs - delta;
 	}
 
-	Point2D GetLeftTop() const { return mins; }
-	Point2D GetRightTop() const { return { maxs.x, mins.y }; }
-	Point2D GetLeftBottom() const { return { mins.x, maxs.y }; }
-	Point2D GetRightBottom() const { return maxs; }
+	glm::i32vec2 GetLeftTop() const { return mins; }
+	glm::i32vec2 GetRightTop() const { return { maxs.x, mins.y }; }
+	glm::i32vec2 GetLeftBottom() const { return { mins.x, maxs.y }; }
+	glm::i32vec2 GetRightBottom() const { return maxs; }
 
-	Point2D GetSize() const { return maxs - mins; }
-	Point2D GetCenter() const { return maxs - (GetSize() / 2.0f); } 
+	glm::i32vec2 GetSize() const { return maxs - mins; }
+	glm::i32vec2 GetCenter() const { return maxs - (GetSize() / 2); } 
 
-	void FitPoints(const Point2D pts[], size_t npts);
-	void SetRight(float r) { maxs.x = r; }
-	void SetLeft(float l) { mins.x = l; }
-	void SetBottom(float b) { maxs.y = b; }
-	void SetTop(float t) { mins.y = t; }
-	Point2D mins, maxs;
+	void FitPoints(const glm_vec2 pts[], size_t npts);
+
+	glm::i32vec2 mins, maxs;
 };
 
 static bool Intersects(const Rect2D &a, const Rect2D &b)
@@ -92,17 +87,17 @@ static bool Intersects(const Rect2D &a, const Rect2D &b)
 struct Plane2D
 {
 	Plane2D() = default;
-	Plane2D(const Point2D &start, const Point2D &end);
-	float SignedDistance(const Point2D &p) const;
-	bool Line(const Point2D &a, const Point2D &b, Point2D &out) const;
+	Plane2D(const glm::i32vec2 &start, const glm::i32vec2 &end);
+	int32_t SignedDistance(const glm::i32vec2 &p) const;
+	bool Line(const glm::vec2 &a, const glm::vec2 &b, glm::vec2 &out) const;
 	void Flip();
-	void Offset(const Point2D &pt);
-	void Transform(const Matrix3 &t);
-	void Scale(const Point2D &origin, const Point2D &scale);
-	void Clip(const std::vector<Point2D> &points, std::vector<Point2D> &out);
+	void Offset(const glm::i32vec2 &pt);
+	void Transform(const glm::mat3 &t);
+	void Scale(const glm_vec2 &origin, const glm_vec2 &scale);
+	void Clip(const std::vector<glm_vec2> &points, std::vector<glm_vec2> &out);
 	bool operator==(const Plane2D &other) const;
 	/* Ax + By + C = 0 */
-	float a, b, c;
+	int32_t a, b, c;
 };
 
 struct GLTexture;
@@ -110,18 +105,17 @@ struct GLTexture;
 struct ConvexPolygon
 {
 	ConvexPolygon(const Rect2D &rect);
-	void Scale(const Point2D &origin, const Point2D &factor);
-	void Rotate(const Point2D &origin, float angle);
-	void Transform(const Matrix3 &t);
+	void Transform(const glm::mat3 &t);
 	void Slice(Plane2D plane);
-	void ImposePlane(Plane2D plane, std::vector<Point2D> &out) const;
-	static bool AllPointsBehind(const Plane2D &plane, const Point2D points[], size_t npoints);
+	void ImposePlane(Plane2D plane, std::vector<glm_vec2> &out) const;
+	static bool AllPointsBehind(const Plane2D &plane, const glm::vec2 points[], size_t npoints);
+	static bool AllPointsBehind(const Plane2D &plane, const glm::i32vec2 points[], size_t npoints);
 	bool AllPointsBehind(const Plane2D &plane) const;
 	void ResizeAABB();
 	void PurgePlanes();
 	bool Intersects(const ConvexPolygon &other) const;
 	bool Intersects(const Rect2D &rect) const;
-	bool Contains(const Point2D &pt) const;
+	bool Contains(const glm_vec2 &pt) const;
 	GLTexture *GetTexture() const;
 	Rect2D GetUV() const;
 	Rect2D GetUV(const Rect2D &aabb) const;
@@ -129,7 +123,7 @@ struct ConvexPolygon
 	Rect2D aabb;
 	std::vector<Plane2D> planes;
 	/* internal representation of polygon */
-	std::vector<Point2D> points;
+	std::vector<glm_vec2> points;
 
 	size_t texindex = -1;
 	int texscale; 

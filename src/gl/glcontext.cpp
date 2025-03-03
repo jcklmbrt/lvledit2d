@@ -67,13 +67,13 @@ static wxGLContextAttrs *ContextAttrs_Core33()
 }
 
 
-void GLContext::Clear(const Color &color)
+void GLContext::Clear(const glm::vec4 &color)
 {
 	glClearColor(color.r, color.g, color.b, color.a);
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void GLContext::SetMatrices(const Matrix4 &proj, const Matrix4 &view)
+void GLContext::SetMatrices(const glm::mat4 &proj, const glm::mat4 &view)
 {
 	m_solid.SetMatrices(proj, view);
 	m_texture.SetMatrices(proj, view);
@@ -95,23 +95,23 @@ void GLContext::ClearBuffers()
 }
 
 
-void GLContext::AddRect(const Rect2D &rect, const Color &color)
+void GLContext::AddRect(const Rect2D &rect, const glm::vec4 &color)
 {
 	m_solid.AddRect(rect, color);
 }
 
 
-void GLContext::AddLine(const Point2D &a, const Point2D &b, float thickness, const Color &color)
+void GLContext::AddLine(const glm_vec2 &a, const glm_vec2 &b, float thickness, const glm::vec4 &color)
 {
 	m_solid.AddLine(a, b, thickness, color);
 }
 
-void GLContext::AddPolygon(const ConvexPolygon &poly, const Color &color)
+void GLContext::AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color)
 {
 	m_texture.AddPolygon(poly, color);
 }
 
-void GLContext::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color)
+void GLContext::AddPolygon(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color)
 {
 	m_texture.AddPolygon(pts, npts, uv, texture, color);
 }

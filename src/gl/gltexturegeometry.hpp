@@ -8,9 +8,9 @@
 
 struct TextureVertex
 {
-	Point2D position;
-	Color color;
-	Point2D uv;
+	glm_vec2 position;
+	glm::vec4 color;
+	glm_vec2 uv;
 };
 
 struct TextureVertices
@@ -26,10 +26,10 @@ public:
 	~GLTextureGeometry();
 	void ClearBuffers();
 	void CopyBuffersAndDrawElements();
-	void SetMatrices(const Matrix4 &proj, const Matrix4 &view);
+	void SetMatrices(const glm::mat4 &proj, const glm::mat4 &view);
 public:
-	void AddPolygon(const ConvexPolygon &poly, const Color &color);
-	void AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color);
+	void AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color);
+	void AddPolygon(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
 private:
 	GLuint m_vtxbuf;
 	GLuint m_idxbuf;

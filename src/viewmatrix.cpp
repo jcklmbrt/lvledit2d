@@ -6,11 +6,11 @@
 
 ViewMatrixBase::ViewMatrixBase()
 {
-	m_view = glm::identity<Matrix4>();
+	m_view = glm::identity<glm::mat4>();
 }
 
 
-wxPoint ViewMatrixBase::WorldToScreen(Point2D world) const
+wxPoint ViewMatrixBase::WorldToScreen(glm_vec2 world) const
 {
 	wxPoint screen;
 	world = m_view * glm::vec4(world, 0.0, 1.0);
@@ -20,16 +20,16 @@ wxPoint ViewMatrixBase::WorldToScreen(Point2D world) const
 }
 
 
-Point2D ViewMatrixBase::ScreenToWorld(wxPoint screen) const
+glm_vec2 ViewMatrixBase::ScreenToWorld(wxPoint screen) const
 {
-	Point2D s;
+	glm_vec2 s;
 	s.x = static_cast<float>(screen.x);
 	s.y = static_cast<float>(screen.y);
 	return inverse(m_view) * glm::vec4(s, 0.0, 1.0);
 }
 
 
-Point2D ViewMatrixBase::MouseToWorld(wxMouseEvent &e) const
+glm_vec2 ViewMatrixBase::MouseToWorld(wxMouseEvent &e) const
 {
 	wxPoint mpos = e.GetPosition();
 	return ScreenToWorld(e.GetPosition());
@@ -41,13 +41,13 @@ void ViewMatrixBase::SetupMatrix()
 	glm::vec3 zoom = { m_zoom, m_zoom, 1.0 };
 	glm::vec3 pan = { m_pan, 0.0 };
 
-	m_view = glm::identity<Matrix4>();
+	m_view = glm::identity<glm::mat4>();
 	m_view = glm::scale(m_view, zoom);
 	m_view = glm::translate(m_view, pan);
 }
 
 
-void ViewMatrixBase::Zoom(Point2D p, float factor)
+void ViewMatrixBase::Zoom(glm_vec2 p, float factor)
 {
 	float zoom = m_zoom * factor;
 	if(zoom > MAX_ZOOM || zoom < MIN_ZOOM) {
@@ -68,9 +68,9 @@ void ViewMatrixBase::Zoom(Point2D p, float factor)
 }
 
 
-void ViewMatrixBase::Pan(Point2D delta)
+void ViewMatrixBase::Pan(glm_vec2 delta)
 {
-	Point2D pan = m_pan + delta / m_zoom;
+	glm_vec2 pan = m_pan + delta / m_zoom;
 	if(pan.x > MAX_PAN_X || pan.x < MIN_PAN_X ||
 	   pan.y > MAX_PAN_Y || pan.y < MIN_PAN_Y) {
 		return;
@@ -96,7 +96,7 @@ void ViewMatrixCtrl::OnMouseMotion(wxMouseEvent &e)
 
 	wxPoint wxpos = e.GetPosition();
 
-	Point2D pos;
+	glm_vec2 pos;
 	pos.x = static_cast<float>(wxpos.x);
 	pos.y = static_cast<float>(wxpos.y);
 
@@ -114,7 +114,7 @@ void ViewMatrixCtrl::OnMouseMotion(wxMouseEvent &e)
 void ViewMatrixCtrl::OnMouseWheel(wxMouseEvent &e)
 {
 	wxPoint wxpos = e.GetPosition();
-	Point2D pos;
+	glm_vec2 pos;
 	pos.x = static_cast<float>(wxpos.x);
 	pos.y = static_cast<float>(wxpos.y);
 
@@ -141,7 +141,7 @@ void ViewMatrixCtrl::OnMouseMiddleDown(wxMouseEvent &e)
 
 	wxPoint wxpos = e.GetPosition();
 
-	Point2D pos;
+	glm_vec2 pos;
 	pos.x = static_cast<float>(wxpos.x);
 	pos.y = static_cast<float>(wxpos.y);
 

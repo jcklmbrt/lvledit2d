@@ -101,19 +101,19 @@ void GLTextureGeometry::ClearBuffers()
 }
 
 
-void GLTextureGeometry::SetMatrices(const Matrix4 &proj, const Matrix4 &view)
+void GLTextureGeometry::SetMatrices(const glm::mat4 &proj, const glm::mat4 &view)
 {
 	glUseProgram(m_program);
-	Matrix4 mvp = proj * view;
+	glm::mat4 mvp = proj * view;
 	int pos = glGetUniformLocation(m_program, "mvp");
 	glUniformMatrix4fv(pos, 1, GL_FALSE, glm::value_ptr(mvp));
 }
 
 
-static TextureVertex SetVertex(const Point2D &pt, const Color &color, const Rect2D &aabb)
+static TextureVertex SetVertex(const glm_vec2 &pt, const glm::vec4 &color, const Rect2D &aabb)
 {
-	Point2D Mins = aabb.mins;
-	Point2D Size = aabb.maxs - aabb.mins;
+	glm_vec2 Mins = aabb.mins;
+	glm_vec2 Size = aabb.maxs - aabb.mins;
 
 	TextureVertex Vertex;
 	Vertex.position = pt;
@@ -123,7 +123,7 @@ static TextureVertex SetVertex(const Point2D &pt, const Color &color, const Rect
 }
 
 
-void GLTextureGeometry::AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color)
+void GLTextureGeometry::AddPolygon(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color)
 {
 	if(!glIsTexture(texture.gltex)) {
 		texture.InitTextureObject();
@@ -137,8 +137,8 @@ void GLTextureGeometry::AddPolygon(const Point2D pts[], size_t npts, const Rect2
 	size_t start_idx = vtc.vtx.size() - 1;
 
 	for(size_t i = 1; i < npts; i++) {
-		Point2D a = pts[i];
-		Point2D b = pts[(i + 1) % npts];
+		glm_vec2 a = pts[i];
+		glm_vec2 b = pts[(i + 1) % npts];
 		vtc.vtx.push_back(SetVertex(a, color, uv));
 		vtc.vtx.push_back(SetVertex(b, color, uv));
 
@@ -149,14 +149,14 @@ void GLTextureGeometry::AddPolygon(const Point2D pts[], size_t npts, const Rect2
 }
 
 
-void GLTextureGeometry::AddPolygon(const ConvexPolygon &poly, const Color &color)
+void GLTextureGeometry::AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color)
 {
 	GLTexture *texture = poly.GetTexture();
 	if(texture == nullptr) {
 		return;
 	}
 
-	const std::vector<Point2D> &pts = poly.points;
+	const std::vector<glm_vec2> &pts = poly.points;
 
 	const Rect2D &aabb = poly.GetUV();
 
@@ -173,8 +173,8 @@ void GLTextureGeometry::AddPolygon(const ConvexPolygon &poly, const Color &color
 	size_t start_idx = vtc.vtx.size() - 1;
 
 	for(size_t i = 1; i < npoints; i++) {
-		Point2D a = pts[i];
-		Point2D b = pts[(i + 1) % npoints];
+		glm_vec2 a = pts[i];
+		glm_vec2 b = pts[(i + 1) % npoints];
 		vtc.vtx.push_back(SetVertex(a, color, aabb));
 		vtc.vtx.push_back(SetVertex(b, color, aabb));
 

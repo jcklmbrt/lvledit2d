@@ -184,12 +184,12 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 		};
 
 		for(const Plane2D &plane : p->planes) {
-			Point2D line[2];
+			glm_vec2 line[2];
 			int n = 0;
 			size_t naabbpts = aabbpts.size();
 			for(size_t i = 0; i < naabbpts; i++) {
-				Point2D a = aabbpts[i];
-				Point2D b = aabbpts[(i + 1) % naabbpts];
+				glm_vec2 a = aabbpts[i];
+				glm_vec2 b = aabbpts[(i + 1) % naabbpts];
 
 				float da = plane.SignedDistance(a);
 				float db = plane.SignedDistance(b);
@@ -201,7 +201,7 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 					/* next point will be on the plane */
 				} else if(da * db <= 0.0) {
 					/* a point between a and b intersects with the plane */
-					Point2D isect;
+					glm_vec2 isect;
 					if(plane.Line(a, b, isect)) {
 						line[n++] = isect;
 					}
@@ -214,7 +214,7 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 		}
 	}
 
-	const std::vector<Point2D> &pts = p->points;
+	const std::vector<glm_vec2> &pts = p->points;
 
 	canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
 
@@ -343,7 +343,7 @@ void EditorContext::OnToolSelect(ToolBar::ID id)
 }
 
 
-ConvexPolygon *EditorContext::FindPoly(Point2D wpos)
+ConvexPolygon *EditorContext::FindPoly(glm_vec2 wpos)
 {
 	for(ConvexPolygon &p : polys) {
 		if(p.Contains(wpos)) {

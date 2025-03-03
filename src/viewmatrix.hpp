@@ -18,18 +18,18 @@ class ViewMatrixBase : Immobile
 {
 public:
 	ViewMatrixBase();
-	void Pan(Point2D point);
-	void Zoom(Point2D point, float factor);
+	void Pan(glm_vec2 point);
+	void Zoom(glm_vec2 point, float factor);
 	float GetZoom() const { return m_zoom; }
-	wxPoint WorldToScreen(Point2D world) const;
-	Point2D ScreenToWorld(wxPoint screen) const;
-	Point2D MouseToWorld(wxMouseEvent &e) const;
-	Matrix4 GetMatrix() const { return m_view; }
+	wxPoint WorldToScreen(glm_vec2 world) const;
+	glm_vec2 ScreenToWorld(wxPoint screen) const;
+	glm_vec2 MouseToWorld(wxMouseEvent &e) const;
+	glm::mat4 GetMatrix() const { return m_view; }
 private:
 	void SetupMatrix();
-	Matrix4 m_view;
-	float m_zoom  = 1.0;
-	Point2D m_pan = { 0.0, 0.0 };
+	glm::mat4 m_view;
+	float m_zoom  = 1.0f;
+	glm_vec2 m_pan = { 0.0f, 0.0f };
 };
 
 
@@ -45,7 +45,7 @@ private:
 	void OnMouseMotion(wxMouseEvent &e);
 private:
 	bool m_inpan;
-	Point2D m_lastmousepos;
+	glm_vec2 m_lastmousepos;
 	wxWindow *m_parent;
 };
 

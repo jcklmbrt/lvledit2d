@@ -40,16 +40,13 @@ struct EditAction_Rect : EditAction_Base
 struct EditAction_Line : EditAction_Base
 {
 	EditAction_Line() { type = EditActionType::LINE; }
-	Rect2D aabb;
-	Point2D start;
-	Point2D end;
 	Plane2D plane;
 };
 
 struct EditAction_Trans: EditAction_Base
 {
 	EditAction_Trans() { type = EditActionType::TRANS; }
-	Matrix3 matrix;
+	glm::mat3 matrix;
 };
 
 
@@ -110,7 +107,7 @@ public:
 	bool Save();
 	bool Save(const wxFileName &path);
 	bool Load(const wxFileName &path);
-	ConvexPolygon *FindPoly(Point2D wpos);
+	ConvexPolygon *FindPoly(glm_vec2 wpos);
 	void ResetPolys();
 	void OnToolSelect(ToolBar::ID id);
 	void OnDraw();

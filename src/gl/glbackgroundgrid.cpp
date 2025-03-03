@@ -77,12 +77,12 @@ GLBackgroundGrid::~GLBackgroundGrid()
 }
 
 
-void GLBackgroundGrid::SetMatrices(const Matrix4 &proj, const Matrix4 &view)
+void GLBackgroundGrid::SetMatrices(const glm::mat4 &proj, const glm::mat4 &view)
 {
 	glUseProgram(m_program);
-	Matrix4 inv_view = glm::inverse(view);
-	Matrix4 inv_proj = glm::inverse(proj);
-	Matrix4 inv_mvp = inv_view * inv_proj;
+	glm::mat4 inv_view = glm::inverse(view);
+	glm::mat4 inv_proj = glm::inverse(proj);
+	glm::mat4 inv_mvp = inv_view * inv_proj;
 	int mvppos = glGetUniformLocation(m_program, "inv_mvp");
 	glUniformMatrix4fv(mvppos, 1, GL_FALSE, glm::value_ptr(inv_mvp));
 	int zoompos = glGetUniformLocation(m_program, "zoom");

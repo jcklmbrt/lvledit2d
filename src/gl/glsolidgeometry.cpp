@@ -79,7 +79,7 @@ void GLSolidGeometry::DrawElements()
 }
 
 
-void GLSolidGeometry::AddQuad(const Point2D q[4], const Color &color)
+void GLSolidGeometry::AddQuad(const glm_vec2 q[4], const glm::vec4 &color)
 {
 	SolidVertex vtx;
 	vtx.color = color;
@@ -99,9 +99,9 @@ void GLSolidGeometry::AddQuad(const Point2D q[4], const Color &color)
 }
 
 
-void GLSolidGeometry::AddRect(const Rect2D &rect, const Color &color)
+void GLSolidGeometry::AddRect(const Rect2D &rect, const glm::vec4 &color)
 {
-	Point2D q[4] = {
+	glm_vec2 q[4] = {
 		rect.GetLeftTop(),
 		rect.GetRightTop(),
 		rect.GetLeftBottom(),
@@ -112,12 +112,12 @@ void GLSolidGeometry::AddRect(const Rect2D &rect, const Color &color)
 }
 
 
-void GLSolidGeometry::AddLine(const Point2D &a, const Point2D &b, float thickness, const Color &color)
+void GLSolidGeometry::AddLine(const glm_vec2 &a, const glm_vec2 &b, float thickness, const glm::vec4 &color)
 {
-	Point2D delta = glm::normalize(b - a) * thickness * 0.5f;
-	Point2D normal = { -delta.y, delta.x };
+	glm_vec2 delta = glm::normalize(b - a) * thickness * 0.5f;
+	glm_vec2 normal = { -delta.y, delta.x };
 
-	Point2D q[4] = {
+	glm_vec2 q[4] = {
 		(a - delta) - normal,
 		(a - delta) + normal,
 		(b + delta) - normal,
@@ -135,10 +135,10 @@ void GLSolidGeometry::ClearBuffers()
 }
 
 
-void GLSolidGeometry::SetMatrices(const Matrix4 &proj, const Matrix4 &view)
+void GLSolidGeometry::SetMatrices(const glm::mat4 &proj, const glm::mat4 &view)
 {
 	glUseProgram(m_program);
-	Matrix4 mvp = proj * view;
+	glm::mat4 mvp = proj * view;
 	int pos = glGetUniformLocation(m_program, "mvp");
 	glUniformMatrix4fv(pos, 1, GL_FALSE, glm::value_ptr(mvp));
 }

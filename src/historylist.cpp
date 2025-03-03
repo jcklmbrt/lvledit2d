@@ -48,9 +48,9 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 
 	if(dp != nullptr) {
 		wxASSERT(item >= 0 && item <= dp->editor.actions.size());
-		Point2D lt, rb;
+		glm_vec2 lt, rb;
 		const EditAction &action = dp->editor.actions[item];
-		const Matrix3 &t = action.trans.matrix;
+		const glm::i32mat3x3 &t = action.trans.matrix;
 		if(col == ColumnID::ACTION) {
 			switch(action.base.type) {
 			case EditActionType::LINE:
@@ -72,7 +72,7 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 		} else if(col == ColumnID::VALUE) {
 			switch(action.base.type) {
 			case EditActionType::LINE:
-				s.Printf("x0:%.1f,y0:%.1f,x1:%.1f,y1:%.1f", action.line.start.x, action.line.start.y, action.line.end.x, action.line.end.y);
+				s.Printf("%dx + %dy + %d = 0", action.line.plane.a, action.line.plane.b, action.line.plane.c);
 				break;
 			case EditActionType::RECT:
 				lt = action.rect.rect.GetLeftTop();
@@ -82,9 +82,9 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 					 lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
 				break;
 			case EditActionType::TRANS:
-				s.Printf("%.1f, %.1f, %.1f, "
-					 "%.1f, %1.f, %.1f, "
-					 "%.1f, %1.f, %.1f",
+				s.Printf("%d, %d, %d, "
+					 "%d, %d, %d, "
+					 "%d, %d, %d",
 					 t[0][0], t[0][1], t[0][2],
 					 t[1][0], t[1][1], t[1][2],
 					 t[2][0], t[2][1], t[2][2]);

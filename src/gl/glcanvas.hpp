@@ -16,23 +16,23 @@ struct GLCanvas : public wxGLCanvas
 {
 	GLCanvas(Notebook *parent, const wxGLAttributes &attrs);
 	virtual ~GLCanvas();
-	void DrawPoint(const Point2D &point, const Color &color);
-	void OutlineRect(const Rect2D &rect, float thickness, const Color &color);
-	void OutlinePoly(const Point2D points[], size_t npoints, float thickness, const Color &color);
-	void TexturePoly(const ConvexPolygon &p, const Color &color);
-	void TexturePoly(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color);
-	void DrawLine(const Point2D &a, const Point2D &b, float thickness, const Color &color);
+	void DrawPoint(const glm_vec2 &point, const glm::vec4 &color);
+	void OutlineRect(const Rect2D &rect, float thickness, const glm::vec4 &color);
+	void OutlinePoly(const glm_vec2 points[], size_t npoints, float thickness, const glm::vec4 &color);
+	void TexturePoly(const ConvexPolygon &p, const glm::vec4 &color);
+	void TexturePoly(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
+	void DrawLine(const glm_vec2 &a, const glm_vec2 &b, float thickness, const glm::vec4 &color);
 	static GLCanvas *GetCurrent();
 	void OnPaint(wxPaintEvent &e);
 	void OnSize(wxSizeEvent &e);
 
 	void OnMouse(wxMouseEvent &e);
 	/* cache mouse position for use in draw routines */
-	Point2D mousepos;
+	glm_vec2 mousepos;
 	EditorContext editor;
 
 	ViewMatrixCtrl view;
-	Matrix4 proj;
+	glm::mat4 proj;
 };
 
 

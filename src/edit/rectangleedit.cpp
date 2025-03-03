@@ -15,7 +15,7 @@ RectangleEdit::RectangleEdit(GLCanvas *canvas)
 
 void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	Point2D world_pos = view.MouseToWorld(e);
+	glm_vec2 world_pos = view.MouseToWorld(e);
 
 	e.Skip(true);
 
@@ -65,7 +65,7 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 		return;
 	}
 
-	Point2D mpos = view.MouseToWorld(e);
+	glm_vec2 mpos = view.MouseToWorld(e);
 
 	if(canvas->editor.snaptogrid) {
 		GLBackgroundGrid::Snap(mpos);
@@ -81,22 +81,22 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 	}
 
 	if(mpos.x > m_start.x) {
-		m_rect.SetRight(mpos.x);
+		m_rect.maxs.x = mpos.x;
 	} else {
-		m_rect.SetLeft(mpos.x);
+		m_rect.mins.x = mpos.x;
 	}
 	if(mpos.y > m_start.y) {
-		m_rect.SetBottom(mpos.y);
+		m_rect.maxs.y = mpos.y;
 	} else {
-		m_rect.SetTop(mpos.y);
+		m_rect.mins.y = mpos.y;
 	}
 }
 
 void RectangleEdit::OnDraw()
 {
-	Color color = WHITE;
+	glm::vec4 color = WHITE;
 
-	Point2D mpos = canvas->mousepos;
+	glm_vec2 mpos = canvas->mousepos;
 
 	if(canvas->editor.snaptogrid) {
 		GLBackgroundGrid::Snap(mpos);

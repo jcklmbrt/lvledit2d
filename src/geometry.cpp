@@ -6,17 +6,16 @@
 #include <limits>
 #include <wx/debug.h>
 
+#include "glm/matrix.hpp"
 #include "src/gl/glcanvas.hpp"
 #include "src/gl/glbackgroundgrid.hpp"
 #include "src/geometry.hpp"
 
 
-Plane2D::Plane2D(const Point2D &start, const Point2D &end)
+Plane2D::Plane2D(const glm::i32vec2 &start, const glm::i32vec2 &end)
 {
-	Point2D delta = start - end;
-	delta = normalize(delta);
-	a = -delta.y;
-	b = +delta.x;
+	a = end.y - start.y;
+	b = start.x - end.x;
 	c = -(a * start.x + b * start.y);
 }
 
@@ -29,29 +28,30 @@ void Plane2D::Flip()
 }
 
 
-void Plane2D::Offset(const Point2D &pt)
+void Plane2D::Offset(const glm::i32vec2 &pt)
 {
 	c -= a * pt.x + b * pt.y;
 }
 
 
-void Plane2D::Transform(const Matrix3 &t)
+void Plane2D::Transform(const glm::mat3 &t)
 {
-	glm::vec3 r = glm::vec3(a, b, c) * inverse(t);
+	glm::mat3 inv = glm::inverse(t);
+	glm::vec3 r = glm::vec3(a, b, c) * inv;
 	a = r.x;
 	b = r.y;
 	c = r.z;
 }
 
-void Plane2D::Clip(const std::vector<Point2D> &points, std::vector<Point2D> &out) {
+void Plane2D::Clip(const std::vector<glm_vec2> &points, std::vector<glm_vec2> &out) {
 
 	size_t npoints = points.size();
 	for(size_t i = 0; i < npoints; i++) {
-		Point2D a = points[i];
-		Point2D b = points[(i + 1) % npoints];
+		glm::vec2 a = points[i];
+		glm::vec2 b = points[(i + 1) % npoints];
 
-		float da = SignedDistance(a);
-		float db = SignedDistance(b);
+		int32_t da = SignedDistance(a);
+		int32_t db = SignedDistance(b);
 
 		/* only "forward" side */
 		if(da >= 0) {
@@ -59,7 +59,7 @@ void Plane2D::Clip(const std::vector<Point2D> &points, std::vector<Point2D> &out
 		}
 
 		if(da * db < 0) {
-			Point2D isect;
+			glm::vec2 isect;
 			if(Line(a, b, isect)) {
 				out.push_back(isect);
 			}
@@ -68,9 +68,9 @@ void Plane2D::Clip(const std::vector<Point2D> &points, std::vector<Point2D> &out
 }
 
 
-bool Plane2D::Line(const Point2D &p0, const Point2D &p1, Point2D &out) const
+bool Plane2D::Line(const glm::vec2 &p0, const glm::vec2 &p1, glm::vec2 &out) const
 {
-	Point2D dir = p1 - p0;
+	glm::vec2 dir = p1 - p0;
 
 	float denom = a * dir.x + b * dir.y;
 
@@ -81,11 +81,12 @@ bool Plane2D::Line(const Point2D &p0, const Point2D &p1, Point2D &out) const
 	float t = -(a * p0.x + b * p0.y + c) / denom;
 
 	out = p0 + t * dir;
+
 	return true;
 }
 
 
-float Plane2D::SignedDistance(const Point2D &p) const
+int32_t Plane2D::SignedDistance(const glm::i32vec2 &p) const
 {
 	return a * p.x + b * p.y + c;
 }
@@ -108,47 +109,21 @@ ConvexPolygon::ConvexPolygon(const Rect2D &rect)
 }
 
 
-void ConvexPolygon::Transform(const Matrix3 &t)
+void ConvexPolygon::Transform(const glm::mat3 &t)
 {
 	for(Plane2D &plane : planes) {
 		plane.Transform(t);
 	}
 
-	for(Point2D &point : points) {
-		point = t * glm::vec3(point, 1.0f);
+	for(glm_vec2 &point : points) {
+		point = t * glm::i32vec3(point, 1.0f);
 	}
 
 	ResizeAABB();
 }
 
-void ConvexPolygon::Scale(const Point2D &origin, const Point2D &scale)
-{
-	Matrix3 t = { scale.x, 0.0f, 0.0f,
-		      0.0f, scale.y, 0.0f,
-		        origin.x * (1.0f - scale.x),
-		        origin.y * (1.0f - scale.y), 1.0f
-	};
 
-	Transform(t);
-}
-
-
-void ConvexPolygon::Rotate(const Point2D &origin, float angle)
-{
-	float cr = cos(angle);
-	float sr = sin(angle);
-
-	Matrix3 t = {  cr, sr, 0.0f,
-		       -sr, cr, 0.0f,
-		         origin.x * (1.0f - cr) + origin.y * sr,
-			 -origin.x * sr + origin.y * (1.0f - cr), 1.0f
-	};
-
-	Transform(t);
-}
-
-
-bool ConvexPolygon::AllPointsBehind(const Plane2D &plane, const Point2D points[], size_t npoints)
+bool ConvexPolygon::AllPointsBehind(const Plane2D &plane, const glm::vec2 points[], size_t npoints)
 {
 	for(size_t i = 0; i < npoints; i++) {
 		if(plane.SignedDistance(points[i]) > 0.0) {
@@ -158,6 +133,15 @@ bool ConvexPolygon::AllPointsBehind(const Plane2D &plane, const Point2D points[]
 	return true;
 }
 
+bool ConvexPolygon::AllPointsBehind(const Plane2D &plane, const glm::i32vec2 points[], size_t npoints)
+{
+	for(size_t i = 0; i < npoints; i++) {
+		if(plane.SignedDistance(points[i]) > 0.0) {
+			return false;
+		}
+	}
+	return true;
+}
 
 bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 {
@@ -165,7 +149,7 @@ bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 }
 
 
-void Rect2D::FitPoints(const Point2D pts[], size_t npts)
+void Rect2D::FitPoints(const glm_vec2 pts[], size_t npts)
 {
 	wxASSERT_MSG(npts >= 2,
 		"Cannot construct a rect from less than two points.");
@@ -174,7 +158,7 @@ void Rect2D::FitPoints(const Point2D pts[], size_t npts)
 	maxs = pts[0];
 
 	for(size_t i = 1; i < npts; i++) {
-		Point2D pt = pts[i];
+		glm::i32vec2 pt = pts[i];
 		mins = glm::min(pt, mins);
 		maxs = glm::max(pt, maxs);
 	}
@@ -214,7 +198,7 @@ bool ConvexPolygon::Intersects(const Rect2D &rect) const
 }
 
 
-bool ConvexPolygon::Contains(const Point2D &pt) const
+bool ConvexPolygon::Contains(const glm_vec2 &pt) const
 {
 	if(!aabb.Contains(pt)) {
 		return false;
@@ -257,7 +241,7 @@ void ConvexPolygon::PurgePlanes()
 	/* remove all planes that aren't touching any points */
 	planes.erase(std::remove_if(planes.begin(), planes.end(), [this](Plane2D plane) {
 		constexpr float EPSILON = 0.001f;
-		for(const Point2D &pt : points) {
+		for(const glm_vec2 &pt : points) {
 			if(plane.SignedDistance(pt) < EPSILON) {
 				return false;
 			}
@@ -271,14 +255,14 @@ void ConvexPolygon::Slice(Plane2D plane)
 {
 	planes.push_back(plane);
 
-	std::vector<Point2D> new_points;
+	std::vector<glm_vec2> new_points;
 	ImposePlane(plane, new_points);
 
 	points = new_points;
 }
 
 
-void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<Point2D> &out) const
+void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<glm_vec2> &out) const
 {
 	plane.Clip(points, out);
 }
@@ -302,8 +286,8 @@ Rect2D ConvexPolygon::GetUV(const Rect2D &aabb) const
 	Rect2D rect = aabb;
 	if(texscale != 0) {
 		float scale = static_cast<float>(texscale * GLBackgroundGrid::SPACING);
-		Point2D mins = { 0.0f, 0.0f };
-		Point2D maxs = { scale, scale };
+		glm_vec2 mins = { 0.0f, 0.0f };
+		glm_vec2 maxs = { scale, scale };
 
 		rect.mins = { 0.0f, 0.0f };
 		rect.maxs = { scale, scale };

@@ -17,13 +17,13 @@ SelectionEdit::SelectionEdit(GLCanvas *canvas)
 	Bind(wxEVT_LEFT_UP, &SelectionEdit::OnMouseLeftUp, this);
 	Bind(wxEVT_RIGHT_DOWN, &SelectionEdit::OnMouseRightDown, this);
 	Bind(wxEVT_KEY_DOWN, &SelectionEdit::OnKeyDown, this);
-};
+}
 
 void SelectionEdit::OnMouseRightDown(wxMouseEvent &e)
 {
 	e.Skip();
 
-	Point2D wpos = view.MouseToWorld(e);
+	glm_vec2 wpos = view.MouseToWorld(e);
 
 	if(!context->GetSelectedPoly()) {
 		ConvexPolygon *poly = context->FindPoly(wpos);
@@ -57,7 +57,7 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 
 	canvas->DrawPoint(aabb.GetCenter(), YELLOW);
 
-	for(Point2D pt : aabbpts) {
+	for(glm_vec2 pt : aabbpts) {
 		canvas->DrawPoint(pt, WHITE);
 	}
 
@@ -68,7 +68,7 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 
 void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	Point2D wpos = view.MouseToWorld(e);
+	glm_vec2 wpos = view.MouseToWorld(e);
 
 	ConvexPolygon *poly = context->FindPoly(wpos);
 
@@ -84,7 +84,7 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 			m_inedit = true;
 			m_outcode = aabb.GetOutCode(wpos);
 			m_editstart = wpos;
-			Point2D opposite;
+			glm_vec2 opposite;
 			
 			if(m_outcode != RECT2D_INSIDE) {
 				m_editstart = poly->aabb.GetCenter();
@@ -112,7 +112,7 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 	e.Skip(true);
 }
 
-static Matrix3 ScaleAroundPoint(const Point2D &p, const Point2D &scale)
+static glm::mat3 ScaleAroundPoint(const glm_vec2 &p, const glm_vec2 &scale)
 {
 	return {
 		scale.x, 0.0f, 0.0f,
@@ -121,7 +121,7 @@ static Matrix3 ScaleAroundPoint(const Point2D &p, const Point2D &scale)
 	};
 }
 	 
-static Matrix3 Transform(const Point2D &delta)
+static glm::mat3 Transform(const glm_vec2 &delta)
 {
 	return {
 		1.0f, 0.0f, 0.0f,
@@ -130,13 +130,13 @@ static Matrix3 Transform(const Point2D &delta)
 	};
 }
 
-void SelectionEdit::OnMove(Matrix3 &t, const Point2D &wpos)
+void SelectionEdit::OnMove(glm::mat3 &t, const glm_vec2 &wpos)
 {
-	Point2D delta = wpos - m_editstart;
+	glm_vec2 delta = wpos - m_editstart;
 
 	if(context->snaptogrid) {
-		Point2D scaled_pos = wpos;
-		Point2D scaled_start = m_editstart;
+		glm_vec2 scaled_pos = wpos;
+		glm_vec2 scaled_start = m_editstart;
 		GLBackgroundGrid::Snap(scaled_pos);
 		GLBackgroundGrid::Snap(scaled_start);
 		delta = scaled_pos - scaled_start;
@@ -147,16 +147,16 @@ void SelectionEdit::OnMove(Matrix3 &t, const Point2D &wpos)
 	t = Transform(delta);
 }
 
-void SelectionEdit::OnScale(Matrix3 &t, const Point2D &wpos)
+void SelectionEdit::OnScale(glm::mat3 &t, const glm_vec2 &wpos)
 {
-	Point2D delta = wpos - m_editstart;
+	glm_vec2 delta = wpos - m_editstart;
 
 	if(context->snaptogrid) {
 		GLBackgroundGrid::Snap(delta);
 		GLBackgroundGrid::Snap(m_delta);
 	}
 
-	Point2D scale = delta / m_delta;
+	glm_vec2 scale = delta / m_delta;
 
 	bool out_x = m_outcode & (RECT2D_LEFT | RECT2D_RIGHT);
 	bool out_y = m_outcode & (RECT2D_TOP | RECT2D_BOTTOM);
@@ -176,27 +176,41 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		return;
 	}
 
-	Point2D wpos = view.MouseToWorld(e);
+	glm_vec2 wpos = view.MouseToWorld(e);
 
 	ConvexPolygon *selected = context->GetSelectedPoly();
 
-	Matrix3 t;
+	glm::mat3 t;
 	if(m_outcode == RECT2D_INSIDE) {
 		OnMove(t, wpos);
 	} else {
-		OnScale(t, wpos);
-	}
+		/* phase 1: check if the mouse is on the other side */
+		int outcode = selected->aabb.GetOutCode(wpos);
+		if(outcode & m_outcode || outcode == RECT2D_INSIDE) {
+			OnScale(t, wpos);
+		}
 
-	glm::mat2 linear = glm::mat2(t);
-	float det = glm::determinant(linear);
-	/* transformation will turn our polygon inside-out. */
-	if(det <= 0) {
-		return;
+		/* phase 2: check if the transformation will preserve orientation */
+		glm::mat2 linear = glm::mat2(t);
+		float det = glm::determinant(linear);
+		if(det <= 0) {
+			m_inedit = false;
+			return;
+		}
+
+		/* phase 3: check if the transformation will invert the bounding box */
+		glm_vec2 new_mins = t * glm::vec3(selected->aabb.mins, 1.0f);
+		glm_vec2 new_maxs = t * glm::vec3(selected->aabb.maxs, 1.0f);
+
+		if(new_mins.x >= new_maxs.x || new_mins.y >= new_maxs.y) {
+			m_inedit = false;
+			return;
+		}
 	}
 
 	selected->Transform(t);
 
-	bool intersects = false;
+        bool intersects = false;
 	for(ConvexPolygon &poly : context->polys) {
 		if(&poly != selected && selected->Intersects(poly)) {
 			intersects = true;

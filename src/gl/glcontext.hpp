@@ -19,13 +19,13 @@ public:
 	GLContext(wxGLCanvas *parent);
 	void ClearBuffers();
 	void CopyBuffers();
-	void Clear(const Color &color);
-	void SetMatrices(const Matrix4 &proj, const Matrix4 &view);
+	void Clear(const glm::vec4 &color);
+	void SetMatrices(const glm::mat4 &proj, const glm::mat4 &view);
 	void DrawElements();
-	void AddRect(const Rect2D &rect, const Color &color);
-	void AddLine(const Point2D &a, const Point2D &b, float thickness, const Color &color);
-	void AddPolygon(const ConvexPolygon &poly, const Color &color);
-	void AddPolygon(const Point2D pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const Color &color);
+	void AddRect(const Rect2D &rect, const glm::vec4 &color);
+	void AddLine(const glm_vec2 &a, const glm_vec2 &b, float thickness, const glm::vec4 &color);
+	void AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color);
+	void AddPolygon(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
 	static GLuint CompileShaders(const char *fs_src, const char *vs_src);
 private:
 	GLBackgroundGrid m_grid;

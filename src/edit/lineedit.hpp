@@ -38,10 +38,10 @@ private:
 	void Slice_OnMouseRightDown(wxMouseEvent &e);
 	void Slice_OnDraw();
 public:
-	Point2D m_start;
-	Point2D m_end;
+	glm_vec2 m_start;
+	glm_vec2 m_end;
 	Plane2D m_plane;
-	std::vector<Point2D> m_points;
+	std::vector<glm_vec2> m_points;
 private:
 	LineEditState_t m_state = LineEditState_t::START_POINT;
 };
