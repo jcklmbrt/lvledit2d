@@ -95,13 +95,13 @@ void GLContext::ClearBuffers()
 }
 
 
-void GLContext::AddRect(const Rect2D &rect, const glm::vec4 &color)
+void GLContext::AddRect(const glm::vec2 &mins, const glm::vec2 &maxs, const glm::vec4 &color)
 {
-	m_solid.AddRect(rect, color);
+	m_solid.AddRect(mins, maxs, color);
 }
 
 
-void GLContext::AddLine(const glm_vec2 &a, const glm_vec2 &b, float thickness, const glm::vec4 &color)
+void GLContext::AddLine(const glm::vec2 &a, const glm::vec2 &b, float thickness, const glm::vec4 &color)
 {
 	m_solid.AddLine(a, b, thickness, color);
 }
@@ -111,7 +111,7 @@ void GLContext::AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color)
 	m_texture.AddPolygon(poly, color);
 }
 
-void GLContext::AddPolygon(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color)
+void GLContext::AddPolygon(const glm::vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color)
 {
 	m_texture.AddPolygon(pts, npts, uv, texture, color);
 }

@@ -22,10 +22,10 @@ public:
 	void Clear(const glm::vec4 &color);
 	void SetMatrices(const glm::mat4 &proj, const glm::mat4 &view);
 	void DrawElements();
-	void AddRect(const Rect2D &rect, const glm::vec4 &color);
-	void AddLine(const glm_vec2 &a, const glm_vec2 &b, float thickness, const glm::vec4 &color);
+	void AddRect(const glm::vec2 &mins, const glm::vec2 &maxs, const glm::vec4 &color);
+	void AddLine(const glm::vec2 &a, const glm::vec2 &b, float thickness, const glm::vec4 &color);
 	void AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color);
-	void AddPolygon(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
+	void AddPolygon(const glm::vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
 	static GLuint CompileShaders(const char *fs_src, const char *vs_src);
 private:
 	GLBackgroundGrid m_grid;

@@ -71,10 +71,10 @@ void GLCanvas::OnMouse(wxMouseEvent &e)
 
 void GLCanvas::OutlineRect(const Rect2D &rect, float thickness, const glm::vec4 &color)
 {
-	glm_vec2 lt = rect.GetLeftTop();
-	glm_vec2 lb = rect.GetLeftBottom();
-	glm_vec2 rb = rect.GetRightBottom();
-	glm_vec2 rt = rect.GetRightTop();
+	glm::vec2 lt = rect.mins;
+	glm::vec2 rb = rect.maxs;
+	glm::vec2 lb = { rect.mins.x, rect.maxs.y };
+	glm::vec2 rt = { rect.maxs.x, rect.mins.y };
 
 	thickness /= view.GetZoom();
 	GLContext *ctx = GLContext::GetInstance();
@@ -85,13 +85,13 @@ void GLCanvas::OutlineRect(const Rect2D &rect, float thickness, const glm::vec4 
 }
 
 
-void GLCanvas::DrawLine(const glm_vec2 &a, const glm_vec2 &b, float thickness, const glm::vec4 &color)
+void GLCanvas::DrawLine(const glm::vec2 &a, const glm::vec2 &b, float thickness, const glm::vec4 &color)
 {
 	thickness /= view.GetZoom();
 	GLContext::GetInstance()->AddLine(a, b, thickness, color);
 }
 
-void GLCanvas::TexturePoly(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color)
+void GLCanvas::TexturePoly(const glm::vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color)
 {
 	GLContext::GetInstance()->AddPolygon(pts, npts, uv, texture, color);
 }
@@ -102,29 +102,28 @@ void GLCanvas::TexturePoly(const ConvexPolygon &p, const glm::vec4 &color)
 }
 
 
-void GLCanvas::DrawPoint(const glm_vec2 &pt, const glm::vec4 &color)
+void GLCanvas::DrawPoint(const glm::vec2 &pt, const glm::vec4 &color)
 {
 	float thickness = 1.0 / view.GetZoom();
-	glm_vec2 mins = { pt.x - thickness * 3.0f, pt.y - thickness * 3.0f };
-	glm_vec2 maxs = { pt.x + thickness * 3.0f, pt.y + thickness * 3.0f };
-	Rect2D rect = Rect2D(mins, maxs);
+	glm::vec2 mins = { pt.x - thickness * 3.0f, pt.y - thickness * 3.0f };
+	glm::vec2 maxs = { pt.x + thickness * 3.0f, pt.y + thickness * 3.0f };
 
 	GLContext *ctx = GLContext::GetInstance();
-	ctx->AddRect(rect, BLACK); /* outline */
-	rect.Inset(thickness * 2.0, thickness * 2.0);
-	ctx->AddRect(rect, color); /* foreground */
-	rect.Inset(thickness * 2.0, thickness * 2.0);
-	ctx->AddRect(rect, BLACK); /* center */
+	ctx->AddRect(mins, maxs, BLACK); /* outline */
+	mins += thickness; maxs -= thickness;
+	ctx->AddRect(mins, maxs, color); /* foreground */
+	mins += thickness; maxs -= thickness;
+	ctx->AddRect(mins, maxs, BLACK); /* center */
 }
 
 
-void GLCanvas::OutlinePoly(const glm_vec2 points[], size_t npoints, float thickness, const glm::vec4 &color)
+void GLCanvas::OutlinePoly(const glm::vec2 points[], size_t npoints, float thickness, const glm::vec4 &color)
 {
 	thickness /= view.GetZoom();
 
 	for(size_t i = 0; i < npoints; i++) {
-		glm_vec2 a = points[i];
-		glm_vec2 b = points[(i + 1) % npoints];
+		glm::vec2 a = points[i];
+		glm::vec2 b = points[(i + 1) % npoints];
 		GLContext::GetInstance()->AddLine(a, b, thickness, color);
 	}
 }

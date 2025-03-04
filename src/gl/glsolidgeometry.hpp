@@ -20,7 +20,7 @@ public:
 	void CopyBuffers();
 	void DrawElements();
 	void SetMatrices(const glm::mat4 &proj, const glm::mat4 &view);
-	void AddRect(const Rect2D &rect, const glm::vec4 &color);
+	void AddRect(const glm::vec2 &mins, const glm::vec2 &maxs, const glm::vec4 &color);
 	void AddLine(const glm::vec2 &a, const glm::vec2 &b, float thickness, const glm::vec4 &color);
 private:
 	void AddQuad(const glm::vec2 q[4], const glm::vec4 &color);

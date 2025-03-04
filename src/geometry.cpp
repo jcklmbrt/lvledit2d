@@ -34,24 +34,15 @@ void Plane2D::Offset(const glm::i32vec2 &pt)
 }
 
 
-void Plane2D::Transform(const glm::mat3 &t)
-{
-	glm::mat3 inv = glm::inverse(t);
-	glm::vec3 r = glm::vec3(a, b, c) * inv;
-	a = r.x;
-	b = r.y;
-	c = r.z;
-}
-
-void Plane2D::Clip(const std::vector<glm_vec2> &points, std::vector<glm_vec2> &out) {
+void Plane2D::Clip(const std::vector<glm::vec2> &points, std::vector<glm::vec2> &out) {
 
 	size_t npoints = points.size();
 	for(size_t i = 0; i < npoints; i++) {
 		glm::vec2 a = points[i];
 		glm::vec2 b = points[(i + 1) % npoints];
 
-		int32_t da = SignedDistance(a);
-		int32_t db = SignedDistance(b);
+		float da = SignedDistance(a);
+		float db = SignedDistance(b);
 
 		/* only "forward" side */
 		if(da >= 0) {
@@ -68,27 +59,58 @@ void Plane2D::Clip(const std::vector<glm_vec2> &points, std::vector<glm_vec2> &o
 }
 
 
-bool Plane2D::Line(const glm::vec2 &p0, const glm::vec2 &p1, glm::vec2 &out) const
+bool Plane2D::Line(const glm::i32vec2 &p0, const glm::i32vec2 &p1, glm::vec2 &out) const
 {
-	glm::vec2 dir = p1 - p0;
+	glm::i32vec2 dir = p1 - p0;
 
-	float denom = a * dir.x + b * dir.y;
+	int32_t denom = a * dir.x + b * dir.y;
+	int32_t numer = -(a * p0.x + b * p0.y + c);
 
 	if(denom == 0) {
 		return false;
 	}
 
-	float t = -(a * p0.x + b * p0.y + c) / denom;
+	dir *= numer;
+	out = glm::vec2(p0) + (glm::vec2(dir) / static_cast<float>(denom));
 
-	out = p0 + t * dir;
+	return true;
+}
+
+bool Plane2D::Line(const glm::vec2 &p0, const glm::vec2 &p1, glm::vec2 &out) const
+{
+	glm::vec2 dir = p1 - p0;
+
+	float fa = static_cast<float>(a);
+	float fb = static_cast<float>(b);
+	float fc = static_cast<float>(c);
+
+	float denom = fa * dir.x + fb * dir.y;
+	float numer = -(fa * p0.x + fb * p0.y + fc);
+
+	if(denom == 0.0f) {
+		return false;
+	}
+
+	dir *= numer;
+	out = glm::vec2(p0) + (glm::vec2(dir) / denom);
 
 	return true;
 }
 
 
+
 int32_t Plane2D::SignedDistance(const glm::i32vec2 &p) const
 {
 	return a * p.x + b * p.y + c;
+}
+
+float Plane2D::SignedDistance(const glm::vec2 &p) const
+{
+	float fa = static_cast<float>(a);
+	float fb = static_cast<float>(b);
+	float fc = static_cast<float>(c);
+
+	return fa * p.x + fb * p.y + fc;
 }
 
 
@@ -101,25 +123,31 @@ bool Plane2D::operator==(const Plane2D &other) const
 ConvexPolygon::ConvexPolygon(const Rect2D &rect)
 {
 	aabb = rect;
+	glm::vec2 lt = rect.mins;
+	glm::vec2 rb = rect.maxs;
+	glm::vec2 lb = { rect.mins.x, rect.maxs.y };
+	glm::vec2 rt = { rect.maxs.x, rect.mins.y };
+
 	/* Start off with our bounding box */
-	points.push_back(rect.GetLeftTop());
-	points.push_back(rect.GetRightTop());
-	points.push_back(rect.GetRightBottom());
-	points.push_back(rect.GetLeftBottom());
+	points.push_back(lt);
+	points.push_back(rt);
+	points.push_back(rb);
+	points.push_back(lb);
 }
 
 
-void ConvexPolygon::Transform(const glm::mat3 &t)
+void ConvexPolygon::Offset(const glm::i32vec2 &delta)
 {
 	for(Plane2D &plane : planes) {
-		plane.Transform(t);
+		plane.Offset(delta);
 	}
 
-	for(glm_vec2 &point : points) {
-		point = t * glm::i32vec3(point, 1.0f);
+	for(glm::vec2 &point : points) {
+		point += delta;
 	}
 
-	ResizeAABB();
+	aabb.maxs += delta;
+	aabb.mins += delta;
 }
 
 
@@ -148,25 +176,24 @@ bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
 	return AllPointsBehind(plane, points.data(), points.size());
 }
 
-
-void Rect2D::FitPoints(const glm_vec2 pts[], size_t npts)
+void Rect2D::FitPoints(const glm::vec2 pts[], size_t npts)
 {
 	wxASSERT_MSG(npts >= 2,
 		"Cannot construct a rect from less than two points.");
 
-	mins = pts[0];
-	maxs = pts[0];
+	mins = floor(pts[0]);
+	maxs = ceil(pts[0]);
 
 	for(size_t i = 1; i < npts; i++) {
-		glm::i32vec2 pt = pts[i];
-		mins = glm::min(pt, mins);
-		maxs = glm::max(pt, maxs);
+		glm::i32vec2 f = floor(pts[i]);
+		glm::i32vec2 c = ceil(pts[i]);
+		mins = min(f, mins);
+		maxs = max(c, maxs);
 	}
 
 	wxASSERT_MSG(mins.x < maxs.x && mins.y < maxs.y,
 		"Cannot construct a rect from equal points.");
 }
-
 
 void ConvexPolygon::ResizeAABB()
 {
@@ -182,10 +209,10 @@ bool ConvexPolygon::Intersects(const Rect2D &rect) const
 	}
 
 	std::array points = {
-		rect.GetLeftTop(),
-		rect.GetRightTop(),
-		rect.GetRightBottom(),
-		rect.GetLeftBottom()
+		glm::vec2(rect.mins.x, rect.mins.y),
+		glm::vec2(rect.maxs.x, rect.mins.y),
+		glm::vec2(rect.mins.x, rect.maxs.y),
+		glm::vec2(rect.maxs.x, rect.maxs.y)
 	};
 
 	for(const Plane2D &plane : planes) {
@@ -198,7 +225,7 @@ bool ConvexPolygon::Intersects(const Rect2D &rect) const
 }
 
 
-bool ConvexPolygon::Contains(const glm_vec2 &pt) const
+bool ConvexPolygon::Contains(const glm::vec2 &pt) const
 {
 	if(!aabb.Contains(pt)) {
 		return false;
@@ -241,7 +268,7 @@ void ConvexPolygon::PurgePlanes()
 	/* remove all planes that aren't touching any points */
 	planes.erase(std::remove_if(planes.begin(), planes.end(), [this](Plane2D plane) {
 		constexpr float EPSILON = 0.001f;
-		for(const glm_vec2 &pt : points) {
+		for(const glm::vec2 &pt : points) {
 			if(plane.SignedDistance(pt) < EPSILON) {
 				return false;
 			}
@@ -255,14 +282,14 @@ void ConvexPolygon::Slice(Plane2D plane)
 {
 	planes.push_back(plane);
 
-	std::vector<glm_vec2> new_points;
+	std::vector<glm::vec2> new_points;
 	ImposePlane(plane, new_points);
 
 	points = new_points;
 }
 
 
-void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<glm_vec2> &out) const
+void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<glm::vec2> &out) const
 {
 	plane.Clip(points, out);
 }
@@ -286,8 +313,8 @@ Rect2D ConvexPolygon::GetUV(const Rect2D &aabb) const
 	Rect2D rect = aabb;
 	if(texscale != 0) {
 		float scale = static_cast<float>(texscale * GLBackgroundGrid::SPACING);
-		glm_vec2 mins = { 0.0f, 0.0f };
-		glm_vec2 maxs = { scale, scale };
+		glm::vec2 mins = { 0.0f, 0.0f };
+		glm::vec2 maxs = { scale, scale };
 
 		rect.mins = { 0.0f, 0.0f };
 		rect.maxs = { scale, scale };

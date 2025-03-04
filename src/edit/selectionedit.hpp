@@ -17,13 +17,11 @@ public:
 	void OnMouseLeftUp(wxMouseEvent &e);
 	void OnMouseMotion(wxMouseEvent &e);
 	void OnKeyDown(wxKeyEvent &e);
-	void OnMove(glm::mat3 &t, const glm_vec2 &delta);
-	void OnScale(glm::mat3 &t, const glm_vec2 &delta);
 private:
 	bool m_inedit = false;
 	int m_outcode;
-	glm_vec2 m_delta;
-	glm_vec2 m_editstart;
+	glm::i32vec2 m_delta;
+	glm::i32vec2 m_editstart;
 };
 
 #endif

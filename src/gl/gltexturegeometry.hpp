@@ -8,9 +8,9 @@
 
 struct TextureVertex
 {
-	glm_vec2 position;
+	glm::vec2 position;
 	glm::vec4 color;
-	glm_vec2 uv;
+	glm::vec2 uv;
 };
 
 struct TextureVertices
@@ -29,7 +29,7 @@ public:
 	void SetMatrices(const glm::mat4 &proj, const glm::mat4 &view);
 public:
 	void AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color);
-	void AddPolygon(const glm_vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
+	void AddPolygon(const glm::vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
 private:
 	GLuint m_vtxbuf;
 	GLuint m_idxbuf;

@@ -48,9 +48,8 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 
 	if(dp != nullptr) {
 		wxASSERT(item >= 0 && item <= dp->editor.actions.size());
-		glm_vec2 lt, rb;
+		glm::vec2 lt, rb;
 		const EditAction &action = dp->editor.actions[item];
-		const glm::i32mat3x3 &t = action.trans.matrix;
 		if(col == ColumnID::ACTION) {
 			switch(action.base.type) {
 			case EditActionType::LINE:
@@ -59,8 +58,11 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 			case EditActionType::RECT:
 				s.Printf("RECT");
 				break;
-			case EditActionType::TRANS:
-				s.Printf("TRANS");
+			case EditActionType::MOVE:
+				s.Printf("MOVE");
+				break;
+			case EditActionType::SCALE:
+				s.Printf("SCALE");
 				break;
 			case EditActionType::TEXTURE:
 				s.Printf("TEXTURE");
@@ -72,22 +74,20 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 		} else if(col == ColumnID::VALUE) {
 			switch(action.base.type) {
 			case EditActionType::LINE:
-				s.Printf("%dx + %dy + %d = 0", action.line.plane.a, action.line.plane.b, action.line.plane.c);
+				s.Printf("%dx + %dy + %d", action.line.plane.a, action.line.plane.b, action.line.plane.c);
 				break;
 			case EditActionType::RECT:
-				lt = action.rect.rect.GetLeftTop();
-				rb = action.rect.rect.GetRightBottom();
+				lt = action.rect.rect.mins;
+				rb = action.rect.rect.maxs;
 				s.Printf("%llu: x:%.1f,y:%.1f,w:%.1f,h:%.1f",
 					 action.base.poly,
 					 lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
 				break;
-			case EditActionType::TRANS:
-				s.Printf("%d, %d, %d, "
-					 "%d, %d, %d, "
-					 "%d, %d, %d",
-					 t[0][0], t[0][1], t[0][2],
-					 t[1][0], t[1][1], t[1][2],
-					 t[2][0], t[2][1], t[2][2]);
+			case EditActionType::MOVE:
+				s.Printf("%d %d", action.move.delta.x, action.move.delta.y);
+				break;
+			case EditActionType::SCALE:
+				s.Printf("%d/%d", action.scale.numer, action.scale.denom);
 				break;
 			case EditActionType::TEXTURE:
 				s.Printf("index: %llu, scale: %d", action.texture.index,

@@ -79,7 +79,7 @@ void GLSolidGeometry::DrawElements()
 }
 
 
-void GLSolidGeometry::AddQuad(const glm_vec2 q[4], const glm::vec4 &color)
+void GLSolidGeometry::AddQuad(const glm::vec2 q[4], const glm::vec4 &color)
 {
 	SolidVertex vtx;
 	vtx.color = color;
@@ -99,25 +99,25 @@ void GLSolidGeometry::AddQuad(const glm_vec2 q[4], const glm::vec4 &color)
 }
 
 
-void GLSolidGeometry::AddRect(const Rect2D &rect, const glm::vec4 &color)
+void GLSolidGeometry::AddRect(const glm::vec2 &mins, const glm::vec2 &maxs, const glm::vec4 &color)
 {
-	glm_vec2 q[4] = {
-		rect.GetLeftTop(),
-		rect.GetRightTop(),
-		rect.GetLeftBottom(),
-		rect.GetRightBottom()
+	glm::vec2 q[4] = {
+		{ mins.x, mins.y },
+		{ maxs.x, mins.y },
+		{ mins.x, maxs.y },
+		{ maxs.x, maxs.y }
 	};
 
 	AddQuad(q, color);
 }
 
 
-void GLSolidGeometry::AddLine(const glm_vec2 &a, const glm_vec2 &b, float thickness, const glm::vec4 &color)
+void GLSolidGeometry::AddLine(const glm::vec2 &a, const glm::vec2 &b, float thickness, const glm::vec4 &color)
 {
-	glm_vec2 delta = glm::normalize(b - a) * thickness * 0.5f;
-	glm_vec2 normal = { -delta.y, delta.x };
+	glm::vec2 delta = glm::normalize(b - a) * thickness * 0.5f;
+	glm::vec2 normal = { -delta.y, delta.x };
 
-	glm_vec2 q[4] = {
+	glm::vec2 q[4] = {
 		(a - delta) - normal,
 		(a - delta) + normal,
 		(b + delta) - normal,

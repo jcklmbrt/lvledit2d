@@ -174,34 +174,35 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 		canvas->OutlineRect(aabb, 1.0f, BLUE);
 
 		/* inflate aabb to illustrate planes */
-		aabb.Inset(-100, -100);
+		aabb.mins -= 1;
+		aabb.maxs += 1;
 
 		std::array aabbpts = {
-			aabb.mins,
-			aabb.GetRightTop(),
-			aabb.maxs,
-			aabb.GetLeftBottom()
+			glm::i32vec2 { aabb.mins.x, aabb.mins.y },
+			glm::i32vec2 { aabb.maxs.x, aabb.mins.y },
+			glm::i32vec2 { aabb.maxs.x, aabb.maxs.y },
+			glm::i32vec2 { aabb.mins.x, aabb.maxs.y }
 		};
 
 		for(const Plane2D &plane : p->planes) {
-			glm_vec2 line[2];
+			glm::vec2 line[2];
 			int n = 0;
 			size_t naabbpts = aabbpts.size();
 			for(size_t i = 0; i < naabbpts; i++) {
-				glm_vec2 a = aabbpts[i];
-				glm_vec2 b = aabbpts[(i + 1) % naabbpts];
+				glm::i32vec2 a = aabbpts[i];
+				glm::i32vec2 b = aabbpts[(i + 1) % naabbpts];
 
-				float da = plane.SignedDistance(a);
-				float db = plane.SignedDistance(b);
+				int32_t da = plane.SignedDistance(a);
+				int32_t db = plane.SignedDistance(b);
 
-				if(fabs(da) <= FLT_EPSILON) {
+				if(da == 0) {
 					/* a is on the plane */
 					line[n++] = a;
-				} else if(fabs(db) <= FLT_EPSILON) {
+				} else if(db == 0) {
 					/* next point will be on the plane */
-				} else if(da * db <= 0.0) {
+				} else if(da * db <= 0) {
 					/* a point between a and b intersects with the plane */
-					glm_vec2 isect;
+					glm::vec2 isect;
 					if(plane.Line(a, b, isect)) {
 						line[n++] = isect;
 					}
@@ -214,7 +215,7 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 		}
 	}
 
-	const std::vector<glm_vec2> &pts = p->points;
+	const std::vector<glm::vec2> &pts = p->points;
 
 	canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
 
@@ -343,7 +344,7 @@ void EditorContext::OnToolSelect(ToolBar::ID id)
 }
 
 
-ConvexPolygon *EditorContext::FindPoly(glm_vec2 wpos)
+ConvexPolygon *EditorContext::FindPoly(glm::vec2 wpos)
 {
 	for(ConvexPolygon &p : polys) {
 		if(p.Contains(wpos)) {
@@ -385,9 +386,9 @@ void EditorContext::Undo()
 	case EditActionType::DEL:
 		ResetPolys();
 		break;
-	case EditActionType::TRANS:
+	case EditActionType::MOVE:
 		poly = &polys[back.base.poly];
-		poly->Transform(inverse(back.trans.matrix));
+		poly->Offset(-back.move.delta);
 		break;
 	case EditActionType::RECT:
 		if(selected == back.base.poly) {
@@ -413,9 +414,9 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 		poly->PurgePlanes();
 		poly->ResizeAABB();
 		break;
-	case EditActionType::TRANS:
+	case EditActionType::MOVE:
 		poly = &polys[action.base.poly];
-		poly->Transform(action.trans.matrix);
+		poly->Offset(action.move.delta);
 		break;
 	case EditActionType::RECT:
 		polys.push_back(action.rect.rect);
@@ -487,8 +488,8 @@ void EditorContext::AppendAction(EditAction action)
 		poly->PurgePlanes();
 		poly->ResizeAABB();
 		break;
-	case EditActionType::TRANS:
-		poly->Transform(action.trans.matrix);
+	case EditActionType::MOVE:
+		poly->Offset(action.move.delta);
 		break;
 	case EditActionType::RECT:
 		polys.push_back(action.rect.rect);
@@ -516,10 +517,10 @@ void EditorContext::AppendAction(EditAction action)
 
 	if(!actions.empty() && history) {
 		EditAction &back = actions[history - 1];
-		if(back.base.type == EditActionType::TRANS && action.base.type == EditActionType::TRANS) {
+		if(back.base.type == EditActionType::MOVE && action.base.type == EditActionType::MOVE) {
 			/* we don't want to spam a move action for each pixel moved */
 			if(back.base.poly == action.base.poly) {
-				back.trans.matrix = back.trans.matrix * action.trans.matrix;
+				back.move.delta = back.move.delta + action.move.delta;
 				hlist->Refresh(false);
 				Save();
 				return;

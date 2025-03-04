@@ -12,7 +12,7 @@
 void LineEdit::StartPoint_OnMouseLeftDown(wxMouseEvent &e)
 {
 	wxPoint mpos = e.GetPosition();
-	glm_vec2 start = view.ScreenToWorld(mpos);
+	glm::vec2 start = view.ScreenToWorld(mpos);
 
 	ConvexPolygon *poly = context->GetSelectedPoly();
 
@@ -31,7 +31,7 @@ void LineEdit::StartPoint_OnMouseLeftDown(wxMouseEvent &e)
 
 void LineEdit::StartPoint_OnDraw()
 {
-	glm_vec2 mpos = canvas->mousepos;
+	glm::vec2 mpos = canvas->mousepos;
 	if(canvas->editor.snaptogrid) {
 		GLBackgroundGrid::Snap(mpos);
 	}
@@ -68,7 +68,7 @@ void LineEdit::EndPoint_OnMouseLeftDown(wxMouseEvent &e)
 void LineEdit::EndPoint_OnDraw()
 {
 	wxPoint a, b;
-	glm_vec2 mpos = canvas->mousepos;
+	glm::vec2 mpos = canvas->mousepos;
 
 	if(canvas->editor.snaptogrid) {
 		GLBackgroundGrid::Snap(mpos);
@@ -115,7 +115,7 @@ void LineEdit::Slice_OnDraw()
 	wxASSERT(poly != nullptr);
 
 	size_t npts = poly->points.size();
-	glm_vec2 *pts = poly->points.data();
+	glm::vec2 *pts = poly->points.data();
 	canvas->OutlinePoly(pts, npts, 3.0, BLACK);
 	canvas->OutlinePoly(pts, npts, 1.0, RED);
 

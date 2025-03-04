@@ -13,7 +13,7 @@ TextureEdit::TextureEdit(GLCanvas *canvas)
 
 void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	glm_vec2 wpos = canvas->view.MouseToWorld(e);
+	glm::vec2 wpos = canvas->view.MouseToWorld(e);
 	ConvexPolygon *poly = canvas->editor.FindPoly(wpos);
 	TextureList *tlist = TextureList::GetInstance();
 	TexturePanel *tpanel = TexturePanel::GetInstance();
@@ -34,7 +34,7 @@ void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 void TextureEdit::OnMouseRightDown(wxMouseEvent &e)
 {
-	glm_vec2 wpos = canvas->view.MouseToWorld(e);
+	glm::vec2 wpos = canvas->view.MouseToWorld(e);
 	ConvexPolygon *poly = canvas->editor.FindPoly(wpos);
 	TexturePanel *tpanel = TexturePanel::GetInstance();
 

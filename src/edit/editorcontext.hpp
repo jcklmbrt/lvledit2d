@@ -17,7 +17,8 @@ enum class EditActionType
 	/* User actions */
 	LINE,
 	RECT,
-	TRANS,
+	MOVE,
+	SCALE,
 	DEL,
 	TEXTURE
 };
@@ -43,18 +44,25 @@ struct EditAction_Line : EditAction_Base
 	Plane2D plane;
 };
 
-struct EditAction_Trans: EditAction_Base
+struct EditAction_Move : EditAction_Base
 {
-	EditAction_Trans() { type = EditActionType::TRANS; }
-	glm::mat3 matrix;
+	EditAction_Move() { type = EditActionType::MOVE; }
+	glm::i32vec2 delta;
+};
+
+struct EditAction_Scale : EditAction_Base
+{
+	EditAction_Scale() { type = EditActionType::SCALE; }
+	int32_t numer;
+	int32_t denom;
 };
 
 
 struct EditAction_Texture : EditAction_Base
 {
 	EditAction_Texture() { type = EditActionType::TEXTURE; }
-	size_t index;
-	int scale;
+	int32_t index;
+	int32_t scale;
 };
 
 struct EditAction_Delete : EditAction_Base
@@ -68,13 +76,15 @@ union EditAction
 	EditAction() {};
 	EditAction(EditAction_Line &line) : line(line) {}
 	EditAction(EditAction_Rect &rect) : rect(rect) {}
-	EditAction(EditAction_Trans &trans) : trans(trans) {}
+	EditAction(EditAction_Move &move) : move(move) {}
+	EditAction(EditAction_Scale &scale) : scale(scale) {}
 	EditAction(EditAction_Texture &texture) : texture(texture) {}
 	EditAction(EditAction_Delete &del) : del(del) {}
 	EditAction_Base base;
 	EditAction_Rect rect;
 	EditAction_Line line;
-	EditAction_Trans trans;
+	EditAction_Move move;
+	EditAction_Scale scale;
 	EditAction_Delete del;
 	EditAction_Texture texture;
 };
@@ -107,7 +117,7 @@ public:
 	bool Save();
 	bool Save(const wxFileName &path);
 	bool Load(const wxFileName &path);
-	ConvexPolygon *FindPoly(glm_vec2 wpos);
+	ConvexPolygon *FindPoly(glm::vec2 wpos);
 	void ResetPolys();
 	void OnToolSelect(ToolBar::ID id);
 	void OnDraw();

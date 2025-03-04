@@ -11,8 +11,9 @@ public:
 	~GLBackgroundGrid();
 	void SetMatrices(const glm::mat4 &proj, const glm::mat4 &view);
 	void DrawGrid();
-	constexpr static int SPACING = 50;
-	static void Snap(glm_vec2 &pt);
+	constexpr static int SPACING = 1;
+	static void Snap(glm::vec2 &pt);
+	static void Snap(glm::i32vec2 &pt);
 private:
 	GLuint m_program;
 	GLuint m_vtxbuf;
@@ -20,11 +21,16 @@ private:
 };
 
 
-inline void GLBackgroundGrid::Snap(glm_vec2 &pt)
+inline void GLBackgroundGrid::Snap(glm::vec2 &pt)
 {
 	pt.x = round(pt.x / SPACING) * SPACING;
 	pt.y = round(pt.y / SPACING) * SPACING;
 }
 
+inline void GLBackgroundGrid::Snap(glm::i32vec2 &pt)
+{
+	pt.x = round(pt.x / SPACING) * SPACING;
+	pt.y = round(pt.y / SPACING) * SPACING;
+}
 
 #endif 

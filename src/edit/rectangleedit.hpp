@@ -14,7 +14,7 @@ public:
 
 	bool m_inedit = false;
 	bool m_onepoint = false;
-	glm_vec2 m_start;
+	glm::vec2 m_start;
 	Rect2D m_rect;
 };
 
