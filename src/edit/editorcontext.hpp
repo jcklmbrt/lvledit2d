@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <wx/filename.h>
+#include "glm/fwd.hpp"
 #include "src/gl/texture.hpp"
 #include "src/toolbar.hpp"
 #include "src/geometry.hpp"
@@ -53,8 +54,9 @@ struct EditAction_Move : EditAction_Base
 struct EditAction_Scale : EditAction_Base
 {
 	EditAction_Scale() { type = EditActionType::SCALE; }
-	int32_t numer;
-	int32_t denom;
+	glm::i32vec2 origin;
+	glm::i32vec2 numer;
+	glm::i32vec2 denom;
 };
 
 

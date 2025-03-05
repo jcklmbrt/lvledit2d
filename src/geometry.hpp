@@ -2,6 +2,7 @@
 #ifndef _GEOMETRY_HPP
 #define _GEOMETRY_HPP
 
+#include "glm/fwd.hpp"
 #include <vector>
 #include <glm/glm.hpp>
 #include <wx/debug.h>
@@ -69,10 +70,12 @@ struct Plane2D
 	Plane2D(const glm::i32vec2 &start, const glm::i32vec2 &end);
 	int32_t SignedDistance(const glm::i32vec2 &p) const;
 	float SignedDistance(const glm::vec2 &p) const;
+	void Normalize();
 	bool Line(const glm::i32vec2 &a, const glm::i32vec2 &b, glm::vec2 &out) const;
 	bool Line(const glm::vec2 &a, const glm::vec2 &b, glm::vec2 &out) const;
 	void Flip();
 	void Offset(const glm::i32vec2 &pt);
+	void Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom);
 	void Transform(const glm::mat3 &t);
 	void Clip(const std::vector<glm::vec2> &points, std::vector<glm::vec2> &out);
 	bool operator==(const Plane2D &other) const;
@@ -86,6 +89,7 @@ struct ConvexPolygon
 {
 	ConvexPolygon(const Rect2D &rect);
 	void Offset(const glm::i32vec2 &delta);
+	void Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom);
 	void Slice(Plane2D plane);
 	void ImposePlane(Plane2D plane, std::vector<glm::vec2> &out) const;
 	static bool AllPointsBehind(const Plane2D &plane, const glm::vec2 points[], size_t npoints);

@@ -1,4 +1,5 @@
 #include <array>
+#include <numeric>
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
@@ -6,6 +7,7 @@
 #include <limits>
 #include <wx/debug.h>
 
+#include "glm/fwd.hpp"
 #include "glm/matrix.hpp"
 #include "src/gl/glcanvas.hpp"
 #include "src/gl/glbackgroundgrid.hpp"
@@ -17,6 +19,7 @@ Plane2D::Plane2D(const glm::i32vec2 &start, const glm::i32vec2 &end)
 	a = end.y - start.y;
 	b = start.x - end.x;
 	c = -(a * start.x + b * start.y);
+	Normalize();
 }
 
 
@@ -31,6 +34,41 @@ void Plane2D::Flip()
 void Plane2D::Offset(const glm::i32vec2 &pt)
 {
 	c -= a * pt.x + b * pt.y;
+}
+
+void Plane2D::Normalize()
+{
+	int32_t g = std::gcd(std::gcd(a, b), c);
+
+	if (g > 1) {
+		a /= g;
+		b /= g;
+		c /= g;
+	}
+}
+
+
+void Plane2D::Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom)
+{
+	int32_t px = numer.x;
+	int32_t qx = denom.x;
+	int32_t py = numer.y;
+	int32_t qy = denom.y;
+
+	int32_t x0 = origin.x;
+	int32_t y0 = origin.y;
+
+	int32_t a_prime = a * py * qx;
+	int32_t b_prime = b * px * qy;
+	int32_t c_prime = a * x0 * (px * py - py * qx) + 
+		      b * y0 * (px * py - px * qy) + 
+		      px * py * c;
+
+	a = a_prime;
+	b = b_prime;
+	c = c_prime;
+
+	Normalize();
 }
 
 
@@ -135,6 +173,20 @@ ConvexPolygon::ConvexPolygon(const Rect2D &rect)
 	points.push_back(lb);
 }
 
+void ConvexPolygon::Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom)
+{
+	for(Plane2D &plane : planes) {
+		plane.Scale(origin, numer, denom);
+	}
+
+	for(glm::vec2 &point : points) {
+		point = glm::vec2(origin) + ((point - glm::vec2(origin)) * glm::vec2(numer)) / glm::vec2(denom);
+	}
+
+	aabb.maxs = origin + ((aabb.maxs - origin) * numer) / denom;
+	aabb.mins = origin + ((aabb.mins - origin) * numer) / denom;
+}
+
 
 void ConvexPolygon::Offset(const glm::i32vec2 &delta)
 {
@@ -194,6 +246,7 @@ void Rect2D::FitPoints(const glm::vec2 pts[], size_t npts)
 	wxASSERT_MSG(mins.x < maxs.x && mins.y < maxs.y,
 		"Cannot construct a rect from equal points.");
 }
+
 
 void ConvexPolygon::ResizeAABB()
 {

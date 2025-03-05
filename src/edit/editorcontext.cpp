@@ -1,11 +1,13 @@
 #include <array>
 #include <cfloat>
+#include <numeric>
 #include <cstdio>
 #include <wx/debug.h>
 #include <wx/listbase.h>
 #include <wx/msgdlg.h>
 #include <wx/utils.h>
 
+#include "glm/fwd.hpp"
 #include "src/gl/glcanvas.hpp"
 #include "src/geometry.hpp"
 #include "src/edit/selectionedit.hpp"
@@ -418,6 +420,10 @@ ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
 		poly = &polys[action.base.poly];
 		poly->Offset(action.move.delta);
 		break;
+	case EditActionType::SCALE:
+		poly = &polys[action.base.poly];
+		poly->Scale(action.scale.origin, action.scale.numer, action.scale.denom);
+		break;
 	case EditActionType::RECT:
 		polys.push_back(action.rect.rect);
 		poly = &polys.back();
@@ -489,7 +495,17 @@ void EditorContext::AppendAction(EditAction action)
 		poly->ResizeAABB();
 		break;
 	case EditActionType::MOVE:
+		if(action.move.delta.x == 0 && action.move.delta.y == 0) {
+			return;
+		}
 		poly->Offset(action.move.delta);
+		break;
+	case EditActionType::SCALE:
+		if(action.scale.numer.x == action.scale.denom.x &&
+		   action.scale.numer.y == action.scale.denom.y) {
+			return;
+		}
+		poly->Scale(action.scale.origin, action.scale.numer, action.scale.denom);
 		break;
 	case EditActionType::RECT:
 		polys.push_back(action.rect.rect);
@@ -526,6 +542,32 @@ void EditorContext::AppendAction(EditAction action)
 				return;
 			}
 		}
+
+		if(back.base.type == EditActionType::SCALE && action.base.type == EditActionType::SCALE) {
+			if(back.base.poly == action.base.poly) {
+				/*
+				glm::i32vec2 denom;
+				denom.x = std::lcm(action.scale.denom.x, back.scale.denom.x);
+				denom.y = std::lcm(action.scale.denom.y, back.scale.denom.y);
+
+				back.scale.numer =
+					back.scale.numer * (denom / back.scale.denom) +
+					action.scale.numer * (denom / action.scale.denom);
+
+				back.scale.denom = denom;
+
+				glm::i32vec2 g;
+				g.x = std::gcd(back.scale.numer.x, back.scale.denom.x);
+				g.y = std::gcd(back.scale.numer.y, back.scale.denom.y);
+				back.scale.numer /= g;
+				back.scale.denom /= g;
+				hlist->Refresh(false);
+				Save();
+				return;
+				*/
+			}
+		}
+
 		/* don't bother saving repeat texture actions */
 		if(back.base.type == EditActionType::TEXTURE && action.base.type == EditActionType::TEXTURE) {
 			if(back.base.poly == action.base.poly

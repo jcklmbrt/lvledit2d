@@ -12,6 +12,7 @@ HistoryList::HistoryList(wxWindow *parent)
 {
 	/* autosize column */
 	InsertColumn(ColumnID::ACTION, "Action", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
+	InsertColumn(ColumnID::INDEX, "Index", wxLIST_FIND_LEFT, wxLIST_AUTOSIZE_USEHEADER);
 	InsertColumn(ColumnID::VALUE,  "Value", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE_USEHEADER);
 #ifndef _WIN32 
 	wxSize size = GetSize() * 0.7;
@@ -48,7 +49,7 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 
 	if(dp != nullptr) {
 		wxASSERT(item >= 0 && item <= dp->editor.actions.size());
-		glm::vec2 lt, rb;
+		glm::i32vec2 lt, rb;
 		const EditAction &action = dp->editor.actions[item];
 		if(col == ColumnID::ACTION) {
 			switch(action.base.type) {
@@ -79,23 +80,25 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 			case EditActionType::RECT:
 				lt = action.rect.rect.mins;
 				rb = action.rect.rect.maxs;
-				s.Printf("%llu: x:%.1f,y:%.1f,w:%.1f,h:%.1f",
-					 action.base.poly,
-					 lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
+				s.Printf("%d %d %d %d", lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
 				break;
 			case EditActionType::MOVE:
 				s.Printf("%d %d", action.move.delta.x, action.move.delta.y);
 				break;
 			case EditActionType::SCALE:
-				s.Printf("%d/%d", action.scale.numer, action.scale.denom);
+				s.Printf("%d/%d %d/%d",
+					 action.scale.numer.x, action.scale.denom.x,
+					 action.scale.numer.y, action.scale.denom.y);
 				break;
 			case EditActionType::TEXTURE:
 				s.Printf("index: %llu, scale: %d", action.texture.index,
 					 action.texture.scale);
 				break;
 			case EditActionType::DEL:
-				s.Printf("index: %llu", action.base.poly);
+				break;
 			}
+		} else if(col == ColumnID::INDEX) {
+			s.Printf("%llu", action.base.poly);
 		}
 	}
 	return s;
