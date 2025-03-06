@@ -38,6 +38,10 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 		}
 	} else {
 		/* 1st left click*/
+		if(canvas->editor.snaptogrid) {
+			GLBackgroundGrid::Snap(world_pos);
+		}
+
 		for(ConvexPolygon &poly : context->polys) {
 			if(poly.Contains(world_pos)) {
 				intersects = true;
@@ -46,10 +50,6 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 		}
 
 		if(!intersects) {
-			if(canvas->editor.snaptogrid) {
-				GLBackgroundGrid::Snap(world_pos);
-			}
-
 			m_start = world_pos;
 			m_inedit = true;
 			m_onepoint = true;

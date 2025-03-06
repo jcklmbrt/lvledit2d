@@ -34,11 +34,12 @@ void Plane2D::Flip()
 void Plane2D::Offset(const glm::i32vec2 &pt)
 {
 	c -= a * pt.x + b * pt.y;
+	Normalize();
 }
 
 void Plane2D::Normalize()
 {
-	int32_t g = std::gcd(std::gcd(a, b), c);
+	int32_t g = std::gcd(std::gcd(std::abs(a), std::abs(b)), std::abs(c));
 
 	if (g > 1) {
 		a /= g;
@@ -50,25 +51,33 @@ void Plane2D::Normalize()
 
 void Plane2D::Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom)
 {
-	int32_t px = numer.x;
-	int32_t qx = denom.x;
-	int32_t py = numer.y;
-	int32_t qy = denom.y;
+	int64_t px = numer.x;
+	int64_t qx = denom.x;
+	int64_t py = numer.y;
+	int64_t qy = denom.y;
 
-	int32_t x0 = origin.x;
-	int32_t y0 = origin.y;
+	int64_t x0 = origin.x;
+	int64_t y0 = origin.y;
 
-	int32_t a_prime = a * py * qx;
-	int32_t b_prime = b * px * qy;
-	int32_t c_prime = a * x0 * (px * py - py * qx) + 
-		      b * y0 * (px * py - px * qy) + 
-		      px * py * c;
+	int64_t a_prime = static_cast<int64_t>(a) * py * qx;
+	int64_t b_prime = static_cast<int64_t>(b) * px * qy;
+	int64_t c_prime = static_cast<int64_t>(a) * x0 * (px * py - py * qx) +
+	                  static_cast<int64_t>(b) * y0 * (px * py - px * qy) +
+	                  px * py * static_cast<int64_t>(c);
+
+	int64_t g = std::gcd(std::gcd(std::abs(a_prime), std::abs(b_prime)), std::abs(c_prime));
+
+	if(g > 1) {
+		a_prime /= g;
+		b_prime /= g;
+		c_prime /= g;
+	}
+
+	wxASSERT(a_prime < INT32_MAX && b_prime < INT32_MAX && c_prime < INT32_MAX);
 
 	a = a_prime;
 	b = b_prime;
 	c = c_prime;
-
-	Normalize();
 }
 
 
@@ -89,66 +98,24 @@ void Plane2D::Clip(const std::vector<glm::vec2> &points, std::vector<glm::vec2> 
 
 		if(da * db < 0) {
 			glm::vec2 isect;
-			if(Line(a, b, isect)) {
-				out.push_back(isect);
-			}
+			isect.x = a.x * db - b.x * da;
+			isect.y = a.y * db - b.y * da;
+			isect /= db - da;
+			out.push_back(isect);
 		}
 	}
 }
 
 
-bool Plane2D::Line(const glm::i32vec2 &p0, const glm::i32vec2 &p1, glm::vec2 &out) const
+float Plane2D::SignedDistance(const glm::vec2 &p) const
 {
-	glm::i32vec2 dir = p1 - p0;
-
-	int32_t denom = a * dir.x + b * dir.y;
-	int32_t numer = -(a * p0.x + b * p0.y + c);
-
-	if(denom == 0) {
-		return false;
-	}
-
-	dir *= numer;
-	out = glm::vec2(p0) + (glm::vec2(dir) / static_cast<float>(denom));
-
-	return true;
+	return static_cast<float>(a) * p.x + static_cast<float>(b) * p.y + static_cast<float>(c);
 }
-
-bool Plane2D::Line(const glm::vec2 &p0, const glm::vec2 &p1, glm::vec2 &out) const
-{
-	glm::vec2 dir = p1 - p0;
-
-	float fa = static_cast<float>(a);
-	float fb = static_cast<float>(b);
-	float fc = static_cast<float>(c);
-
-	float denom = fa * dir.x + fb * dir.y;
-	float numer = -(fa * p0.x + fb * p0.y + fc);
-
-	if(denom == 0.0f) {
-		return false;
-	}
-
-	dir *= numer;
-	out = glm::vec2(p0) + (glm::vec2(dir) / denom);
-
-	return true;
-}
-
 
 
 int32_t Plane2D::SignedDistance(const glm::i32vec2 &p) const
 {
 	return a * p.x + b * p.y + c;
-}
-
-float Plane2D::SignedDistance(const glm::vec2 &p) const
-{
-	float fa = static_cast<float>(a);
-	float fb = static_cast<float>(b);
-	float fc = static_cast<float>(c);
-
-	return fa * p.x + fb * p.y + fc;
 }
 
 

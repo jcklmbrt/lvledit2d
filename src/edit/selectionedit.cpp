@@ -64,10 +64,6 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 	for(glm::vec2 pt : aabbpts) {
 		canvas->DrawPoint(pt, WHITE);
 	}
-
-	if(m_inedit && m_outcode != RECT2D_INSIDE) {
-		canvas->DrawPoint(m_editstart, RED);
-	}
 }
 
 void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
@@ -109,9 +105,6 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 				}
 
 				m_delta = opposite - m_editstart;
-				if(m_delta.x == 0 && m_delta.y == 0) {
-					m_inedit = false;
-				}
 			}
 		}
 	}
@@ -151,6 +144,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 			if(&poly != selected && selected->Intersects(poly)) {
 				intersects = true;
 				break;
+				//return;
 			}
 		}
 
@@ -163,31 +157,53 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 			context->AppendAction(act);
 		}
 	} else {
-		bool out_x = m_outcode & (RECT2D_LEFT | RECT2D_RIGHT);
-		bool out_y = m_outcode & (RECT2D_TOP | RECT2D_BOTTOM);
+		static constexpr int OUT_X = RECT2D_LEFT | RECT2D_RIGHT;
+		static constexpr int OUT_Y = RECT2D_BOTTOM | RECT2D_TOP;
+		int outcode = selected->aabb.GetOutCode(wpos);
+
+		if(((outcode ^ m_outcode) & OUT_X) == OUT_X) {
+			m_delta.x = delta.x = 1;
+		}
+
+		if(((outcode ^ m_outcode) & OUT_Y) == OUT_Y) {
+			m_delta.y = delta.y = 1;
+		}
+
+		bool out_x = m_outcode & OUT_X;
+		bool out_y = m_outcode & OUT_Y;
 		if(out_x && !out_y) m_delta.y = delta.y = 1;
 		if(out_y && !out_x) m_delta.x = delta.x = 1; 
-
+		
 		if(m_delta.x == 0 || m_delta.y == 0) {
 			m_inedit = false;
+			return;
+		}
+
+		if(delta.x == 0 || delta.y == 0 || delta == m_delta) {
 			return;
 		}
 
 		glm::i32vec2 numer = glm::abs(delta);
 		glm::i32vec2 denom = glm::abs(m_delta);
 
+		// normalize fraction
 		glm::i32vec2 g;
 		g.x = std::gcd(numer.x, denom.x);
 		g.y = std::gcd(numer.y, denom.y);
 		numer /= g;
 		denom /= g;
 
-		/*
+		// make sure scaling will result in a whole number.
+		glm::i32vec2 maxs = ((selected->aabb.maxs - m_editstart) * numer);
+		glm::i32vec2 mins = ((selected->aabb.mins - m_editstart) * numer);
+		if(maxs.x % denom.x != 0 || maxs.y % denom.y != 0 ||
+		   mins.x % denom.x != 0 || mins.y % denom.y != 0) {
+			return;
+		}
+
 		selected->Scale(m_editstart, numer, denom);
-		*/
 
 		bool intersects = false;
-		/*
 		for(ConvexPolygon &poly : context->polys) {
 			if(&poly != selected && selected->Intersects(poly)) {
 				intersects = true;
@@ -196,9 +212,6 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		}
 
 		selected->Scale(m_editstart, denom, numer);
-		*/
-
-		m_delta = delta;
 
 		if(!intersects) {
 			EditAction_Scale act;
@@ -206,6 +219,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 			act.denom = denom;
 			act.numer = numer;
 			context->AppendAction(act);
+			m_delta = delta;
 		}
 	}
 }

@@ -38,12 +38,26 @@ struct Rect2D
 		       mins.y < other.maxs.y && other.mins.y < maxs.y;
 	};
 
+	int GetOutCode(const glm::vec2 &p) const
+	{
+		return (((p.x < mins.x) ? RECT2D_LEFT : 0) +
+			((p.x > maxs.x) ? RECT2D_RIGHT : 0) +
+			((p.y < mins.y) ? RECT2D_TOP : 0) +
+			((p.y > maxs.y) ? RECT2D_BOTTOM : 0));
+	}
+
 	int GetOutCode(const glm::i32vec2 &p) const
         {
 		return (((p.x < mins.x) ? RECT2D_LEFT : 0) +
 		        ((p.x > maxs.x) ? RECT2D_RIGHT : 0) +
 		        ((p.y < mins.y) ? RECT2D_TOP : 0)  +
 		        ((p.y > maxs.y) ? RECT2D_BOTTOM : 0));
+	}
+
+	bool Contains(const glm::vec2 &pt) const
+	{
+		return pt.x > mins.x && pt.y > mins.y &&
+		       pt.x < maxs.x && pt.y < maxs.y;
 	}
 
 	bool Contains(const glm::i32vec2 &pt) const 
@@ -71,12 +85,9 @@ struct Plane2D
 	int32_t SignedDistance(const glm::i32vec2 &p) const;
 	float SignedDistance(const glm::vec2 &p) const;
 	void Normalize();
-	bool Line(const glm::i32vec2 &a, const glm::i32vec2 &b, glm::vec2 &out) const;
-	bool Line(const glm::vec2 &a, const glm::vec2 &b, glm::vec2 &out) const;
 	void Flip();
 	void Offset(const glm::i32vec2 &pt);
 	void Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom);
-	void Transform(const glm::mat3 &t);
 	void Clip(const std::vector<glm::vec2> &points, std::vector<glm::vec2> &out);
 	bool operator==(const Plane2D &other) const;
 	/* Ax + By + C = 0 */

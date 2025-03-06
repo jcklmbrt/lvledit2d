@@ -6,10 +6,10 @@
 #include "src/singleton.hpp"
 #include "src/geometry.hpp"
 
-constexpr glm::vec2 MAX_PAN = {  10000.0f,  10000.0f };
-constexpr glm::vec2 MIN_PAN = { -10000.0f, -10000.0f };
-constexpr float MAX_ZOOM = 100.0f;
-constexpr float MIN_ZOOM = 0.1f;
+constexpr glm::vec2 MAX_PAN = {  1000.0f,  1000.0f };
+constexpr glm::vec2 MIN_PAN = { -1000.0f, -1000.0f };
+constexpr float MAX_ZOOM = 150.0f;
+constexpr float MIN_ZOOM = 5.0f;
 
 
 class ViewMatrixBase : Immobile

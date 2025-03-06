@@ -168,7 +168,6 @@ bool EditorContext::Save(const wxFileName &filename)
 	return Save();
 }
 
-
 void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 {
 	if(p == context->GetSelectedPoly()) {
@@ -188,27 +187,29 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 
 		for(const Plane2D &plane : p->planes) {
 			glm::vec2 line[2];
-			int n = 0;
-			size_t naabbpts = aabbpts.size();
-			for(size_t i = 0; i < naabbpts; i++) {
+			size_t n = 0;
+
+			for(size_t i = 0; i < aabbpts.size(); i++) {
 				glm::i32vec2 a = aabbpts[i];
-				glm::i32vec2 b = aabbpts[(i + 1) % naabbpts];
+				glm::i32vec2 b = aabbpts[(i + 1) % aabbpts.size()];
+				glm::i32vec2 delta = b - a;
 
-				int32_t da = plane.SignedDistance(a);
-				int32_t db = plane.SignedDistance(b);
+				int32_t denom = plane.a * delta.x + plane.b * delta.y;
+				int32_t numer = -(plane.a * a.x + plane.b * a.y + plane.c);
 
-				if(da == 0) {
-					/* a is on the plane */
-					line[n++] = a;
-				} else if(db == 0) {
-					/* next point will be on the plane */
-				} else if(da * db <= 0) {
-					/* a point between a and b intersects with the plane */
-					glm::vec2 isect;
-					if(plane.Line(a, b, isect)) {
-						line[n++] = isect;
+				if(denom != 0) {
+					float t = static_cast<float>(numer) / static_cast<float>(denom);
+					if(t >= 0.0f && t <= 1.0f) {
+						line[n++] = glm::vec2(a) + t * glm::vec2(delta);
 					}
-					
+				} else if(numer == 0) {
+					line[0] = a;
+					line[1] = b;
+					n = 2;
+					break;
+				}
+				if(n >= 2) {
+					break;
 				}
 			}
 
@@ -392,6 +393,10 @@ void EditorContext::Undo()
 		poly = &polys[back.base.poly];
 		poly->Offset(-back.move.delta);
 		break;
+	case EditActionType::SCALE:
+		poly = &polys[back.base.poly];
+		poly->Scale(back.scale.origin, back.scale.denom, back.scale.numer);
+		break;
 	case EditActionType::RECT:
 		if(selected == back.base.poly) {
 			selected = -1;
@@ -501,10 +506,6 @@ void EditorContext::AppendAction(EditAction action)
 		poly->Offset(action.move.delta);
 		break;
 	case EditActionType::SCALE:
-		if(action.scale.numer.x == action.scale.denom.x &&
-		   action.scale.numer.y == action.scale.denom.y) {
-			return;
-		}
 		poly->Scale(action.scale.origin, action.scale.numer, action.scale.denom);
 		break;
 	case EditActionType::RECT:
@@ -537,6 +538,14 @@ void EditorContext::AppendAction(EditAction action)
 			/* we don't want to spam a move action for each pixel moved */
 			if(back.base.poly == action.base.poly) {
 				back.move.delta = back.move.delta + action.move.delta;
+
+				/* remove if no-op */
+				if(back.move.delta.x == 0 && back.move.delta.y == 0) {
+					actions.pop_back();
+					history = actions.size();
+					hlist->SetItemCount(actions.size());
+				}
+
 				hlist->Refresh(false);
 				Save();
 				return;
@@ -544,27 +553,26 @@ void EditorContext::AppendAction(EditAction action)
 		}
 
 		if(back.base.type == EditActionType::SCALE && action.base.type == EditActionType::SCALE) {
-			if(back.base.poly == action.base.poly) {
-				/*
-				glm::i32vec2 denom;
-				denom.x = std::lcm(action.scale.denom.x, back.scale.denom.x);
-				denom.y = std::lcm(action.scale.denom.y, back.scale.denom.y);
-
-				back.scale.numer =
-					back.scale.numer * (denom / back.scale.denom) +
-					action.scale.numer * (denom / action.scale.denom);
-
-				back.scale.denom = denom;
+			if(back.base.poly == action.base.poly && back.scale.origin == action.scale.origin) {
+				back.scale.denom *= action.scale.denom;
+				back.scale.numer *= action.scale.numer;
 
 				glm::i32vec2 g;
 				g.x = std::gcd(back.scale.numer.x, back.scale.denom.x);
 				g.y = std::gcd(back.scale.numer.y, back.scale.denom.y);
 				back.scale.numer /= g;
 				back.scale.denom /= g;
+
+				/* remove if no-op */
+				if(back.scale.numer == back.scale.denom) {
+					actions.pop_back();
+					history = actions.size();
+					hlist->SetItemCount(actions.size());
+				}
+
 				hlist->Refresh(false);
 				Save();
 				return;
-				*/
 			}
 		}
 

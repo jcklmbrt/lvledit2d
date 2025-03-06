@@ -12,7 +12,7 @@ HistoryList::HistoryList(wxWindow *parent)
 {
 	/* autosize column */
 	InsertColumn(ColumnID::ACTION, "Action", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
-	InsertColumn(ColumnID::INDEX, "Index", wxLIST_FIND_LEFT, wxLIST_AUTOSIZE_USEHEADER);
+	InsertColumn(ColumnID::INDEX, "Index", wxLIST_FIND_LEFT, wxLIST_AUTOSIZE);
 	InsertColumn(ColumnID::VALUE,  "Value", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE_USEHEADER);
 #ifndef _WIN32 
 	wxSize size = GetSize() * 0.7;
