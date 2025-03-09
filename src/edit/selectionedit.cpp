@@ -40,6 +40,31 @@ void SelectionEdit::OnMouseRightDown(wxMouseEvent &e)
 	}
 }
 
+static void GetOutcodeCorner(const Rect2D &r, int oc, glm::i32vec2 &corner, glm::i32vec2 &opposite)
+{
+	corner = r.mins + (r.GetSize() / 2);
+	opposite = corner;
+
+	if(oc & RECT2D_LEFT) {
+		corner.x = r.maxs.x;
+		opposite.x = r.mins.x;
+	}
+	else if(oc & RECT2D_RIGHT) {
+		corner.x = r.mins.x;
+		opposite.x = r.maxs.x;
+	}
+
+	if(oc & RECT2D_TOP) {
+		corner.y = r.maxs.y;
+		opposite.y = r.mins.y;
+	}
+	else if(oc & RECT2D_BOTTOM) {
+		corner.y = r.mins.y;
+		opposite.y = r.maxs.y;
+	}
+}
+
+
 void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 {
 	IBaseEdit::DrawPolygon(p);
@@ -57,14 +82,67 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 		glm::vec2 { aabb.maxs.x, aabb.maxs.y }
 	};
 
+	int oc;
+	bool highlight = true;
+	glm::vec4 color = PINK;
+
+	if(!m_inedit) {
+		glm::vec2 wpos = canvas->mousepos;
+		oc = aabb.GetOutCode(wpos);
+
+		wxPoint mins = view.WorldToScreen(aabb.mins);
+		wxPoint maxs = view.WorldToScreen(aabb.maxs);
+		wxPoint mpos = view.WorldToScreen(wpos);
+
+		wxRect hitbox;
+		hitbox.SetLeftTop(mins);
+		hitbox.SetRightBottom(maxs);
+		hitbox.Inflate(THRESHOLD, THRESHOLD);
+
+		if(!hitbox.Contains(mpos)) {
+			highlight = false;
+		}
+	} else {
+		oc = m_outcode;
+		color = RED;
+	}
+
+	int out_x = oc & RECT2D_OUTX;
+	int out_y = oc & RECT2D_OUTY;
+
+	glm::i32vec2 corner, opposite;
+	GetOutcodeCorner(aabb, oc, corner, opposite);
+
+	if(highlight) {
+		if(out_x && !out_y) {
+			glm::vec2 a = { opposite.x, aabb.mins.y };
+			glm::vec2 b = { opposite.x, aabb.maxs.y };
+			canvas->DrawLine(a, b, 1.0f, color);
+		}
+		else if(out_y && !out_x) {
+			glm::vec2 a = { aabb.mins.x, opposite.y };
+			glm::vec2 b = { aabb.maxs.x, opposite.y };
+			canvas->DrawLine(a, b, 1.0f, color);
+		}
+	}
+
 	glm::vec2 center = aabb.mins;
 	center += glm::vec2(aabb.GetSize()) / 2.0f;
-	canvas->DrawPoint(center, YELLOW);
+	if(oc == RECT2D_INSIDE && highlight) {
+		canvas->DrawPoint(center, color);
+	} else {
+		canvas->DrawPoint(center, YELLOW);
+	}
 
 	for(glm::vec2 pt : aabbpts) {
 		canvas->DrawPoint(pt, WHITE);
 	}
+
+	if(out_x && out_y && highlight) {
+		canvas->DrawPoint(opposite, color);
+	}
 }
+
 
 void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
@@ -87,23 +165,21 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 			glm::i32vec2 opposite;
 			
 			if(m_outcode != RECT2D_INSIDE) {
-				m_editstart = poly->aabb.mins + (poly->aabb.GetSize() / 2);
-				opposite = m_editstart;
-				if(m_outcode & RECT2D_LEFT) {
-					m_editstart.x = aabb.maxs.x;
-					opposite.x = aabb.mins.x;
-				} else if(m_outcode & RECT2D_RIGHT) {
-					m_editstart.x = aabb.mins.x;
-					opposite.x = aabb.maxs.x;
-				}
-				if(m_outcode & RECT2D_TOP) {
-					m_editstart.y = aabb.maxs.y;
-					opposite.y = aabb.mins.y;
-				} else if(m_outcode & RECT2D_BOTTOM) {
-					m_editstart.y = aabb.mins.y;
-					opposite.y = aabb.maxs.y;
+				/* too far away */
+				wxPoint mins = view.WorldToScreen(aabb.mins);
+				wxPoint maxs = view.WorldToScreen(aabb.maxs);
+				wxPoint mpos = e.GetPosition();
+
+				wxRect hitbox;
+				hitbox.SetLeftTop(mins);
+				hitbox.SetRightBottom(maxs);
+				hitbox.Inflate(THRESHOLD, THRESHOLD);
+
+				if(!hitbox.Contains(mpos)) {
+					m_inedit = false;
 				}
 
+				GetOutcodeCorner(aabb, m_outcode, m_editstart, opposite);
 				m_delta = opposite - m_editstart;
 			}
 		}
@@ -144,7 +220,6 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 			if(&poly != selected && selected->Intersects(poly)) {
 				intersects = true;
 				break;
-				//return;
 			}
 		}
 
@@ -157,20 +232,18 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 			context->AppendAction(act);
 		}
 	} else {
-		static constexpr int OUT_X = RECT2D_LEFT | RECT2D_RIGHT;
-		static constexpr int OUT_Y = RECT2D_BOTTOM | RECT2D_TOP;
 		int outcode = selected->aabb.GetOutCode(wpos);
 
-		if(((outcode ^ m_outcode) & OUT_X) == OUT_X) {
+		if(((outcode ^ m_outcode) & RECT2D_OUTX) == RECT2D_OUTX) {
 			m_delta.x = delta.x = 1;
 		}
 
-		if(((outcode ^ m_outcode) & OUT_Y) == OUT_Y) {
+		if(((outcode ^ m_outcode) & RECT2D_OUTY) == RECT2D_OUTY) {
 			m_delta.y = delta.y = 1;
 		}
 
-		bool out_x = m_outcode & OUT_X;
-		bool out_y = m_outcode & OUT_Y;
+		bool out_x = m_outcode & RECT2D_OUTX;
+		bool out_y = m_outcode & RECT2D_OUTY;
 		if(out_x && !out_y) m_delta.y = delta.y = 1;
 		if(out_y && !out_x) m_delta.x = delta.x = 1; 
 		

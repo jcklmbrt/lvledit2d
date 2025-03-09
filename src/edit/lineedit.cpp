@@ -24,7 +24,7 @@ void LineEdit::StartPoint_OnMouseLeftDown(wxMouseEvent &e)
 		}
 		m_start = start;
 		context->SetSelectedPoly(poly);
-		m_state = LineEditState_t::END_POINT;
+		m_state = LineEditState::END_POINT;
 	}
 }
 
@@ -55,11 +55,11 @@ void LineEdit::EndPoint_OnMouseLeftDown(wxMouseEvent &e)
 	if(poly != nullptr) {
 		if(poly->AllPointsBehind(m_plane)) {
 			/* bad cut, start over. */
-			m_state = LineEditState_t::START_POINT;
+			m_state = LineEditState::START_POINT;
 		} else {
 			m_points.clear();
 			poly->ImposePlane(m_plane, m_points);
-			m_state = LineEditState_t::SLICE;
+			m_state = LineEditState::SLICE;
 		}
 	}
 }
@@ -93,7 +93,7 @@ void LineEdit::Slice_OnMouseLeftDown(wxMouseEvent &e)
 	context->AppendAction(action);
 	
 	/* Back to the start */
-	m_state = LineEditState_t::START_POINT;
+	m_state = LineEditState::START_POINT;
 }
 
 
@@ -136,7 +136,7 @@ void LineEdit::Slice_OnDraw()
 LineEdit::LineEdit(GLCanvas *canvas)
 	: IBaseEdit(canvas)
 {
-	m_state = LineEditState_t::START_POINT;
+	m_state = LineEditState::START_POINT;
 	Bind(wxEVT_LEFT_DOWN, &LineEdit::OnMouseLeftDown, this);
 	Bind(wxEVT_RIGHT_DOWN, &LineEdit::OnMouseRightDown, this);
 }
@@ -150,7 +150,7 @@ void LineEdit::OnMouseRightDown(wxMouseEvent &e)
 {
 	e.Skip();
 
-	if(m_state == LineEditState_t::SLICE) {
+	if(m_state == LineEditState::SLICE) {
 		Slice_OnMouseRightDown(e);
 	}
 }
@@ -159,13 +159,13 @@ void LineEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	switch(m_state)
 	{
-	case LineEditState_t::START_POINT:
+	case LineEditState::START_POINT:
 		StartPoint_OnMouseLeftDown(e);
 		break;
-	case LineEditState_t::END_POINT:
+	case LineEditState::END_POINT:
 		EndPoint_OnMouseLeftDown(e);
 		break;
-	case LineEditState_t::SLICE:
+	case LineEditState::SLICE:
 		Slice_OnMouseLeftDown(e);
 		break;
 	}
@@ -175,7 +175,7 @@ void LineEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 void LineEdit::DrawPolygon(const ConvexPolygon *p)
 {
-	if(p == context->GetSelectedPoly() && m_state == LineEditState_t::SLICE) {
+	if(p == context->GetSelectedPoly() && m_state == LineEditState::SLICE) {
 		Slice_OnDraw();
 	} else {
 		IBaseEdit::DrawPolygon(p);
@@ -186,13 +186,13 @@ void LineEdit::OnDraw()
 {
 	switch(m_state)
 	{
-	case LineEditState_t::START_POINT:
+	case LineEditState::START_POINT:
 		StartPoint_OnDraw();
 		break;
-	case LineEditState_t::END_POINT:
+	case LineEditState::END_POINT:
 		EndPoint_OnDraw();
 		break;
-	case LineEditState_t::SLICE:
+	case LineEditState::SLICE:
 		/* Slice is handled by DrawPolygon */
 		break;
 	}

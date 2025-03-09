@@ -129,6 +129,7 @@ public:
 	std::vector<ConvexPolygon> polys;
 	std::vector<EditAction> actions;
 	std::vector<GLTexture> textures;
+
 	size_t history = 0; /* replacement for actions.size() */
 	size_t selected = -1;
 	wxString name;

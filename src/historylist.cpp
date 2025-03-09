@@ -91,7 +91,7 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 					 action.scale.numer.y, action.scale.denom.y);
 				break;
 			case EditActionType::TEXTURE:
-				s.Printf("index: %llu, scale: %d", action.texture.index,
+				s.Printf("index: %d, scale: %d", action.texture.index,
 					 action.texture.scale);
 				break;
 			case EditActionType::DEL:

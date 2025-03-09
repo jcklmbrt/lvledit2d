@@ -10,6 +10,7 @@
 class SelectionEdit : public IBaseEdit
 {
 public:
+	static constexpr int THRESHOLD = 12;
 	SelectionEdit(GLCanvas *panel);
 	void DrawPolygon(const ConvexPolygon *p) override;
 	void OnMouseRightDown(wxMouseEvent &e);

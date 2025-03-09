@@ -10,7 +10,7 @@
 
 struct ConvexPolygon;
 
-enum class LineEditState_t 
+enum class LineEditState 
 {
 	START_POINT,
 	END_POINT,
@@ -43,7 +43,7 @@ public:
 	Plane2D m_plane;
 	std::vector<glm::vec2> m_points;
 private:
-	LineEditState_t m_state = LineEditState_t::START_POINT;
+	LineEditState m_state = LineEditState::START_POINT;
 };
 
 

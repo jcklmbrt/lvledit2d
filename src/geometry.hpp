@@ -11,6 +11,8 @@ constexpr glm::vec4 BLACK = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 constexpr glm::vec4 WHITE = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 constexpr glm::vec4 RED = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 constexpr glm::vec4 BLUE = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+constexpr glm::vec4 LIGHT_BLUE = glm::vec4(0.5f, 0.5f, 1.0f, 1.0f);
+constexpr glm::vec4 PINK = glm::vec4(1.0f, 0.5f, 0.5f, 1.0f);
 constexpr glm::vec4 GREEN = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
 constexpr glm::vec4 YELLOW = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
 
@@ -19,7 +21,8 @@ constexpr int RECT2D_LEFT = 1;
 constexpr int RECT2D_RIGHT = 2;
 constexpr int RECT2D_BOTTOM = 4;
 constexpr int RECT2D_TOP = 8;
-
+constexpr int RECT2D_OUTX = RECT2D_LEFT | RECT2D_RIGHT;
+constexpr int RECT2D_OUTY = RECT2D_BOTTOM | RECT2D_TOP;
 
 struct Rect2D
 {
@@ -121,7 +124,8 @@ struct ConvexPolygon
 	std::vector<glm::vec2> points;
 
 	size_t texindex = -1;
-	int texscale; 
+	int texscale;
+	int zindex = 0;
 };
 
 #endif

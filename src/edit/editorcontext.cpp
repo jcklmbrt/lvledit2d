@@ -186,25 +186,35 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 		};
 
 		for(const Plane2D &plane : p->planes) {
-			glm::vec2 line[2];
+			glm::vec2 line[2]{};
 			size_t n = 0;
 
 			for(size_t i = 0; i < aabbpts.size(); i++) {
-				glm::i32vec2 a = aabbpts[i];
-				glm::i32vec2 b = aabbpts[(i + 1) % aabbpts.size()];
-				glm::i32vec2 delta = b - a;
+				glm::i64vec2 p1 = aabbpts[i];
+				glm::i64vec2 p2 = aabbpts[(i + 1) % aabbpts.size()];
+				glm::i64vec2 delta = p2 - p1;
 
-				int32_t denom = plane.a * delta.x + plane.b * delta.y;
-				int32_t numer = -(plane.a * a.x + plane.b * a.y + plane.c);
+				int64_t a = plane.a;
+				int64_t b = plane.b;
+				int64_t c = plane.c;
+
+				int64_t denom = a * delta.x + b * delta.y;
+				int64_t numer = -(a * p1.x + b * p1.y + c);
 
 				if(denom != 0) {
+					int64_t g = std::gcd(denom, numer);
+					if(g != 0) {
+						denom /= g;
+						numer /= g;
+					}
+
 					float t = static_cast<float>(numer) / static_cast<float>(denom);
 					if(t >= 0.0f && t <= 1.0f) {
-						line[n++] = glm::vec2(a) + t * glm::vec2(delta);
+						line[n++] = glm::vec2(p1) + t * glm::vec2(delta);
 					}
 				} else if(numer == 0) {
-					line[0] = a;
-					line[1] = b;
+					line[0] = p1;
+					line[1] = p2;
 					n = 2;
 					break;
 				}
