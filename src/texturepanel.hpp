@@ -15,11 +15,13 @@ struct TexturePanel : public wxPanel,
 	TexturePanel(wxWindow *parent);
 	void OnOpen(wxCommandEvent &e);
 	void OnSlider(wxCommandEvent &e);
-	wxSlider *slider;
-	wxStaticText *text;
+private:
+	wxSlider *m_slider;
+	wxStaticText *m_text;
+public:
+	int GetSliderValue() { return m_slider->GetValue(); }
 };
 
-#define ICON_SIZE 32
 
 class TextureList : public wxListCtrl,
                     public Singleton<TextureList>
@@ -30,6 +32,7 @@ class TextureList : public wxListCtrl,
 		NAME,
 		SIZE
 	};
+	static constexpr int ICON_SIZE = 32;
 public:
 	TextureList(wxWindow *parent);
 	wxString OnGetItemText(long item, long col) const;
@@ -37,7 +40,12 @@ public:
 	wxItemAttr *OnGetItemAttr(long item) const;
 	void OnSelected(wxListEvent &e);
 	void OnFocused(wxListEvent &e);
-	size_t selected;
+private:
+	size_t m_selected;
+public:
+	void Unselect() { m_selected = -1; }
+	void SetSelected(size_t i) { m_selected = i; }
+	size_t GetSelected() { return m_selected; }
 };
 
 #endif

@@ -2,7 +2,6 @@
 #ifndef _LINEEDIT_HPP
 #define _LINEEDIT_HPP
 
-#include <wx/dcclient.h>
 #include <wx/event.h>
 #include <wx/geometry.h>
 #include <wx/mousestate.h>
@@ -37,7 +36,7 @@ private:
 	void Slice_OnMouseLeftDown(wxMouseEvent &e);
 	void Slice_OnMouseRightDown(wxMouseEvent &e);
 	void Slice_OnDraw();
-public:
+private:
 	glm::vec2 m_start;
 	glm::vec2 m_end;
 	Plane2D m_plane;

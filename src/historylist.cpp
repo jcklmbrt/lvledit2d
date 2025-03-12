@@ -32,7 +32,7 @@ wxItemAttr *HistoryList::OnGetItemAttr(long item) const
 
 	GLCanvas *dp = GLCanvas::GetCurrent();
 	if(dp != nullptr) {
-		if(dp->editor.history > item) {
+		if(dp->editor.HistoryIndex() > item) {
 			attr.SetBackgroundColour(*wxWHITE);
 		}
 	}
@@ -48,9 +48,9 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 	wxString s;
 
 	if(dp != nullptr) {
-		wxASSERT(item >= 0 && item <= dp->editor.actions.size());
+		wxASSERT(item >= 0 && item <= dp->editor.NumActions());
 		glm::i32vec2 lt, rb;
-		const EditAction &action = dp->editor.actions[item];
+		const EditAction &action = dp->editor.GetAction(item);
 		if(col == ColumnID::ACTION) {
 			switch(action.base.type) {
 			case EditActionType::LINE:

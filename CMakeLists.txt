@@ -54,4 +54,7 @@ target_sources(lvledit2d PRIVATE
 	"src/edit/textureedit.cpp" 
 	"src/texturepanel.cpp" 
 	"src/gl/texture.cpp"
+	"src/layerpanel.cpp"
+	"src/edit/editorlayer.cpp"
+	"src/edit/entityedit.cpp"
 )

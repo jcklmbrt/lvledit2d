@@ -26,11 +26,11 @@ TexturePanel::TexturePanel(wxWindow *parent)
 	wxButton *open = new wxButton(this, wxID_OPEN, "Open");
 
 	wxPanel *ctrl = new wxPanel(this);
-	text = new wxStaticText(ctrl, wxID_ANY, wxEmptyString);
-	slider = new wxSlider(ctrl, wxID_ANY, 0, 0, 10);
+	m_text = new wxStaticText(ctrl, wxID_ANY, wxEmptyString);
+	m_slider = new wxSlider(ctrl, wxID_ANY, 0, 0, 10);
 	wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
-	sizer->Add(text, 0, wxEXPAND);
-	sizer->Add(slider, 1, wxEXPAND);
+	sizer->Add(m_text, 0, wxEXPAND);
+	sizer->Add(m_slider, 1, wxEXPAND);
 	ctrl->SetSizer(sizer);
 
 	sizer = new wxBoxSizer(wxVERTICAL);
@@ -39,7 +39,7 @@ TexturePanel::TexturePanel(wxWindow *parent)
 	sizer->Add(list, 1, wxEXPAND);
 	SetSizer(sizer);
 
-	SetScaleLabel(text, slider->GetValue());
+	SetScaleLabel(m_text, m_slider->GetValue());
 
 	Bind(wxEVT_BUTTON, &TexturePanel::OnOpen, this, wxID_OPEN);
 	Bind(wxEVT_SLIDER, &TexturePanel::OnSlider, this);
@@ -48,7 +48,7 @@ TexturePanel::TexturePanel(wxWindow *parent)
 
 void TexturePanel::OnSlider(wxCommandEvent &e)
 {
-	SetScaleLabel(text, slider->GetValue());
+	SetScaleLabel(m_text, m_slider->GetValue());
 }
 
 
@@ -73,7 +73,7 @@ void TexturePanel::OnOpen(wxCommandEvent &e)
 
 TextureList::TextureList(wxWindow *parent)
 	: wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-		wxLC_VIRTUAL | wxLC_REPORT | wxLC_NO_HEADER | wxLC_SINGLE_SEL)
+		wxLC_VIRTUAL | wxLC_REPORT | wxLC_NO_HEADER | wxLC_SINGLE_SEL | wxLC_HRULES | wxLC_VRULES)
 {
 	wxImageList *imglist = new wxImageList(ICON_SIZE, ICON_SIZE);
 	AssignImageList(imglist, wxIMAGE_LIST_SMALL);
@@ -96,7 +96,7 @@ void TextureList::OnFocused(wxListEvent &e)
 {
 	for(long i = 0; i < GetItemCount(); i++) {
 		if(GetItemState(i, wxLIST_STATE_FOCUSED)) {
-			selected = i;
+			m_selected = i;
 		}
 		SetItemState(i, 0, wxLIST_STATE_FOCUSED);
 	}
@@ -108,7 +108,7 @@ void TextureList::OnSelected(wxListEvent &e)
 {
 	for(long i = 0; i < GetItemCount(); i++) {
 		if(GetItemState(i, wxLIST_STATE_SELECTED)) {
-			selected = i;
+			m_selected = i;
 		}
 		SetItemState(i, 0, wxLIST_STATE_SELECTED);
 	}
@@ -122,17 +122,16 @@ wxString TextureList::OnGetItemText(long item, long col) const
 	GLCanvas *canvas = GLCanvas::GetCurrent();
 	wxASSERT(canvas);
 
-	const GLTexture &texture = canvas->editor.textures[item];
-
+	const GLTexture &texture = canvas->editor.GetTexture(item);
 	wxString s;
 
 	switch(col) {
 	case ColumnID::PREVIEW:
 		return wxEmptyString;
 	case ColumnID::NAME:
-		return texture.name;
+		return texture.GetName();
 	case ColumnID::SIZE:
-		s.Printf("%llux%llu", texture.width, texture.height);
+		s.Printf("%llux%llu", texture.GetWidth(), texture.GetHeight());
 		return s;
 	}
 
@@ -142,10 +141,13 @@ wxString TextureList::OnGetItemText(long item, long col) const
 wxItemAttr *TextureList::OnGetItemAttr(long item) const 
 {
 	static wxItemAttr attr;
-	if(item == selected) {
-		attr.SetBackgroundColour(*wxBLUE);
+	wxColor sel = wxColor(100, 100, 255);
+	if(item == m_selected) {
+		attr.SetBackgroundColour(sel);
+		attr.SetTextColour(*wxWHITE);
 	} else {
 		attr.SetBackgroundColour(*wxWHITE);
+		attr.SetTextColour(*wxBLACK);
 	}
 	return &attr;
 }
@@ -155,5 +157,5 @@ int TextureList::OnGetItemImage(long item) const
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
 	wxASSERT(canvas);
-	return canvas->editor.textures[item].thumb;
+	return canvas->editor.GetTexture(item).GetThumb();
 }

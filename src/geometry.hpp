@@ -125,7 +125,6 @@ struct ConvexPolygon
 
 	size_t texindex = -1;
 	int texscale;
-	int zindex = 0;
 };
 
 #endif

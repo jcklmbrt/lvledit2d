@@ -31,7 +31,7 @@ void Notebook::Save(bool force_rename)
 
 	EditorContext &edit = dp->editor;
 
-	if(!edit.has_file || force_rename) {
+	if(!edit.HasFile() || force_rename) {
 		wxFileDialog dialog(GetParent(), "Save file", "", "",
 			"LvlEdit2d files (*.l2d)|*.l2d", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 
@@ -50,13 +50,13 @@ void Notebook::Save(bool force_rename)
 	}
 
 	int sel = GetSelection();
-	SetPageText(sel, edit.name);
+	SetPageText(sel, edit.GetName());
 }
 
 
 bool Notebook::AddCanvas(GLCanvas *canvas)
 {
-	wxString name = canvas->editor.name;
+	wxString &name = canvas->editor.GetName();
 
 	GLContext *ctx;
 
@@ -90,7 +90,7 @@ bool Notebook::AddCanvas(const wxFileName &file)
 	GLCanvas *canvas = new GLCanvas(this, attrs);
 
 	EditorContext &edit = canvas->editor;
-	edit.name = file.GetName();
+	edit.GetName() = file.GetName();
 
 	bool ret = AddCanvas(canvas);
 
@@ -115,7 +115,7 @@ void Notebook::OnPageClose(wxAuiNotebookEvent &e)
 	TextureList *tlist = TextureList::GetInstance();
 
 	if(GetPageCount() <= 0) {
-		tlist->selected = -1;
+		tlist->Unselect();
 		hlist->SetItemCount(0);
 		hlist->Refresh();
 		tlist->SetItemCount(0);
@@ -140,15 +140,16 @@ void Notebook::OnPageChange(wxAuiNotebookEvent &e)
 	MainFrame::GetInstance()->Sidebook_Show();
 
 	if(dp != nullptr) {
-		size_t ntex = dp->editor.textures.size();
+		size_t ntex = dp->editor.NumTextures();
+		size_t nact = dp->editor.NumActions();
 		tlist->SetItemCount(ntex);
-		tlist->selected = ntex - 1;
-		hlist->SetItemCount(dp->editor.actions.size());
+		tlist->SetSelected(ntex - 1);
+		hlist->SetItemCount(nact);
 	}
 	else {
 		hlist->SetItemCount(0);
 		tlist->SetItemCount(0);
-		tlist->selected = -1;
+		tlist->Unselect();
 	}
 
 	hlist->Refresh();

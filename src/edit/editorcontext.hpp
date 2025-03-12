@@ -7,6 +7,7 @@
 #include "src/gl/texture.hpp"
 #include "src/toolbar.hpp"
 #include "src/geometry.hpp"
+#include "src/edit/editorlayer.hpp"
 
 struct GLCanvas;
 class EditorContext;
@@ -28,6 +29,7 @@ enum class EditActionType
 struct EditAction_Base
 {
 	EditActionType type;
+	size_t layer;
 	size_t poly;
 };
 
@@ -72,6 +74,11 @@ struct EditAction_Delete : EditAction_Base
 	EditAction_Delete() { type = EditActionType::DEL; }
 };
 
+struct EditAction_Index
+{
+	EditActionType type;
+	size_t index;
+};
 
 union EditAction
 {
@@ -100,11 +107,10 @@ public:
 	virtual void OnDraw();
 	virtual ~IBaseEdit();
 protected:
-	GLCanvas *canvas;
-	EditorContext *context;
-	const ViewMatrixBase &view;
+	GLCanvas *m_canvas;
+	EditorContext *m_context;
+	const ViewMatrixBase &m_view;
 };
-
 
 class EditorContext : public wxEvtHandler
 {
@@ -123,41 +129,86 @@ public:
 	void ResetPolys();
 	void OnToolSelect(ToolBar::ID id);
 	void OnDraw();
-	ConvexPolygon *GetSelectedPoly();
-	void SetSelectedPoly(ConvexPolygon *p);
+private:
+	std::vector<EditorLayer> m_layers;
+	std::vector<EditAction> m_actions;
+	std::vector<GLTexture> m_textures;
 
-	std::vector<ConvexPolygon> polys;
-	std::vector<EditAction> actions;
-	std::vector<GLTexture> textures;
+	/* actions[0..history] --> history */
+	/* actions[history..size] -> future  */
+	size_t m_history = 0;
 
-	size_t history = 0; /* replacement for actions.size() */
-	size_t selected = -1;
-	wxString name;
-	wxString path;
-	bool has_file;
-	IBaseEdit *state;
-	GLCanvas *canvas;
-	/* additional options that just default to true.
-	   will add checkboxes later */
-	bool snaptogrid = true;
+	size_t m_selected = -1;
+	size_t m_curlayer = -1;
+
+	// file data
+	wxString m_name;
+	wxString m_path;
+	bool m_hasfile;
+
+	IBaseEdit *m_state;
+	GLCanvas *m_canvas;
+public:
+	size_t NumLayers() { return m_layers.size(); }
+	EditorLayer &GetLayer(size_t i) { return m_layers.at(i); }
+	std::vector<EditorLayer> &GetLayers() { return m_layers; }
+
+	size_t NumTextures() { return m_textures.size(); }
+	GLTexture &GetTexture(size_t i) { return m_textures.at(i); }
+
+	size_t NumActions() { return m_actions.size(); }
+	EditAction &GetAction(size_t i) { return m_actions.at(i); }
+	size_t HistoryIndex() { return m_history; }
+
+	bool HasFile() { return m_hasfile; }
+	wxString &GetName() { return m_name; }
+
+	EditorLayer *GetSelectedLayer()
+	{
+		size_t i = m_curlayer;
+		if(i >= 0 && i < m_layers.size()) {
+			return &m_layers[i];
+		} else {
+			return nullptr;
+		}
+	}
+
+	ConvexPolygon *GetSelectedPoly()
+	{
+		size_t i = m_selected;
+		EditorLayer *layer = GetSelectedLayer();
+		if(layer == nullptr) {
+			return nullptr;
+		}
+
+		std::vector<ConvexPolygon> &polys = layer->GetPolys();
+
+		if(i >= 0 && i < polys.size()) {
+			return &polys[i];
+		} else {
+			return nullptr;
+		}
+	}
+
+	void SetSelectedPoly(ConvexPolygon *p)
+	{
+		EditorLayer *layer = GetSelectedLayer();
+		wxASSERT(layer);
+		std::vector<ConvexPolygon> &polys = layer->GetPolys();
+
+		size_t i = p - polys.data();
+		if(i >= 0 && i < polys.size()) {
+			m_selected = i;
+		}
+	}
+
+	void SetSelectedLayer(EditorLayer *layer)
+	{
+		size_t i = layer - m_layers.data();
+		if(i >= 0 && i < m_layers.size()) {
+			m_selected = -1;
+			m_curlayer = i;
+		}
+	}
 };
-
-inline ConvexPolygon *EditorContext::GetSelectedPoly()
-{
-	size_t i = selected;
-	if(i >= 0 && i < polys.size()) {
-		return &polys[i];
-	} else {
-		return nullptr;
-	}
-}
-
-inline void EditorContext::SetSelectedPoly(ConvexPolygon *p)
-{
-	size_t i = p - polys.data();
-	if(i >= 0 && i < polys.size()) {
-		selected = i;
-	}
-}
-
 #endif

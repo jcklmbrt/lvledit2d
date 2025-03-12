@@ -3,7 +3,7 @@
 #include "src/toolbar.hpp"
 #include "src/mainframe.hpp"
 #include "src/historylist.hpp"
-#include "src/lvledit2d.hpp"
+#include "src/layerpanel.hpp"
 #include "src/gl/glcanvas.hpp"
 #include "src/notebook.hpp"
 #include "src/texturepanel.hpp"
@@ -49,8 +49,10 @@ MainFrame::MainFrame()
 	m_sidebook = new wxNotebook(this, wxID_ANY);
 	HistoryList *hlist = new HistoryList(m_sidebook);
 	TexturePanel *tpanel = new TexturePanel(m_sidebook);
+	LayerPanel *lpanel = new LayerPanel(m_sidebook);
 	m_sidebook->AddPage(hlist, "History", true);
 	m_sidebook->AddPage(tpanel, "Textures", true);
+	m_sidebook->AddPage(lpanel, "Layers", true);
 
 	Notebook *notebook = new Notebook(this, hlist);
 

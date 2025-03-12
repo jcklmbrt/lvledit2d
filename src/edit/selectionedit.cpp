@@ -25,18 +25,18 @@ void SelectionEdit::OnMouseRightDown(wxMouseEvent &e)
 {
 	e.Skip();
 
-	glm::vec2 wpos = view.MouseToWorld(e);
+	glm::vec2 wpos = m_view.MouseToWorld(e);
 
-	if(!context->GetSelectedPoly()) {
-		ConvexPolygon *poly = context->FindPoly(wpos);
+	if(!m_context->GetSelectedPoly()) {
+		ConvexPolygon *poly = m_context->FindPoly(wpos);
 		if(poly) {
-			context->SetSelectedPoly(poly);
+			m_context->SetSelectedPoly(poly);
 		}
 	}
 
-	if(context->GetSelectedPoly()) {
+	if(m_context->GetSelectedPoly()) {
 		EditAction_Delete action;
-		context->AppendAction(action);
+		m_context->AppendAction(action);
 	}
 }
 
@@ -69,7 +69,7 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 {
 	IBaseEdit::DrawPolygon(p);
 
-	if(p != context->GetSelectedPoly()) {
+	if(p != m_context->GetSelectedPoly()) {
 		return;
 	}
 
@@ -87,12 +87,12 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 	glm::vec4 color = PINK;
 
 	if(!m_inedit) {
-		glm::vec2 wpos = canvas->mousepos;
+		glm::vec2 wpos = m_canvas->mousepos;
 		oc = aabb.GetOutCode(wpos);
 
-		wxPoint mins = view.WorldToScreen(aabb.mins);
-		wxPoint maxs = view.WorldToScreen(aabb.maxs);
-		wxPoint mpos = view.WorldToScreen(wpos);
+		wxPoint mins = m_view.WorldToScreen(aabb.mins);
+		wxPoint maxs = m_view.WorldToScreen(aabb.maxs);
+		wxPoint mpos = m_view.WorldToScreen(wpos);
 
 		wxRect hitbox;
 		hitbox.SetLeftTop(mins);
@@ -117,46 +117,46 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 		if(out_x && !out_y) {
 			glm::vec2 a = { opposite.x, aabb.mins.y };
 			glm::vec2 b = { opposite.x, aabb.maxs.y };
-			canvas->DrawLine(a, b, 1.0f, color);
+			m_canvas->DrawLine(a, b, 1.0f, color);
 		}
 		else if(out_y && !out_x) {
 			glm::vec2 a = { aabb.mins.x, opposite.y };
 			glm::vec2 b = { aabb.maxs.x, opposite.y };
-			canvas->DrawLine(a, b, 1.0f, color);
+			m_canvas->DrawLine(a, b, 1.0f, color);
 		}
 	}
 
 	glm::vec2 center = aabb.mins;
 	center += glm::vec2(aabb.GetSize()) / 2.0f;
 	if(oc == RECT2D_INSIDE && highlight) {
-		canvas->DrawPoint(center, color);
+		m_canvas->DrawPoint(center, color);
 	} else {
-		canvas->DrawPoint(center, YELLOW);
+		m_canvas->DrawPoint(center, YELLOW);
 	}
 
 	for(glm::vec2 pt : aabbpts) {
-		canvas->DrawPoint(pt, WHITE);
+		m_canvas->DrawPoint(pt, WHITE);
 	}
 
 	if(out_x && out_y && highlight) {
-		canvas->DrawPoint(opposite, color);
+		m_canvas->DrawPoint(opposite, color);
 	}
 }
 
 
 void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	glm::vec2 wpos = view.MouseToWorld(e);
+	glm::vec2 wpos = m_view.MouseToWorld(e);
 
-	ConvexPolygon *poly = context->FindPoly(wpos);
+	ConvexPolygon *poly = m_context->FindPoly(wpos);
 
 	if(poly != nullptr) {
 		m_editstart = wpos;
 		m_inedit = true;
 		m_outcode = RECT2D_INSIDE;
-		context->SetSelectedPoly(poly);
+		m_context->SetSelectedPoly(poly);
 	} else {
-		poly = context->GetSelectedPoly();
+		poly = m_context->GetSelectedPoly();
 		if(poly != nullptr) {
 			Rect2D &aabb = poly->aabb;
 			m_inedit = true;
@@ -166,8 +166,8 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 			
 			if(m_outcode != RECT2D_INSIDE) {
 				/* too far away */
-				wxPoint mins = view.WorldToScreen(aabb.mins);
-				wxPoint maxs = view.WorldToScreen(aabb.maxs);
+				wxPoint mins = m_view.WorldToScreen(aabb.mins);
+				wxPoint maxs = m_view.WorldToScreen(aabb.maxs);
 				wxPoint mpos = e.GetPosition();
 
 				wxRect hitbox;
@@ -192,31 +192,34 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 {
 	e.Skip(true);
 
+	EditorLayer *layer = m_context->GetSelectedLayer();
+	if(layer == nullptr) {
+		return;
+	}
+
 	if(!m_inedit) {
 		return;
 	}
 
-	glm::i32vec2 wpos = view.MouseToWorld(e);
+	glm::i32vec2 wpos = m_view.MouseToWorld(e);
 
-	ConvexPolygon *selected = context->GetSelectedPoly();
+	ConvexPolygon *selected = m_context->GetSelectedPoly();
 	glm::i32vec2 delta = wpos - m_editstart;
 
 	if(m_outcode == RECT2D_INSIDE) {
 
-		if(context->snaptogrid) {
-			glm::vec2 scaled_pos = wpos;
-			glm::vec2 scaled_start = m_editstart;
-			GLBackgroundGrid::Snap(scaled_pos);
-			GLBackgroundGrid::Snap(scaled_start);
-			delta = scaled_pos - scaled_start;
-		}
+		glm::vec2 scaled_pos = wpos;
+		glm::vec2 scaled_start = m_editstart;
+		GLBackgroundGrid::Snap(scaled_pos);
+		GLBackgroundGrid::Snap(scaled_start);
+		delta = scaled_pos - scaled_start;
 
 		m_editstart = wpos;
 
 		selected->Offset(delta);
 
 		bool intersects = false;
-		for(ConvexPolygon &poly : context->polys) {
+		for(ConvexPolygon &poly : layer->GetPolys()) {
 			if(&poly != selected && selected->Intersects(poly)) {
 				intersects = true;
 				break;
@@ -229,7 +232,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		if(!intersects) {
 			EditAction_Move act;
 			act.delta = delta;
-			context->AppendAction(act);
+			m_context->AppendAction(act);
 		}
 	} else {
 		int outcode = selected->aabb.GetOutCode(wpos);
@@ -277,7 +280,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		selected->Scale(m_editstart, numer, denom);
 
 		bool intersects = false;
-		for(ConvexPolygon &poly : context->polys) {
+		for(ConvexPolygon &poly : layer->GetPolys()) {
 			if(&poly != selected && selected->Intersects(poly)) {
 				intersects = true;
 				break;
@@ -291,7 +294,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 			act.origin = m_editstart;
 			act.denom = denom;
 			act.numer = numer;
-			context->AppendAction(act);
+			m_context->AppendAction(act);
 			m_delta = delta;
 		}
 	}
@@ -310,9 +313,9 @@ void SelectionEdit::OnKeyDown(wxKeyEvent &e)
 	e.Skip(true);
 
 	if(e.GetKeyCode() == WXK_DELETE || e.GetKeyCode() == WXK_UP) {
-		if(context->GetSelectedPoly()) {
+		if(m_context->GetSelectedPoly()) {
 			EditAction_Delete action;
-			context->AppendAction(action);
+			m_context->AppendAction(action);
 		}
 	}
 }

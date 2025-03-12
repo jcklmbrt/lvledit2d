@@ -27,7 +27,7 @@ public:
 	void AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color);
 	void AddPolygon(const glm::vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
 	static GLuint CompileShaders(const char *fs_src, const char *vs_src);
-private:
+//private:
 	GLBackgroundGrid m_grid;
 	GLSolidGeometry m_solid;
 	GLTextureGeometry m_texture;

@@ -5,10 +5,7 @@
 
 #include "glad/gl.h"
 #include "src/gl/texture.hpp"
-#include "src/gl/glcanvas.hpp"
 #include "src/gl/glcontext.hpp"
-#include "src/edit/editorcontext.hpp"
-#include "src/texturepanel.hpp"
 #include "src/gl/gltexturegeometry.hpp"
 
 void GLTextureGeometry::Init()
@@ -80,13 +77,13 @@ void GLTextureGeometry::CopyBuffersAndDrawElements()
 	glUseProgram(m_program);
 	glBindVertexArray(m_vao);
 
-	for(auto &[tex_id, vtc] : m_batches) {
+	for(auto &[texid, vtc] : m_batches) {
 		glBindBuffer(GL_ARRAY_BUFFER, m_vtxbuf);
 		glBufferData(GL_ARRAY_BUFFER, vtc.vtx.size() * sizeof(TextureVertex), vtc.vtx.data(), GL_STATIC_DRAW);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_idxbuf);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, vtc.idx.size() * sizeof(GLuint), vtc.idx.data(), GL_STATIC_DRAW);
 
-		glBindTexture(GL_TEXTURE_2D, tex_id);
+		glBindTexture(GL_TEXTURE_2D, texid);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_idxbuf);
 		glDrawElements(GL_TRIANGLES, vtc.idx.size(), GL_UNSIGNED_INT, 0);
 	}
@@ -112,24 +109,24 @@ void GLTextureGeometry::SetMatrices(const glm::mat4 &proj, const glm::mat4 &view
 
 static TextureVertex SetVertex(const glm::vec2 &pt, const glm::vec4 &color, const Rect2D &aabb)
 {
-	glm::vec2 Mins = aabb.mins;
-	glm::vec2 Size = aabb.maxs - aabb.mins;
+	glm::vec2 mins = aabb.mins;
+	glm::vec2 size = aabb.maxs - aabb.mins;
 
 	TextureVertex Vertex;
 	Vertex.position = pt;
 	Vertex.color = color;
-	Vertex.uv = (pt - Mins) / Size;
+	Vertex.uv = (pt - mins) / size;
 	return Vertex;
 }
 
 
 void GLTextureGeometry::AddPolygon(const glm::vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color)
 {
-	if(!glIsTexture(texture.gltex)) {
+	if(!glIsTexture(texture.GetGLObject())) {
 		texture.InitTextureObject();
 	}
 
-	TextureVertices &vtc = m_batches[texture.gltex];
+	TextureVertices vtc = m_batches[texture.GetGLObject()];
 
 	TextureVertex start = SetVertex(pts[0], color, uv);
 
@@ -163,11 +160,11 @@ void GLTextureGeometry::AddPolygon(const ConvexPolygon &poly, const glm::vec4 &c
 	size_t npoints = pts.size();
 	TextureVertex start = SetVertex(pts[0], color, aabb);
 
-	if(!glIsTexture(texture->gltex)) {
+	if(!glIsTexture(texture->GetGLObject())) {
 		texture->InitTextureObject();
 	}
 
-	TextureVertices &vtc = m_batches[texture->gltex];
+	TextureVertices &vtc = m_batches[texture->GetGLObject()];
 
 	vtc.vtx.push_back(start);
 	size_t start_idx = vtc.vtx.size() - 1;

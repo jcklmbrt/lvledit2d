@@ -35,7 +35,6 @@ private:
 	GLuint m_idxbuf;
 	GLuint m_vao;
 	GLuint m_program;
-private:
 	std::unordered_map<GLuint, TextureVertices> m_batches;
 };
 

@@ -1,6 +1,6 @@
 
-#ifndef CSELECTIONEDIT_HPP
-#define CSELECTIONEDIT_HPP
+#ifndef _SELECTIONEDIT_HPP
+#define _SELECTIONEDIT_HPP
 
 #include "src/geometry.hpp"
 #include "src/edit/editorcontext.hpp"

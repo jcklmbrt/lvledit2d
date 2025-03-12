@@ -7,8 +7,7 @@
 #include <limits>
 #include <wx/debug.h>
 
-#include "glm/fwd.hpp"
-#include "glm/matrix.hpp"
+#include "src/layerpanel.hpp"
 #include "src/gl/glcanvas.hpp"
 #include "src/gl/glbackgroundgrid.hpp"
 #include "src/geometry.hpp"
@@ -324,7 +323,8 @@ GLTexture *ConvexPolygon::GetTexture() const
 	if(texindex == -1) {
 		return nullptr;
 	}
-	return &canvas->editor.textures[texindex];
+
+	return &canvas->editor.GetTexture(texindex);
 }
 
 
