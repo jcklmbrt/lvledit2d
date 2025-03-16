@@ -22,16 +22,17 @@
 #include "src/texturepanel.hpp"
 #include "src/layerpanel.hpp"
 
+struct Lump
+{
+	uint32_t ofs, size;
+};
+
 struct L2dHeader 
 {
 	uint8_t magic[2];
-	uint32_t actions_offset;
-	uint32_t actions_size;
-	uint32_t actions_index;
-	uint32_t texinfo_offset;
-	uint32_t texinfo_size;
-	uint32_t texdata_offset;
-	uint32_t texdata_size;
+	Lump actions;
+	Lump texinfo;
+	Lump texdata;
 };
 
 bool EditorContext::Load(const wxFileName &filename)
@@ -53,22 +54,23 @@ bool EditorContext::Load(const wxFileName &filename)
 		return false;
 	}
 
-	size_t num_actions = hdr.actions_size / sizeof(EditAction);
-	m_actions.resize(num_actions);
-	m_history = hdr.actions_index;
+	unsigned char *action_data = new unsigned char[hdr.actions.size];
 
-	fseek(file, hdr.actions_offset, SEEK_SET);
-	fread(m_actions.data(), hdr.actions_size, 1, file);
+	fseek(file, hdr.actions.ofs, SEEK_SET);
+	fread(action_data, hdr.actions.size, 1, file);
+	m_actions.Deserialize(action_data, hdr.actions.size);
+
+	delete[] action_data;
 
 	std::vector<TexInfo> texinfo;
-	texinfo.resize(hdr.texinfo_size / sizeof(TexInfo));
-	fseek(file, hdr.texinfo_offset, SEEK_SET);
-	fread(texinfo.data(), hdr.texinfo_size, 1, file);
+	texinfo.resize(hdr.texinfo.size / sizeof(TexInfo));
+	fseek(file, hdr.texinfo.ofs, SEEK_SET);
+	fread(texinfo.data(), hdr.texinfo.size, 1, file);
 
 	std::vector<unsigned char> texdata;
-	texdata.resize(hdr.texdata_size);
-	fseek(file, hdr.texdata_offset, SEEK_SET);
-	fread(texdata.data(), hdr.texdata_size, 1, file);
+	texdata.resize(hdr.texdata.size);
+	fseek(file, hdr.texdata.ofs, SEEK_SET);
+	fread(texdata.data(), hdr.texdata.size, 1, file);
 
 	for(TexInfo &info : texinfo) {
 		size_t nbytes = info.width * info.height * info.pixelwidth;
@@ -90,7 +92,7 @@ bool EditorContext::Load(const wxFileName &filename)
 	tlist->Refresh();
 
 	HistoryList *hlist = HistoryList::GetInstance();
-	hlist->SetItemCount(m_actions.size());
+	hlist->SetItemCount(m_actions.TotalActions());
 	hlist->Refresh();
 
 	m_canvas->Refresh(true);
@@ -118,25 +120,29 @@ bool EditorContext::Save()
 	L2dHeader hdr;
 	hdr.magic[0] = 'L';
 	hdr.magic[1] = '2';
-	hdr.actions_offset = sizeof(L2dHeader);
-	hdr.actions_size = m_actions.size() * sizeof(EditAction);
-	hdr.actions_index = m_history;
-	hdr.texinfo_offset = hdr.actions_offset + hdr.actions_size;
-	hdr.texinfo_size = texinfo.size() * sizeof(TexInfo);
-	hdr.texdata_offset = hdr.texinfo_offset + hdr.texinfo_size;
-	hdr.texdata_size = texdata.size();
+	hdr.actions.ofs = sizeof(L2dHeader);
+	hdr.actions.size = m_actions.BinSize();
+	hdr.texinfo.ofs = hdr.actions.ofs + hdr.actions.size;
+	hdr.texinfo.size = texinfo.size() * sizeof(TexInfo);
+	hdr.texdata.ofs = hdr.texinfo.ofs + hdr.texinfo.size;
+	hdr.texdata.size = texdata.size();
 
 	fseek(file, 0, SEEK_SET);
 	fwrite(&hdr, sizeof(L2dHeader), 1, file);
 
-	fseek(file, hdr.actions_offset, SEEK_SET);
-	fwrite(m_actions.data(), hdr.actions_size, 1, file);
+	unsigned char *action_data = new unsigned char[hdr.actions.size];
+	m_actions.Seralize(action_data, hdr.actions.size);
 
-	fseek(file, hdr.texinfo_offset, SEEK_SET);
-	fwrite(texinfo.data(), hdr.texinfo_size, 1, file);
+	fseek(file, hdr.actions.ofs, SEEK_SET);
+	fwrite(action_data, hdr.actions.size, 1, file);
 
-	fseek(file, hdr.texdata_offset, SEEK_SET);
-	fwrite(texdata.data(), hdr.texdata_size, 1, file);
+	delete[] action_data;
+
+	fseek(file, hdr.texinfo.ofs, SEEK_SET);
+	fwrite(texinfo.data(), hdr.texinfo.size, 1, file);
+
+	fseek(file, hdr.texdata.ofs, SEEK_SET);
+	fwrite(texdata.data(), hdr.texdata.size, 1, file);
 
 	return true;
 }
@@ -155,8 +161,8 @@ bool EditorContext::Save(const wxFileName &filename)
 
 void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 {
-	if(p == m_context->GetSelectedPoly()) {
-		Rect2D aabb = p->aabb;
+	if(p == m_edit.GetSelectedPoly()) {
+		Rect2D aabb = p->GetAABB();
 		m_canvas->OutlineRect(aabb, 1.0f, BLUE);
 
 		/* inflate aabb to illustrate planes */
@@ -170,7 +176,7 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 			glm::i32vec2 { aabb.mins.x, aabb.maxs.y }
 		};
 
-		for(const Plane2D &plane : p->planes) {
+		for(const Plane2D &plane : p->GetPlanes()) {
 			glm::vec2 line[2]{};
 			size_t n = 0;
 
@@ -213,11 +219,11 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 		}
 	}
 
-	const std::vector<glm::vec2> &pts = p->points;
+	const std::vector<glm::vec2> &pts = p->GetPoints();
 
 	m_canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
 
-	if(p == m_context->GetSelectedPoly()) {
+	if(p == m_edit.GetSelectedPoly()) {
 		m_canvas->OutlinePoly(pts.data(), pts.size(), 1.0, GREEN);
 	} else {
 		m_canvas->OutlinePoly(pts.data(), pts.size(), 1.0, WHITE);
@@ -231,8 +237,8 @@ void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
 
 IBaseEdit::IBaseEdit(GLCanvas *canvas)
 	: m_canvas(canvas),
-	  m_context(&canvas->editor),
-	  m_view(canvas->view)
+	  m_edit(canvas->GetEditor()),
+	  m_view(canvas->GetView())
 {
 }
 
@@ -279,8 +285,6 @@ EditorContext::~EditorContext()
 
 void EditorContext::OnDraw()
 {
-	GLContext *ctx = GLContext::GetInstance();
-
 	if(m_state != nullptr) {
 		ConvexPolygon *spoly = GetSelectedPoly();
 
@@ -290,11 +294,6 @@ void EditorContext::OnDraw()
 					m_state->DrawPolygon(&p);
 				}
 			}
-			ctx->m_texture.CopyBuffersAndDrawElements();
-			ctx->m_solid.CopyBuffers();
-			ctx->m_solid.DrawElements();
-			ctx->m_texture.ClearBuffers();
-			ctx->m_solid.ClearBuffers();
 		}
 
 		if(spoly != nullptr) {
@@ -382,105 +381,109 @@ void EditorContext::ResetPolys()
 		layer.GetPolys().clear();
 	}
 
-	for(size_t i = 0; i < m_history; i++) {
-		ApplyAction(m_actions[i]);
+	size_t hindex = m_actions.HistoryIndex();
+	for(size_t i = 0; i < hindex; i++) {
+		ActData act;
+		m_actions.GetAction(i, act);
+		ApplyAction(act);
 	}
-
-	//poly->PurgePlanes();
-	//poly->ResizeAABB();
 }
 
 
 void EditorContext::Undo()
 {
-	if(m_history == 0) {
+	ActData act;
+	if(!m_actions.Undo(act)) {
 		return;
 	}
 
-	EditAction &back = m_actions[m_history - 1];
-
-	if(back.base.layer <= 0 || back.base.layer >= m_layers.size()) {
+	if(act.layer < 0 || act.layer >= m_layers.size()) {
 		return;
 	}
 
-	ConvexPolygon *poly;
-	EditorLayer &layer = m_layers[back.base.layer];
-	std::vector<ConvexPolygon> &polys = layer.GetPolys();
-
-	m_history--;
-
-	switch(back.base.type) {
-	case EditActionType::TEXTURE:
-	case EditActionType::LINE:
-	case EditActionType::DEL:
-		ResetPolys();
-		break;
-	case EditActionType::MOVE:
-		poly = &polys[back.base.poly];
-		poly->Offset(-back.move.delta);
-		break;
-	case EditActionType::SCALE:
-		poly = &polys[back.base.poly];
-		poly->Scale(back.scale.origin, back.scale.denom, back.scale.numer);
-		break;
-	case EditActionType::RECT:
-		if(m_selected == back.base.poly) {
-			m_selected = -1;
-		}
-		polys.erase(polys.begin() + back.base.poly);
-		break;
-	}
+	UndoAction(act);
 
 	HistoryList *hlist = HistoryList::GetInstance();
-	hlist->SetItemCount(m_actions.size());
+	hlist->SetItemCount(m_actions.TotalActions());
 	hlist->Refresh();
+	Save();
 }
 
-ConvexPolygon *EditorContext::ApplyAction(const EditAction &action)
+ConvexPolygon *EditorContext::ApplyAction(const ActData &act)
 {
 	ConvexPolygon *poly = nullptr;
-	if(action.base.layer <= 0 || action.base.layer >= m_layers.size()) {
+	if(act.layer < 0 || act.layer >= m_layers.size()) {
 		return nullptr;
 	}
 
-	EditorLayer &layer = m_layers[action.base.layer];
+	EditorLayer &layer = m_layers[act.layer];
 	std::vector<ConvexPolygon> &polys = layer.GetPolys();
 
-	switch(action.base.type) {
-	case EditActionType::LINE:
-		poly = &polys[action.base.poly];
-		poly->Slice(action.line.plane);
+	switch(act.type) {
+	case ActType::LINE:
+		poly = &polys[act.poly];
+		poly->Slice(act.line);
 		poly->PurgePlanes();
 		poly->ResizeAABB();
 		break;
-	case EditActionType::MOVE:
-		poly = &polys[action.base.poly];
-		poly->Offset(action.move.delta);
+	case ActType::MOVE:
+		poly = &polys[act.poly];
+		poly->Offset(act.move);
 		break;
-	case EditActionType::SCALE:
-		poly = &polys[action.base.poly];
-		poly->Scale(action.scale.origin, action.scale.numer, action.scale.denom);
+	case ActType::SCALE:
+		poly = &polys[act.poly];
+		poly->Scale(act.scale.origin, act.scale.numer, act.scale.denom);
 		break;
-	case EditActionType::RECT:
-		polys.push_back(action.rect.rect);
+	case ActType::RECT:
+		polys.push_back(act.rect);
 		poly = &polys.back();
 		break;
-	case EditActionType::DEL:
-		polys.erase(polys.begin() + action.base.poly);
+	case ActType::DEL:
+		polys.erase(polys.begin() + act.poly);
 		poly = nullptr;
 		return nullptr;
 		break;
-	case EditActionType::TEXTURE:
-		poly = &polys[action.base.poly];
-		poly->texindex = action.texture.index;
-		poly->texscale = action.texture.scale;
+	case ActType::TEXTURE:
+		poly = &polys[act.poly];
+		poly->SetTexture(act.texture.index, act.texture.scale);
 		break;
 	}
-
 	wxASSERT(poly);
-	wxASSERT_MSG(action.base.poly == poly - &polys.front(),
+	wxASSERT_MSG(act.poly == poly - &polys.front(),
 		"Polygon indices out of order.");
 
+	return poly;
+}
+
+
+ConvexPolygon *EditorContext::UndoAction(const ActData &act)
+{
+	ConvexPolygon *poly = nullptr;
+	EditorLayer &layer = m_layers[act.layer];
+	std::vector<ConvexPolygon> &polys = layer.GetPolys();
+
+	switch(act.type) {
+	case ActType::TEXTURE:
+	case ActType::LINE:
+	case ActType::DEL:
+		ResetPolys();
+		break;
+	case ActType::MOVE:
+		poly = &polys[act.poly];
+		glm::i32vec2 move = act.move;
+		poly->Offset(-move);
+		break;
+	case ActType::SCALE:
+		poly = &polys[act.poly];
+		poly->Scale(act.scale.origin, act.scale.denom, act.scale.numer);
+		break;
+	case ActType::RECT:
+		if(m_selected == act.poly) {
+			m_selected = -1;
+		}
+		polys.erase(polys.begin() + act.poly);
+		break;
+	}
 	return poly;
 }
 
@@ -507,137 +510,173 @@ void EditorContext::AddTexture(const wxFileName &filename)
 
 void EditorContext::Redo()
 {
-	if(m_history >= m_actions.size()) {
-		return;
+	ActData act;
+	if(m_actions.Redo(act)) {
+		ApplyAction(act);
+		HistoryList *hlist = HistoryList::GetInstance();
+		hlist->SetItemCount(m_actions.TotalActions());
+		hlist->Refresh();
 	}
-
-	m_history++;
-	EditAction &last = m_actions[m_history - 1];
-	ApplyAction(last);
-
-	HistoryList *hlist = HistoryList::GetInstance();
-	hlist->SetItemCount(m_actions.size());
-	hlist->Refresh();
 }
 
 
-void EditorContext::AppendAction(EditAction action)
+void EditorContext::AddAction(const ActRect &rect)
 {
 	EditorLayer *layer = GetSelectedLayer();
-	ConvexPolygon *poly = GetSelectedPoly();
-
 	std::vector<ConvexPolygon> &polys = layer->GetPolys();
 
-	switch(action.base.type) {
-	case EditActionType::LINE:
-		poly->Slice(action.line.plane);
-		poly->PurgePlanes();
-		poly->ResizeAABB();
-		break;
-	case EditActionType::MOVE:
-		if(action.move.delta.x == 0 && action.move.delta.y == 0) {
-			return;
-		}
-		poly->Offset(action.move.delta);
-		break;
-	case EditActionType::SCALE:
-		poly->Scale(action.scale.origin, action.scale.numer, action.scale.denom);
-		break;
-	case EditActionType::RECT:
-		polys.push_back(action.rect.rect);
-		m_selected = polys.size() - 1; 
-		break;
-	case EditActionType::DEL:
-		polys.erase(polys.begin() + m_selected);
-		break;
-	case EditActionType::TEXTURE:
-		poly->texindex = action.texture.index;
-		poly->texscale = action.texture.scale;
-		break;
-	}
+	m_selected = polys.size();
 
-	action.base.poly = m_selected;
+	m_actions.AddAction(rect, polys.size(), m_curlayer);
 
-	if(action.base.type == EditActionType::DEL) {
-		/* deselect on delete */
-		m_selected = -1;
-	}
-
-	if(action.base.type == EditActionType::RECT || action.base.type == EditActionType::DEL) {
-		LayerList *llist = LayerList::GetInstance();
-		llist->Refresh();
-	}
-
-	HistoryList *hlist = HistoryList::GetInstance();
-	hlist->SetItemCount(m_actions.size());
-	hlist->Refresh();
-
-	if(!m_actions.empty() && m_history) {
-		EditAction &back = m_actions[m_history - 1];
-		if(back.base.type == EditActionType::MOVE && action.base.type == EditActionType::MOVE) {
-			/* we don't want to spam a move action for each pixel moved */
-			if(back.base.poly == action.base.poly) {
-				back.move.delta = back.move.delta + action.move.delta;
-
-				/* remove if no-op */
-				if(back.move.delta.x == 0 && back.move.delta.y == 0) {
-					m_actions.pop_back();
-					m_history = m_actions.size();
-					hlist->SetItemCount(m_actions.size());
-				}
-
-				hlist->Refresh(false);
-				Save();
-				return;
-			}
-		}
-
-		if(back.base.type == EditActionType::SCALE && action.base.type == EditActionType::SCALE) {
-			if(back.base.poly == action.base.poly && back.scale.origin == action.scale.origin) {
-				back.scale.denom *= action.scale.denom;
-				back.scale.numer *= action.scale.numer;
-
-				glm::i32vec2 g;
-				g.x = std::gcd(back.scale.numer.x, back.scale.denom.x);
-				g.y = std::gcd(back.scale.numer.y, back.scale.denom.y);
-				back.scale.numer /= g;
-				back.scale.denom /= g;
-
-				/* remove if no-op */
-				if(back.scale.numer == back.scale.denom) {
-					m_actions.pop_back();
-					m_history = m_actions.size();
-					hlist->SetItemCount(m_actions.size());
-				}
-
-				hlist->Refresh(false);
-				Save();
-				return;
-			}
-		}
-
-		/* don't bother saving repeat texture actions */
-		if(back.base.type == EditActionType::TEXTURE && action.base.type == EditActionType::TEXTURE) {
-			if(back.base.poly == action.base.poly
-			&& action.texture.index == back.texture.index
-			&& action.texture.scale == back.texture.scale) {
-				return;
-			}
-		}
-	}
-
-	/* remove future */
-	while(m_actions.size() > m_history) {
-		m_actions.pop_back();
-	}
-
-	m_actions.push_back(action);
-	m_history = m_actions.size();
-
-	hlist->SetItemCount(m_actions.size());
-	hlist->Refresh();
+	ActData back;
+	m_actions.GetBack(back);
+	ApplyAction(back);
 
 	Save();
+	m_canvas->Refresh();
+}
 
+void EditorContext::AddAction(const ActLine &line)
+{
+	ConvexPolygon *poly = GetSelectedPoly();
+	if(poly == nullptr) {
+		return;
+	}
+
+	poly->Slice(line);
+	poly->PurgePlanes();
+	poly->ResizeAABB();
+
+	m_actions.AddAction(line, m_selected, m_curlayer);
+
+	ActData back;
+	m_actions.GetBack(back);
+	ApplyAction(back);
+
+	Save();
+	m_canvas->Refresh();
+}
+
+void EditorContext::AddAction(const ActMove &move)
+{
+	if(move.x == 0 && move.y == 0) {
+		return;
+	}
+
+	ActData back;
+	m_actions.GetBack(back);
+
+	if(back.type == ActType::MOVE && back.poly == m_selected) {
+		/* we don't want to spam a move action for each pixel moved */
+		UndoAction(back);
+
+		back.move += move;
+
+		/* remove if no-op */
+		if(back.move.x == 0 && back.move.y == 0) {
+			m_actions.PopBack();
+			return;
+		}
+
+		m_actions.UpdateBack(back);
+		Save();
+	} else {
+		m_actions.AddAction(move, m_selected, m_curlayer);
+	}
+
+	m_actions.GetBack(back);
+	ApplyAction(back);
+
+	Save();
+	m_canvas->Refresh();
+}
+
+void EditorContext::AddAction(const ActScale &scale)
+{
+	ActData back;
+	bool add_action = true;
+	if(!m_actions.IsEmpty() && m_actions.HistoryIndex()) {
+		m_actions.GetBack(back);
+		if(back.type == ActType::SCALE &&
+		   back.poly == m_selected &&
+		   back.layer == m_curlayer &&
+		   back.scale.origin == scale.origin) {
+
+			UndoAction(back);
+
+			back.scale.denom *= scale.denom;
+			back.scale.numer *= scale.numer;
+
+			glm::i32vec2 g;
+			g.x = std::gcd(back.scale.numer.x, back.scale.denom.x);
+			g.y = std::gcd(back.scale.numer.y, back.scale.denom.y);
+			back.scale.numer /= g;
+			back.scale.denom /= g;
+
+			/* remove if no-op */
+			if(back.scale.numer == back.scale.denom) {
+				m_actions.PopBack();
+				Save();
+				return;
+			}
+
+			m_actions.UpdateBack(back);
+			add_action = false;
+		}
+	}
+
+	if(add_action) {
+		m_actions.AddAction(scale, m_selected, m_curlayer);
+	}
+
+	m_actions.GetBack(back);
+	ApplyAction(back);
+
+	Save();
+	m_canvas->Refresh();
+}
+
+void EditorContext::AddAction(const ActTexture &texture)
+{
+	ConvexPolygon *poly = GetSelectedPoly();
+	if(poly == nullptr) {
+		return;
+	}
+
+	poly->SetTexture(texture.index, texture.scale);
+
+	ActData back;
+	if(!m_actions.IsEmpty() && m_actions.HistoryIndex()) {
+		m_actions.GetBack(back);
+		/* don't bother saving repeat texture actions */
+		if(back.type == ActType::TEXTURE) {
+			if(back.poly == m_selected
+				&& texture.index == back.texture.index
+				&& texture.scale == back.texture.scale) {
+				return;
+			}
+		}
+	}
+
+	m_actions.AddAction(texture, m_selected, m_curlayer);
+	Save();
+	m_canvas->Refresh();
+}
+
+void EditorContext::AddDelete()
+{
+	LayerList *llist = LayerList::GetInstance();
+	llist->Refresh();
+
+	m_actions.AddDelete(m_selected, m_curlayer);
+
+	m_selected = -1;
+
+	ActData back;
+	m_actions.GetBack(back);
+	ApplyAction(back);
+
+	Save();
 	m_canvas->Refresh();
 }

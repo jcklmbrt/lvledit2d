@@ -14,7 +14,8 @@ class HistoryList : public wxListCtrl,
 	enum ColumnID : long
 	{
 		ACTION,
-		INDEX,
+		POLY,
+		LAYER,
 		VALUE
 	};
 public:

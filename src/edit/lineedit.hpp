@@ -7,7 +7,7 @@
 #include <wx/mousestate.h>
 #include "src/edit/editorcontext.hpp"
 
-struct ConvexPolygon;
+class ConvexPolygon;
 
 enum class LineEditState 
 {
@@ -37,8 +37,8 @@ private:
 	void Slice_OnMouseRightDown(wxMouseEvent &e);
 	void Slice_OnDraw();
 private:
-	glm::vec2 m_start;
-	glm::vec2 m_end;
+	glm::i32vec2 m_start;
+	glm::i32vec2 m_end;
 	Plane2D m_plane;
 	std::vector<glm::vec2> m_points;
 private:

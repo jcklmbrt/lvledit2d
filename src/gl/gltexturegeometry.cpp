@@ -153,7 +153,7 @@ void GLTextureGeometry::AddPolygon(const ConvexPolygon &poly, const glm::vec4 &c
 		return;
 	}
 
-	const std::vector<glm::vec2> &pts = poly.points;
+	const std::vector<glm::vec2> &pts = poly.GetPoints();
 
 	const Rect2D &aabb = poly.GetUV();
 

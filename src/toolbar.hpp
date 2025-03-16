@@ -20,7 +20,10 @@ public:
 	};
 	ToolBar(wxWindow *parent, wxWindowID id = wxID_ANY);
 	void OnSelect(wxCommandEvent &e);
-        ID selected = ID::SELECT;
+private:
+        ID m_selected = ID::SELECT;
+public:
+	inline ID GetSelected() { return m_selected; }
 };
 
 

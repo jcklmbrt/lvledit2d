@@ -8,95 +8,11 @@
 #include "src/toolbar.hpp"
 #include "src/geometry.hpp"
 #include "src/edit/editorlayer.hpp"
+#include "src/edit/editaction.hpp"
 
-struct GLCanvas;
+class GLCanvas;
 class EditorContext;
 class ViewMatrixBase;
-
-
-enum class EditActionType
-{
-	/* User actions */
-	LINE,
-	RECT,
-	MOVE,
-	SCALE,
-	DEL,
-	TEXTURE
-};
-
-
-struct EditAction_Base
-{
-	EditActionType type;
-	size_t layer;
-	size_t poly;
-};
-
-
-struct EditAction_Rect : EditAction_Base
-{
-	EditAction_Rect() { type = EditActionType::RECT; }
-	Rect2D rect;
-};
-
-
-struct EditAction_Line : EditAction_Base
-{
-	EditAction_Line() { type = EditActionType::LINE; }
-	Plane2D plane;
-};
-
-struct EditAction_Move : EditAction_Base
-{
-	EditAction_Move() { type = EditActionType::MOVE; }
-	glm::i32vec2 delta;
-};
-
-struct EditAction_Scale : EditAction_Base
-{
-	EditAction_Scale() { type = EditActionType::SCALE; }
-	glm::i32vec2 origin;
-	glm::i32vec2 numer;
-	glm::i32vec2 denom;
-};
-
-
-struct EditAction_Texture : EditAction_Base
-{
-	EditAction_Texture() { type = EditActionType::TEXTURE; }
-	int32_t index;
-	int32_t scale;
-};
-
-struct EditAction_Delete : EditAction_Base
-{
-	EditAction_Delete() { type = EditActionType::DEL; }
-};
-
-struct EditAction_Index
-{
-	EditActionType type;
-	size_t index;
-};
-
-union EditAction
-{
-	EditAction() {};
-	EditAction(EditAction_Line &line) : line(line) {}
-	EditAction(EditAction_Rect &rect) : rect(rect) {}
-	EditAction(EditAction_Move &move) : move(move) {}
-	EditAction(EditAction_Scale &scale) : scale(scale) {}
-	EditAction(EditAction_Texture &texture) : texture(texture) {}
-	EditAction(EditAction_Delete &del) : del(del) {}
-	EditAction_Base base;
-	EditAction_Rect rect;
-	EditAction_Line line;
-	EditAction_Move move;
-	EditAction_Scale scale;
-	EditAction_Delete del;
-	EditAction_Texture texture;
-};
 
 
 class IBaseEdit : public wxEvtHandler
@@ -108,7 +24,7 @@ public:
 	virtual ~IBaseEdit();
 protected:
 	GLCanvas *m_canvas;
-	EditorContext *m_context;
+	EditorContext &m_edit;
 	const ViewMatrixBase &m_view;
 };
 
@@ -117,8 +33,14 @@ class EditorContext : public wxEvtHandler
 public:
 	EditorContext(GLCanvas *parent);
 	~EditorContext();
-	ConvexPolygon *ApplyAction(const EditAction &action);
-	void AppendAction(EditAction action);
+	ConvexPolygon *ApplyAction(const ActData &action);
+	ConvexPolygon *UndoAction(const ActData &action);
+	void AddAction(const ActRect &rect);
+	void AddAction(const ActLine &line);
+	void AddAction(const ActMove &move);
+	void AddAction(const ActScale &scale);
+	void AddAction(const ActTexture &texture);
+	void AddDelete();
 	void AddTexture(const wxFileName &filename);
 	void Undo();
 	void Redo();
@@ -131,13 +53,9 @@ public:
 	void OnDraw();
 private:
 	std::vector<EditorLayer> m_layers;
-	std::vector<EditAction> m_actions;
 	std::vector<GLTexture> m_textures;
 
-	/* actions[0..history] --> history */
-	/* actions[history..size] -> future  */
-	size_t m_history = 0;
-
+	ActList m_actions;
 	size_t m_selected = -1;
 	size_t m_curlayer = -1;
 
@@ -149,21 +67,21 @@ private:
 	IBaseEdit *m_state;
 	GLCanvas *m_canvas;
 public:
-	size_t NumLayers() { return m_layers.size(); }
-	EditorLayer &GetLayer(size_t i) { return m_layers.at(i); }
-	std::vector<EditorLayer> &GetLayers() { return m_layers; }
+	inline std::vector<EditorLayer> &GetLayers() { return m_layers; }
+	inline const std::vector<EditorLayer> &GetLayers() const { return m_layers; }
 
-	size_t NumTextures() { return m_textures.size(); }
-	GLTexture &GetTexture(size_t i) { return m_textures.at(i); }
+	inline std::vector<GLTexture> &GetTextures() { return m_textures; }
+	inline const std::vector<GLTexture> &GetTextures() const { return m_textures; }
 
-	size_t NumActions() { return m_actions.size(); }
-	EditAction &GetAction(size_t i) { return m_actions.at(i); }
-	size_t HistoryIndex() { return m_history; }
+	inline ActList &GetActList() { return m_actions; }
 
-	bool HasFile() { return m_hasfile; }
-	wxString &GetName() { return m_name; }
+	inline bool HasFile() { return m_hasfile; }
+	inline wxString &GetName() { return m_name; }
 
-	EditorLayer *GetSelectedLayer()
+	inline size_t GetSelectedLayerIndex() { return m_curlayer; }
+	inline void SetSelectedLayerIndex(size_t i) { m_curlayer = i; m_selected = -1; }
+
+	inline EditorLayer *GetSelectedLayer()
 	{
 		size_t i = m_curlayer;
 		if(i >= 0 && i < m_layers.size()) {
@@ -173,7 +91,7 @@ public:
 		}
 	}
 
-	ConvexPolygon *GetSelectedPoly()
+	inline ConvexPolygon *GetSelectedPoly()
 	{
 		size_t i = m_selected;
 		EditorLayer *layer = GetSelectedLayer();
@@ -183,29 +101,29 @@ public:
 
 		std::vector<ConvexPolygon> &polys = layer->GetPolys();
 
-		if(i >= 0 && i < polys.size()) {
+		if(i < polys.size()) {
 			return &polys[i];
 		} else {
 			return nullptr;
 		}
 	}
 
-	void SetSelectedPoly(ConvexPolygon *p)
+	inline void SetSelectedPoly(ConvexPolygon *p)
 	{
 		EditorLayer *layer = GetSelectedLayer();
 		wxASSERT(layer);
 		std::vector<ConvexPolygon> &polys = layer->GetPolys();
 
 		size_t i = p - polys.data();
-		if(i >= 0 && i < polys.size()) {
+		if(i < polys.size()) {
 			m_selected = i;
 		}
 	}
 
-	void SetSelectedLayer(EditorLayer *layer)
+	inline void SetSelectedLayer(EditorLayer *layer)
 	{
 		size_t i = layer - m_layers.data();
-		if(i >= 0 && i < m_layers.size()) {
+		if(i < m_layers.size()) {
 			m_selected = -1;
 			m_curlayer = i;
 		}

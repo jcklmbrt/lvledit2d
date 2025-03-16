@@ -12,7 +12,8 @@ HistoryList::HistoryList(wxWindow *parent)
 {
 	/* autosize column */
 	InsertColumn(ColumnID::ACTION, "Action", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
-	InsertColumn(ColumnID::INDEX, "Index", wxLIST_FIND_LEFT, wxLIST_AUTOSIZE);
+	InsertColumn(ColumnID::POLY, "Poly", wxLIST_FIND_LEFT, wxLIST_AUTOSIZE);
+	InsertColumn(ColumnID::LAYER, "Layer", wxLIST_FIND_LEFT, wxLIST_AUTOSIZE);
 	InsertColumn(ColumnID::VALUE,  "Value", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE_USEHEADER);
 #ifndef _WIN32 
 	wxSize size = GetSize() * 0.7;
@@ -30,9 +31,9 @@ wxItemAttr *HistoryList::OnGetItemAttr(long item) const
 	static wxItemAttr attr;
 	attr.SetBackgroundColour(*wxYELLOW);
 
-	GLCanvas *dp = GLCanvas::GetCurrent();
-	if(dp != nullptr) {
-		if(dp->editor.HistoryIndex() > item) {
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+	if(canvas != nullptr) {
+		if(canvas->GetEditor().GetActList().HistoryIndex() > item) {
 			attr.SetBackgroundColour(*wxWHITE);
 		}
 	}
@@ -43,62 +44,71 @@ wxItemAttr *HistoryList::OnGetItemAttr(long item) const
 
 wxString HistoryList::OnGetItemText(long item, long col) const
 {
-	GLCanvas *dp = GLCanvas::GetCurrent();
+	GLCanvas *canvas = GLCanvas::GetCurrent();
 
 	wxString s;
 
-	if(dp != nullptr) {
-		wxASSERT(item >= 0 && item <= dp->editor.NumActions());
+	if(canvas != nullptr) {
+
+		EditorContext &edit = canvas->GetEditor();
+		ActList &actions = edit.GetActList();
+		wxASSERT(item >= 0 && item <= actions.TotalActions());
 		glm::i32vec2 lt, rb;
-		const EditAction &action = dp->editor.GetAction(item);
+		ActData act;
+		if(!actions.GetAction(item, act)) {
+			return s;
+		};
 		if(col == ColumnID::ACTION) {
-			switch(action.base.type) {
-			case EditActionType::LINE:
+			switch(act.type) {
+			case ActType::LINE:
 				s.Printf("LINE");
 				break;
-			case EditActionType::RECT:
+			case ActType::RECT:
 				s.Printf("RECT");
 				break;
-			case EditActionType::MOVE:
+			case ActType::MOVE:
 				s.Printf("MOVE");
 				break;
-			case EditActionType::SCALE:
+			case ActType::SCALE:
 				s.Printf("SCALE");
 				break;
-			case EditActionType::TEXTURE:
+			case ActType::TEXTURE:
 				s.Printf("TEXTURE");
 				break;
-			case EditActionType::DEL:
+			case ActType::DEL:
 				s.Printf("DEL");
 				break;
 			}
 		} else if(col == ColumnID::VALUE) {
-			switch(action.base.type) {
-			case EditActionType::LINE:
-				s.Printf("%dx + %dy + %d", action.line.plane.a, action.line.plane.b, action.line.plane.c);
+			switch(act.type) {
+			case ActType::LINE:
+				s.Printf("%dx + %dy + %d", act.line.a, act.line.b, act.line.c);
 				break;
-			case EditActionType::RECT:
-				lt = action.rect.rect.mins;
-				rb = action.rect.rect.maxs;
+			case ActType::RECT:
+				lt = act.rect.mins;
+				rb = act.rect.maxs;
 				s.Printf("%d %d %d %d", lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
 				break;
-			case EditActionType::MOVE:
-				s.Printf("%d %d", action.move.delta.x, action.move.delta.y);
+			case ActType::MOVE:
+				s.Printf("%d %d", act.move.x, act.move.y);
 				break;
-			case EditActionType::SCALE:
+			case ActType::SCALE:
 				s.Printf("%d/%d %d/%d",
-					 action.scale.numer.x, action.scale.denom.x,
-					 action.scale.numer.y, action.scale.denom.y);
+					 act.scale.numer.x, act.scale.denom.x,
+					 act.scale.numer.y, act.scale.denom.y);
 				break;
-			case EditActionType::TEXTURE:
-				s.Printf("index: %d, scale: %d", action.texture.index,
-					 action.texture.scale);
+			case ActType::TEXTURE:
+				s.Printf("index: %d, scale: %d", act.texture.index,
+					 act.texture.scale);
 				break;
-			case EditActionType::DEL:
+			case ActType::DEL:
 				break;
 			}
-		} else if(col == ColumnID::INDEX) {
-			s.Printf("%llu", action.base.poly);
+		} else if(col == ColumnID::POLY) {
+			s.Printf("%llu", act.poly);
+		} else if(col == ColumnID::LAYER) {
+			EditorLayer &layer = edit.GetLayers()[act.layer];
+			s.Printf("%s", layer.GetName());
 		}
 	}
 	return s;

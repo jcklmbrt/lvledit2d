@@ -9,7 +9,6 @@ public:
 	TextureEdit(GLCanvas *panel);
 	void OnMouseLeftDown(wxMouseEvent &e);
 	void OnMouseRightDown(wxMouseEvent &e);
-private:
 };
 
 #endif

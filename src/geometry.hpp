@@ -97,10 +97,12 @@ struct Plane2D
 	int32_t a, b, c;
 };
 
-struct GLTexture;
+class GLTexture;
+struct ActTexture;
 
-struct ConvexPolygon
+class ConvexPolygon
 {
+public:
 	ConvexPolygon(const Rect2D &rect);
 	void Offset(const glm::i32vec2 &delta);
 	void Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom);
@@ -117,14 +119,35 @@ struct ConvexPolygon
 	GLTexture *GetTexture() const;
 	Rect2D GetUV() const;
 	Rect2D GetUV(const Rect2D &aabb) const;
-
-	Rect2D aabb;
-	std::vector<Plane2D> planes;
+private:
+	Rect2D m_aabb;
+	std::vector<Plane2D> m_planes;
 	/* internal representation of polygon */
-	std::vector<glm::vec2> points;
+	std::vector<glm::vec2> m_points;
 
-	size_t texindex = -1;
-	int texscale;
+	size_t m_texindex = -1;
+	int m_texscale;
+public:
+	inline void SetTexture(size_t index, int scale)
+	{
+		m_texindex = index;
+		m_texscale = scale;
+	}
+
+	inline Rect2D GetAABB() const 
+	{
+		return m_aabb;
+	}
+
+	inline const std::vector<glm::vec2> &GetPoints() const
+	{
+		return m_points;
+	}
+
+	inline const std::vector<Plane2D> &GetPlanes() const
+	{
+		return m_planes;
+	}
 };
 
 #endif

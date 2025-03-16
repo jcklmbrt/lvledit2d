@@ -15,11 +15,11 @@ RectangleEdit::RectangleEdit(GLCanvas *canvas)
 
 void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
-	glm::vec2 world_pos = m_view.MouseToWorld(e);
+	glm::i32vec2 world_pos = GLBackgroundGrid::Snap(m_view.MouseToWorld(e));
 
 	e.Skip(true);
 
-	EditorLayer *layer = m_context->GetSelectedLayer();
+	EditorLayer *layer = m_edit.GetSelectedLayer();
 	if(layer == nullptr) {
 		return;
 	}
@@ -36,15 +36,11 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 		}
 
 		if(!intersects && !m_onepoint) {
-			EditAction_Rect action;
-			action.rect = m_rect;
-			m_context->AppendAction(action);
+			m_edit.AddAction(m_rect);
 			m_inedit = false;
 		}
 	} else {
 		/* 1st left click*/
-		GLBackgroundGrid::Snap(world_pos);
-
 		for(ConvexPolygon &poly : layer->GetPolys()) {
 			if(poly.Contains(world_pos)) {
 				intersects = true;
@@ -68,9 +64,7 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 		return;
 	}
 
-	glm::vec2 mpos = m_view.MouseToWorld(e);
-
-	GLBackgroundGrid::Snap(mpos);
+	glm::i32vec2 mpos = GLBackgroundGrid::Snap(m_view.MouseToWorld(e));
 
 	if(mpos.x != m_start.x && mpos.y != m_start.y) {
 		m_rect.mins = m_start;
@@ -96,14 +90,12 @@ void RectangleEdit::OnMouseMotion(wxMouseEvent &e)
 void RectangleEdit::OnDraw()
 {
 	glm::vec4 color = WHITE;
-	glm::vec2 mpos = m_canvas->mousepos;
+	glm::i32vec2 mpos = GLBackgroundGrid::Snap(m_canvas->GetMousePos());
 
-	EditorLayer *layer = m_context->GetSelectedLayer();
+	EditorLayer *layer = m_edit.GetSelectedLayer();
 	if(layer == nullptr) {
 		return;
 	}
-
-	GLBackgroundGrid::Snap(mpos);
 
 	if(m_inedit && !m_onepoint) {
 		for(ConvexPolygon &poly : layer->GetPolys()) {

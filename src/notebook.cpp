@@ -23,13 +23,13 @@ Notebook::~Notebook()
 
 void Notebook::Save(bool force_rename)
 {
-	GLCanvas *dp = GLCanvas::GetCurrent();
+	GLCanvas *canvas = GLCanvas::GetCurrent();
 
-	if(dp == nullptr) {
+	if(canvas == nullptr) {
 		return;
 	}
 
-	EditorContext &edit = dp->editor;
+	EditorContext &edit = canvas->GetEditor();
 
 	if(!edit.HasFile() || force_rename) {
 		wxFileDialog dialog(GetParent(), "Save file", "", "",
@@ -56,7 +56,7 @@ void Notebook::Save(bool force_rename)
 
 bool Notebook::AddCanvas(GLCanvas *canvas)
 {
-	wxString &name = canvas->editor.GetName();
+	wxString &name = canvas->GetEditor().GetName();
 
 	GLContext *ctx;
 
@@ -89,7 +89,7 @@ bool Notebook::AddCanvas(const wxFileName &file)
 	attrs.PlatformDefaults().Defaults().EndList();
 	GLCanvas *canvas = new GLCanvas(this, attrs);
 
-	EditorContext &edit = canvas->editor;
+	EditorContext &edit = canvas->GetEditor();
 	edit.GetName() = file.GetName();
 
 	bool ret = AddCanvas(canvas);
@@ -130,7 +130,7 @@ void Notebook::OnPageChange(wxAuiNotebookEvent &e)
 	e.Skip();
 
 	wxWindow *page = GetPage(e.GetSelection());
-	GLCanvas *dp = dynamic_cast<GLCanvas *>(page);
+	GLCanvas *canvas = dynamic_cast<GLCanvas *>(page);
 
 	/* Jumping through hoops to keep our lists global
 	   it would be much worse if we created a new object for every page */
@@ -139,9 +139,10 @@ void Notebook::OnPageChange(wxAuiNotebookEvent &e)
 
 	MainFrame::GetInstance()->Sidebook_Show();
 
-	if(dp != nullptr) {
-		size_t ntex = dp->editor.NumTextures();
-		size_t nact = dp->editor.NumActions();
+	if(canvas != nullptr) {
+		EditorContext &edit = canvas->GetEditor();
+		size_t ntex = edit.GetTextures().size();
+		size_t nact = edit.GetActList().TotalActions();
 		tlist->SetItemCount(ntex);
 		tlist->SetSelected(ntex - 1);
 		hlist->SetItemCount(nact);

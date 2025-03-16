@@ -29,13 +29,13 @@ public:
 	bool operator==(const GLTexture &other);
 private:
 	GLuint m_gltex = 0;
-	unsigned char *m_data;
-	size_t m_pixelwidth;
-	size_t m_width;
-	size_t m_height;
-	char m_name[MAX_TEXTURE_NAME];
-	size_t m_thumb;
-	uint32_t m_hash;
+	unsigned char *m_data = nullptr;
+	size_t m_pixelwidth = 0;
+	size_t m_width = 0;
+	size_t m_height = 0;
+	char m_name[MAX_TEXTURE_NAME] = {};
+	size_t m_thumb = 0;
+	uint32_t m_hash = 0;
 public:
 	GLuint GetGLObject() const { return m_gltex; }
 	const char *GetName() const { return m_name; }

@@ -68,7 +68,7 @@ void TexturePanel::OnOpen(wxCommandEvent &e)
 		return;
 	}
 
-	canvas->editor.AddTexture(dialog.GetPath());
+	canvas->GetEditor().AddTexture(dialog.GetPath());
 }
 
 TextureList::TextureList(wxWindow *parent)
@@ -95,9 +95,9 @@ TextureList::TextureList(wxWindow *parent)
 void TextureList::OnFocused(wxListEvent &e)
 {
 	for(long i = 0; i < GetItemCount(); i++) {
-		if(GetItemState(i, wxLIST_STATE_FOCUSED)) {
-			m_selected = i;
-		}
+		//if(GetItemState(i, wxLIST_STATE_FOCUSED)) {
+		//	m_selected = i;
+		//}
 		SetItemState(i, 0, wxLIST_STATE_FOCUSED);
 	}
 	e.Skip();
@@ -122,7 +122,10 @@ wxString TextureList::OnGetItemText(long item, long col) const
 	GLCanvas *canvas = GLCanvas::GetCurrent();
 	wxASSERT(canvas);
 
-	const GLTexture &texture = canvas->editor.GetTexture(item);
+	const GLTexture &texture = canvas->GetEditor()
+		.GetTextures()
+		.at(item);
+
 	wxString s;
 
 	switch(col) {
@@ -157,5 +160,8 @@ int TextureList::OnGetItemImage(long item) const
 {
 	GLCanvas *canvas = GLCanvas::GetCurrent();
 	wxASSERT(canvas);
-	return canvas->editor.GetTexture(item).GetThumb();
+	return canvas->GetEditor()
+		.GetTextures()
+		.at(item)
+		.GetThumb();
 }

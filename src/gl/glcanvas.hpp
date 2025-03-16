@@ -10,10 +10,12 @@
 
 class Notebook;
 class GLContext;
-struct ConvexPolygon;
+class GLTexture;
+class ConvexPolygon;
 
-struct GLCanvas : public wxGLCanvas
+class GLCanvas : public wxGLCanvas
 {
+public:
 	GLCanvas(Notebook *parent, const wxGLAttributes &attrs);
 	virtual ~GLCanvas();
 	void DrawPoint(const glm::vec2 &point, const glm::vec4 &color);
@@ -25,14 +27,18 @@ struct GLCanvas : public wxGLCanvas
 	static GLCanvas *GetCurrent();
 	void OnPaint(wxPaintEvent &e);
 	void OnSize(wxSizeEvent &e);
-
 	void OnMouse(wxMouseEvent &e);
-	/* cache mouse position for use in draw routines */
-	glm::vec2 mousepos;
-	EditorContext editor;
-
-	ViewMatrixCtrl view;
-	glm::mat4 proj;
+private:
+	glm::vec2 m_mousepos;
+	EditorContext m_editor;
+	ViewMatrixCtrl m_view;
+	glm::mat4 m_proj;
+public:
+	inline glm::vec2 GetMousePos() { return m_mousepos; }
+	inline EditorContext &GetEditor() { return m_editor; }
+	inline glm::mat4 &GetViewMatrix() { return m_view.GetMatrix(); }
+	inline glm::mat4 &GetProjMatrix() { return m_proj; }
+	inline ViewMatrixBase &GetView() { return m_view; }
 };
 
 

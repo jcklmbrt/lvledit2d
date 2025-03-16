@@ -12,8 +12,8 @@
 
 GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
 	: wxGLCanvas(parent, attrs),
-	  editor(this),
-	  view(this)
+	  m_editor(this),
+	  m_view(this)
 {
 	wxASSERT(wxGLCanvas::IsDisplaySupported(attrs));
 
@@ -21,7 +21,7 @@ GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
 
 	float width = static_cast<float>(size.x);
 	float height = static_cast<float>(size.y);
-	proj = glm::ortho(0.0f, width, height, 0.0f);
+	m_proj = glm::ortho(0.0f, width, height, 0.0f);
 
 	Bind(wxEVT_SIZE, &GLCanvas::OnSize, this);
 	Bind(wxEVT_PAINT, &GLCanvas::OnPaint, this);
@@ -32,18 +32,18 @@ GLCanvas::GLCanvas(Notebook *parent, const wxGLAttributes &attrs)
 	Bind(wxEVT_MOUSEWHEEL, &GLCanvas::OnMouse, this);
 	Bind(wxEVT_MOTION, &GLCanvas::OnMouse, this);
 
-	PushEventHandler(&editor);
-	PushEventHandler(&view);
+	PushEventHandler(&m_editor);
+	PushEventHandler(&m_view);
 
 	ToolBar *tb = ToolBar::GetInstance();
-	editor.OnToolSelect(tb->selected);
+	m_editor.OnToolSelect(tb->GetSelected());
 }
 
 
 GLCanvas::~GLCanvas()
 {
-	RemoveEventHandler(&view);
-	RemoveEventHandler(&editor);
+	RemoveEventHandler(&m_view);
+	RemoveEventHandler(&m_editor);
 }
 
 
@@ -52,10 +52,14 @@ GLCanvas *GLCanvas::GetCurrent()
 	GLCanvas *canvas = nullptr;
 	Notebook *notebook = Notebook::GetInstance();
 
-	if(notebook->GetPageCount() > 0) {
+	size_t pagecount = notebook->GetPageCount();
+
+	if(pagecount > 0) {
 		int sel = notebook->GetSelection();
-		wxWindow *page = notebook->GetPage(sel);
-		canvas = dynamic_cast<GLCanvas *>(page);
+		if(sel < pagecount) {
+			wxWindow *page = notebook->GetPage(sel);
+			canvas = dynamic_cast<GLCanvas *>(page);
+		}
 	}
 
 	return canvas;
@@ -64,7 +68,7 @@ GLCanvas *GLCanvas::GetCurrent()
 
 void GLCanvas::OnMouse(wxMouseEvent &e)
 {
-	mousepos = view.MouseToWorld(e);
+	m_mousepos = m_view.MouseToWorld(e);
 	Refresh(true);
 }
 
@@ -76,7 +80,7 @@ void GLCanvas::OutlineRect(const Rect2D &rect, float thickness, const glm::vec4 
 	glm::vec2 lb = { rect.mins.x, rect.maxs.y };
 	glm::vec2 rt = { rect.maxs.x, rect.mins.y };
 
-	thickness /= view.GetZoom();
+	thickness /= m_view.GetZoom();
 	GLContext *ctx = GLContext::GetInstance();
 	ctx->AddLine(lt, rt, thickness, color);
 	ctx->AddLine(rt, rb, thickness, color);
@@ -87,7 +91,7 @@ void GLCanvas::OutlineRect(const Rect2D &rect, float thickness, const glm::vec4 
 
 void GLCanvas::DrawLine(const glm::vec2 &a, const glm::vec2 &b, float thickness, const glm::vec4 &color)
 {
-	thickness /= view.GetZoom();
+	thickness /= m_view.GetZoom();
 	GLContext::GetInstance()->AddLine(a, b, thickness, color);
 }
 
@@ -104,7 +108,7 @@ void GLCanvas::TexturePoly(const ConvexPolygon &p, const glm::vec4 &color)
 
 void GLCanvas::DrawPoint(const glm::vec2 &pt, const glm::vec4 &color)
 {
-	float thickness = 1.0 / view.GetZoom();
+	float thickness = 1.0 / m_view.GetZoom();
 	glm::vec2 mins = { pt.x - thickness * 3.0f, pt.y - thickness * 3.0f };
 	glm::vec2 maxs = { pt.x + thickness * 3.0f, pt.y + thickness * 3.0f };
 
@@ -119,7 +123,7 @@ void GLCanvas::DrawPoint(const glm::vec2 &pt, const glm::vec4 &color)
 
 void GLCanvas::OutlinePoly(const glm::vec2 points[], size_t npoints, float thickness, const glm::vec4 &color)
 {
-	thickness /= view.GetZoom();
+	thickness /= m_view.GetZoom();
 
 	for(size_t i = 0; i < npoints; i++) {
 		glm::vec2 a = points[i];
@@ -142,10 +146,10 @@ void GLCanvas::OnPaint(wxPaintEvent &e)
 	ctx->Clear(bg);
 	ctx->ClearBuffers();
 
-	editor.OnDraw();
+	m_editor.OnDraw();
 
 	ctx->CopyBuffers();
-	ctx->SetMatrices(proj, view.GetMatrix());
+	ctx->SetMatrices(m_proj, m_view.GetMatrix());
 	ctx->DrawElements();
 
 	SwapBuffers();
@@ -164,5 +168,5 @@ void GLCanvas::OnSize(wxSizeEvent &e)
 
 	float width = static_cast<float>(size.x);
 	float height = static_cast<float>(size.y);
-	proj = glm::ortho(0.0f, width, height, 0.0f);
+	m_proj = glm::ortho(0.0f, width, height, 0.0f);
 }

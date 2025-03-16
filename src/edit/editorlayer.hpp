@@ -9,7 +9,6 @@ class EditorLayer
 {
 public:
 	EditorLayer(const char *name);
-	//EditorLayer(EditorLayer &&other);
 	void SetName(const char *name);
 private:
 	char m_name[MAX_LAYER_NAME] = { 0 };

@@ -28,5 +28,8 @@ class LayerList : public wxListCtrl,
 public:
 	LayerList(wxWindow *parent);
 private:
+	wxItemAttr *OnGetItemAttr(long item) const;
 	wxString OnGetItemText(long item, long col) const;
+	void OnFocused(wxListEvent &e);
+	void OnSelected(wxListEvent &e);
 };

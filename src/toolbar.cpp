@@ -14,7 +14,7 @@
 
 ToolBar::ToolBar(wxWindow *parent, wxWindowID id)
 	: wxToolBar(parent, id, wxDefaultPosition, wxDefaultSize, wxTB_VERTICAL | wxTB_LEFT),
-	  selected(ID::SELECT)
+	  m_selected(ID::SELECT)
 {
 	AddRadioTool(ID::SELECT, "Select", hand_xpm);
 	AddRadioTool(ID::LINE, "Line", line_xpm);
@@ -24,7 +24,7 @@ ToolBar::ToolBar(wxWindow *parent, wxWindowID id)
 
 	Realize();
 	/* make select tool default, wont call events */
-	ToggleTool(selected, true);
+	ToggleTool(m_selected, true);
 
 	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::SELECT);
 	Bind(wxEVT_TOOL, &ToolBar::OnSelect, this, ToolBar::ID::LINE);
@@ -37,10 +37,10 @@ ToolBar::ToolBar(wxWindow *parent, wxWindowID id)
 void ToolBar::OnSelect(wxCommandEvent &e)
 {
 	int id = e.GetId();
-	selected = static_cast<ID>(id);
-	GLCanvas *dp = GLCanvas::GetCurrent();
+	m_selected = static_cast<ID>(id);
+	GLCanvas *canvas = GLCanvas::GetCurrent();
 
-	if(dp != nullptr) {
-		dp->editor.OnToolSelect(selected);
+	if(canvas != nullptr) {
+		canvas->GetEditor().OnToolSelect(m_selected);
 	}
 }
