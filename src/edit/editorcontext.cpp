@@ -470,8 +470,7 @@ ConvexPolygon *EditorContext::UndoAction(const ActData &act)
 		break;
 	case ActType::MOVE:
 		poly = &polys[act.poly];
-		glm::i32vec2 move = act.move;
-		poly->Offset(-move);
+		poly->Offset(-act.move);
 		break;
 	case ActType::SCALE:
 		poly = &polys[act.poly];

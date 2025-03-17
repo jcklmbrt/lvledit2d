@@ -73,7 +73,7 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 		return;
 	}
 
-	Rect2D aabb = p->GetAABB();
+	const Rect2D &aabb = p->GetAABB();
 
 	std::array aabbpts = {
 		glm::vec2 { aabb.mins.x, aabb.mins.y },
@@ -158,7 +158,7 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 	} else {
 		poly = m_edit.GetSelectedPoly();
 		if(poly != nullptr) {
-			Rect2D &aabb = poly->GetAABB();
+			const Rect2D &aabb = poly->GetAABB();
 			m_inedit = true;
 			m_outcode = aabb.GetOutCode(wpos);
 			m_editstart = GLBackgroundGrid::Snap(wpos);

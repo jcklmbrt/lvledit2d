@@ -22,7 +22,7 @@ public:
 	wxPoint WorldToScreen(glm::vec2 world) const;
 	glm::vec2 ScreenToWorld(wxPoint screen) const;
 	glm::vec2 MouseToWorld(wxMouseEvent &e) const;
-	glm::mat4 GetMatrix() const { return m_view; }
+	const glm::mat4 &GetMatrix() const { return m_view; }
 private:
 	void SetupMatrix();
 	glm::mat4 m_view;

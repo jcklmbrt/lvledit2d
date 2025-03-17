@@ -36,9 +36,9 @@ private:
 public:
 	inline glm::vec2 GetMousePos() { return m_mousepos; }
 	inline EditorContext &GetEditor() { return m_editor; }
-	inline glm::mat4 &GetViewMatrix() { return m_view.GetMatrix(); }
-	inline glm::mat4 &GetProjMatrix() { return m_proj; }
-	inline ViewMatrixBase &GetView() { return m_view; }
+	inline const glm::mat4 &GetViewMatrix() const { return m_view.GetMatrix(); }
+	inline const glm::mat4 &GetProjMatrix() const { return m_proj; }
+	inline const ViewMatrixBase &GetView() const { return m_view; }
 };
 
 

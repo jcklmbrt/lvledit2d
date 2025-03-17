@@ -134,20 +134,9 @@ public:
 		m_texscale = scale;
 	}
 
-	inline Rect2D GetAABB() const 
-	{
-		return m_aabb;
-	}
-
-	inline const std::vector<glm::vec2> &GetPoints() const
-	{
-		return m_points;
-	}
-
-	inline const std::vector<Plane2D> &GetPlanes() const
-	{
-		return m_planes;
-	}
+	inline const Rect2D &GetAABB() const { return m_aabb; }
+	inline const std::vector<glm::vec2> &GetPoints() const { return m_points; }
+	inline const std::vector<Plane2D> &GetPlanes() const { return m_planes; }
 };
 
 #endif

@@ -19,8 +19,7 @@ void LineEdit::StartPoint_OnMouseLeftDown(wxMouseEvent &e)
 	if(poly == nullptr) {
 		
 	} else {
-		GLBackgroundGrid::Snap(start);
-		m_start = start;
+		m_start = GLBackgroundGrid::Snap(start);
 		m_edit.SetSelectedPoly(poly);
 		m_state = LineEditState::END_POINT;
 	}
