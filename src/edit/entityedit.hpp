@@ -1,7 +1,7 @@
 #ifndef _ENTITYEDIT_HPP
 #define _ENTITYEDIT_HPP
 
-#include "src/edit/editorcontext.hpp"
+#include "src/edit/ibaseedit.hpp"
 
 class EntityEdit : public IBaseEdit
 {

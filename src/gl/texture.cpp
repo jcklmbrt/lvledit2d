@@ -32,29 +32,35 @@ static int BitCeil512(int n)
 	return i;
 }
 
-void GLTexture::AddToFile(TexInfo &info, std::vector<unsigned char> &data)
+void GLTexture::AddToFile(L2dTexInfo &info, std::vector<unsigned char> &data, std::vector<unsigned char> &strings) const
 {
-	strncpy(info.name, m_name, MAX_TEXTURE_NAME);
+	info.name_ofs = strings.size();
+	info.name_size = m_name.size();
+	strings.insert(strings.end(), m_name.begin(), m_name.end());
+
 	info.width = m_width;
 	info.height = m_height;
 	info.pixelwidth = m_pixelwidth;
 
-	info.dataoffset = data.size();
+	info.data_ofs = data.size();
 	size_t nbytes = m_width * m_height * m_pixelwidth;
 	data.resize(data.size() + nbytes);
-	memcpy(data.data() + info.dataoffset, m_data, nbytes);
+	memcpy(data.data() + info.data_ofs, m_data, nbytes);
 
 }
 
 void GLTexture::Load(size_t width, size_t height, size_t pixelwidth, const char *name, unsigned char *data)
 {
-	strncpy(m_name, name, sizeof(m_name));
+	m_name = name;
 
 	wxImage img(width, height, data);
 	wxBitmap bmp(img);
 	TextureList *tlist = TextureList::GetInstance();
 	wxImageList *ilist = tlist->GetImageList(wxIMAGE_LIST_SMALL);
-	wxBitmap::Rescale(bmp, wxSize(THUMB_SIZE_X, THUMB_SIZE_Y));
+
+	int size = TextureList::ICON_SIZE;
+
+	wxBitmap::Rescale(bmp, wxSize(size, size));
 	m_thumb = ilist->Add(bmp);
 
 	size_t nbytes = width * height * pixelwidth;

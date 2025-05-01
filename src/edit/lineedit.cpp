@@ -14,15 +14,12 @@ void LineEdit::StartPoint_OnMouseLeftDown(wxMouseEvent &e)
 	wxPoint mpos = e.GetPosition();
 	glm::vec2 start = m_view.ScreenToWorld(mpos);
 
-	ConvexPolygon *poly = m_edit.GetSelectedPoly();
-
-	if(poly == nullptr) {
-		
-	} else {
-		m_start = GLBackgroundGrid::Snap(start);
-		m_edit.SetSelectedPoly(poly);
-		m_state = LineEditState::END_POINT;
+	if(m_edit.GetSelectedPoly() == nullptr || m_edit.GetSelectedLayer() == nullptr) {
+		return;
 	}
+
+	m_start = GLBackgroundGrid::Snap(start);
+	m_state = LineEditState::END_POINT;
 }
 
 
@@ -39,15 +36,16 @@ void LineEdit::EndPoint_OnMouseLeftDown(wxMouseEvent &e)
 
 	m_plane = Plane2D(m_start, m_end);
 
-	ConvexPolygon *poly = m_edit.GetSelectedPoly();
+	ConvexPolygon *selected = m_edit.GetSelectedPoly();
 
-	if(poly != nullptr) {
-		if(poly->AllPointsBehind(m_plane)) {
+	if(selected != nullptr) {
+
+		if(selected->AllPointsBehind(m_plane)) {
 			/* bad cut, start over. */
 			m_state = LineEditState::START_POINT;
 		} else {
 			m_points.clear();
-			poly->ImposePlane(m_plane, m_points);
+			selected->ImposePlane(m_plane, m_points);
 			m_state = LineEditState::SLICE;
 		}
 	}
@@ -69,11 +67,9 @@ void LineEdit::EndPoint_OnDraw()
 
 void LineEdit::Slice_OnMouseLeftDown(wxMouseEvent &e)
 {
-	ConvexPolygon *poly = m_edit.GetSelectedPoly();
-	wxASSERT(poly != nullptr);
+	wxASSERT(m_edit.GetSelectedLayer() && m_edit.GetSelectedPoly());
 
 	m_edit.AddAction(m_plane);
-	
 	/* Back to the start */
 	m_state = LineEditState::START_POINT;
 }
@@ -82,19 +78,20 @@ void LineEdit::Slice_OnMouseLeftDown(wxMouseEvent &e)
 void LineEdit::Slice_OnMouseRightDown(wxMouseEvent &e)
 {
 	m_plane.Flip();
-
 	m_points.clear();
 
-	ConvexPolygon *poly = m_edit.GetSelectedPoly();
-	wxASSERT(poly != nullptr);
-	poly->ImposePlane(m_plane, m_points);
+	ConvexPolygon *selected = m_edit.GetSelectedPoly();
+	wxASSERT(selected);
+	wxASSERT(m_edit.GetSelectedLayer());
+	selected->ImposePlane(m_plane, m_points);
 }
 
 
 void LineEdit::Slice_OnDraw()
 {
 	ConvexPolygon *poly = m_edit.GetSelectedPoly();
-	wxASSERT(poly != nullptr);
+	wxASSERT(poly);
+	wxASSERT(m_edit.GetSelectedLayer());
 
 	const std::vector<glm::vec2> &pts = poly->GetPoints();
 	m_canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
@@ -156,7 +153,9 @@ void LineEdit::OnMouseLeftDown(wxMouseEvent &e)
 
 void LineEdit::DrawPolygon(const ConvexPolygon *p)
 {
-	if(p == m_edit.GetSelectedPoly() && m_state == LineEditState::SLICE) {
+	ConvexPolygon *selected = m_edit.GetSelectedPoly();
+
+	if(p == selected && m_state == LineEditState::SLICE) {
 		Slice_OnDraw();
 	} else {
 		IBaseEdit::DrawPolygon(p);

@@ -18,10 +18,10 @@ MainFrame::MainFrame()
 {
 	SetIcon(icon_xpm);
 	Maximize(true);
-
+	
 	wxMenu *file = new wxMenu;
-	wxMenu *edit = new wxMenu;
-
+        wxMenu *edit = new wxMenu;
+	
 	wxMenuItem *save = new wxMenuItem(file, wxID_SAVE);
 	save->SetBitmap(save_xpm);
 	wxMenuItem *exit = new wxMenuItem(file, wxID_EXIT);

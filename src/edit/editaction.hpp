@@ -1,11 +1,15 @@
 #ifndef _EDITACTION_HPP
 #define _EDITACTION_HPP
 
+#include <wx/string.h>
+
 #include <vector>
 #include <glm/glm.hpp>
 
 #include "src/geometry.hpp"
 #include "src/historylist.hpp"
+
+class EditorLayer;
 
 enum class ActType
 {
@@ -14,7 +18,8 @@ enum class ActType
 	MOVE,
 	SCALE,
 	DEL,
-	TEXTURE
+	TEXTURE,
+	LAYER
 };
 
 typedef Rect2D ActRect;
@@ -37,16 +42,21 @@ struct ActTexture
 struct ActIndex
 {
 	ActType type;
-	size_t layer;
-	size_t poly;
-	size_t index;
+	uint32_t layer;
+	uint32_t poly;
+	uint32_t index;
+};
+
+struct ActLayer
+{
+	uint32_t color;
 };
 
 struct ActData
 {
 	ActType type;
-	size_t layer;
-	size_t poly;
+	uint32_t layer;
+	uint32_t poly;
 	union {
 		ActRect rect;
 		ActLine line;
@@ -68,18 +78,24 @@ public:
 	bool GetBack(ActData &act);
 	void UpdateBack(const ActData &act);
 
-	size_t BinSize();
-	void Seralize(unsigned char *bytes, size_t nbytes);
-	bool Deserialize(unsigned char *bytes, size_t nbytes);
+	size_t BinSize() const;
 
-	bool GetAction(size_t i, ActData &act);
-	void GetAction(const ActIndex &idx, ActData &act);
+	void Seralize(std::vector<uint8_t> &out, 
+	              std::vector<uint8_t> &strings) const;
+
+	bool Deserialize(const std::vector<uint8_t> &bytes,
+	                 const std::vector<uint8_t> &strings);
+
+	bool GetAction(size_t i, ActData &act) const;
+	void GetAction(const ActIndex &idx, ActData &act) const;
+	void AddAction(const ActLayer &act, size_t layer);
 	void AddAction(const ActRect &rect, size_t poly, size_t layer);
 	void AddAction(const ActLine &line, size_t poly, size_t layer);
 	void AddAction(const ActMove &move, size_t poly, size_t layer);
 	void AddAction(const ActScale &scale, size_t poly, size_t layer);
 	void AddAction(const ActTexture &texture, size_t poly, size_t layer);
 	void AddDelete(size_t poly, size_t layer);
+
 private:
 	// action types
 	std::vector<ActRect> m_rects;
@@ -87,6 +103,7 @@ private:
 	std::vector<ActMove> m_moves;
 	std::vector<ActScale> m_scales;
 	std::vector<ActTexture> m_textures;
+	std::vector<ActLayer> m_layers;
 	// [0..history]    --> history
 	// [history..size] --> future
 	std::vector<ActIndex> m_indices;

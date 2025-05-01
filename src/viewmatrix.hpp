@@ -3,7 +3,7 @@
 #define _VIEWMATRIX_HPP
 
 #include <wx/event.h>
-#include "src/singleton.hpp"
+#include "src/util/singleton.hpp"
 #include "src/geometry.hpp"
 
 constexpr glm::vec2 MAX_PAN = {  1000.0f,  1000.0f };

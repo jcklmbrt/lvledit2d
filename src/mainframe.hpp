@@ -4,7 +4,7 @@
 
 #include <wx/wx.h>
 #include <wx/notebook.h>
-#include "src/singleton.hpp"
+#include "src/util/singleton.hpp"
 
 
 class MainFrame : public wxFrame,
@@ -12,7 +12,7 @@ class MainFrame : public wxFrame,
 {
 public:
 	MainFrame();
-private: /* Events */
+private:
 	void OnNew(wxCommandEvent &e);
 	void OnOpen(wxCommandEvent &e);
 	void OnSave(wxCommandEvent &e);

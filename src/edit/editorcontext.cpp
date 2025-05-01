@@ -1,7 +1,5 @@
-#include <array>
-#include <cfloat>
-#include <numeric>
 #include <cstdio>
+#include <numeric>
 #include <wx/debug.h>
 #include <wx/listbase.h>
 #include <wx/msgdlg.h>
@@ -22,18 +20,6 @@
 #include "src/texturepanel.hpp"
 #include "src/layerpanel.hpp"
 
-struct Lump
-{
-	uint32_t ofs, size;
-};
-
-struct L2dHeader 
-{
-	uint8_t magic[2];
-	Lump actions;
-	Lump texinfo;
-	Lump texdata;
-};
 
 bool EditorContext::Load(const wxFileName &filename)
 {
@@ -42,51 +28,19 @@ bool EditorContext::Load(const wxFileName &filename)
 	m_name = filename.GetName();
 	m_path = filename.GetFullPath();
 	m_hasfile = true;
-	FILE *file = fopen(m_path.c_str(), "rb");
 
-	L2dHeader hdr;
-	fseek(file, 0, SEEK_SET);
-	fread(&hdr, sizeof(L2dHeader), 1, file);
+	L2dFile file;
 
-	if(hdr.magic[0] != 'L' && hdr.magic[1] != '2') {
-		fclose(file);
-		file = nullptr;
+	if(!file.LoadFromFile(m_path.c_str())) {
 		return false;
 	}
 
-	unsigned char *action_data = new unsigned char[hdr.actions.size];
-
-	fseek(file, hdr.actions.ofs, SEEK_SET);
-	fread(action_data, hdr.actions.size, 1, file);
-	m_actions.Deserialize(action_data, hdr.actions.size);
-
-	delete[] action_data;
-
-	std::vector<TexInfo> texinfo;
-	texinfo.resize(hdr.texinfo.size / sizeof(TexInfo));
-	fseek(file, hdr.texinfo.ofs, SEEK_SET);
-	fread(texinfo.data(), hdr.texinfo.size, 1, file);
-
-	std::vector<unsigned char> texdata;
-	texdata.resize(hdr.texdata.size);
-	fseek(file, hdr.texdata.ofs, SEEK_SET);
-	fread(texdata.data(), hdr.texdata.size, 1, file);
-
-	for(TexInfo &info : texinfo) {
-		size_t nbytes = info.width * info.height * info.pixelwidth;
-		unsigned char *data = new unsigned char[nbytes];
-
-		memcpy(data, texdata.data() + info.dataoffset, nbytes);
-
-		GLTexture texture;
-		texture.Load(info.width, info.height, info.pixelwidth, info.name, data);
-
-		m_textures.push_back(texture);
+	if(!file.WriteToContext(this)) {
+		return false;
 	}
 
 	ResetPolys();
 
-	wxPoint2DDouble d;
 	TextureList *tlist = TextureList::GetInstance();
 	tlist->SetItemCount(m_textures.size());
 	tlist->Refresh();
@@ -107,42 +61,9 @@ bool EditorContext::Save()
 		return false;
 	}
 
-	FILE *file = fopen(m_path.c_str(), "wb");
-
-	std::vector<unsigned char> texdata;
-	std::vector<TexInfo> texinfo;
-
-	for(GLTexture &texture : m_textures) {
-		TexInfo &info = texinfo.emplace_back();
-		texture.AddToFile(info, texdata);
-	}
-
-	L2dHeader hdr;
-	hdr.magic[0] = 'L';
-	hdr.magic[1] = '2';
-	hdr.actions.ofs = sizeof(L2dHeader);
-	hdr.actions.size = m_actions.BinSize();
-	hdr.texinfo.ofs = hdr.actions.ofs + hdr.actions.size;
-	hdr.texinfo.size = texinfo.size() * sizeof(TexInfo);
-	hdr.texdata.ofs = hdr.texinfo.ofs + hdr.texinfo.size;
-	hdr.texdata.size = texdata.size();
-
-	fseek(file, 0, SEEK_SET);
-	fwrite(&hdr, sizeof(L2dHeader), 1, file);
-
-	unsigned char *action_data = new unsigned char[hdr.actions.size];
-	m_actions.Seralize(action_data, hdr.actions.size);
-
-	fseek(file, hdr.actions.ofs, SEEK_SET);
-	fwrite(action_data, hdr.actions.size, 1, file);
-
-	delete[] action_data;
-
-	fseek(file, hdr.texinfo.ofs, SEEK_SET);
-	fwrite(texinfo.data(), hdr.texinfo.size, 1, file);
-
-	fseek(file, hdr.texdata.ofs, SEEK_SET);
-	fwrite(texdata.data(), hdr.texdata.size, 1, file);
+	L2dFile l2file;
+	l2file.LoadFromContext(this);
+	l2file.WriteToFile(m_path.c_str());
 
 	return true;
 }
@@ -159,101 +80,6 @@ bool EditorContext::Save(const wxFileName &filename)
 	return Save();
 }
 
-void IBaseEdit::DrawPolygon(const ConvexPolygon *p)
-{
-	if(p == m_edit.GetSelectedPoly()) {
-		Rect2D aabb = p->GetAABB();
-		m_canvas->OutlineRect(aabb, 1.0f, BLUE);
-
-		/* inflate aabb to illustrate planes */
-		aabb.mins -= 1;
-		aabb.maxs += 1;
-
-		std::array aabbpts = {
-			glm::i32vec2 { aabb.mins.x, aabb.mins.y },
-			glm::i32vec2 { aabb.maxs.x, aabb.mins.y },
-			glm::i32vec2 { aabb.maxs.x, aabb.maxs.y },
-			glm::i32vec2 { aabb.mins.x, aabb.maxs.y }
-		};
-
-		for(const Plane2D &plane : p->GetPlanes()) {
-			glm::vec2 line[2]{};
-			size_t n = 0;
-
-			for(size_t i = 0; i < aabbpts.size(); i++) {
-				glm::i64vec2 p1 = aabbpts[i];
-				glm::i64vec2 p2 = aabbpts[(i + 1) % aabbpts.size()];
-				glm::i64vec2 delta = p2 - p1;
-
-				int64_t a = plane.a;
-				int64_t b = plane.b;
-				int64_t c = plane.c;
-
-				int64_t denom = a * delta.x + b * delta.y;
-				int64_t numer = -(a * p1.x + b * p1.y + c);
-
-				if(denom != 0) {
-					int64_t g = std::gcd(denom, numer);
-					if(g != 0) {
-						denom /= g;
-						numer /= g;
-					}
-
-					float t = static_cast<float>(numer) / static_cast<float>(denom);
-					if(t >= 0.0f && t <= 1.0f) {
-						line[n++] = glm::vec2(p1) + t * glm::vec2(delta);
-					}
-				} else if(numer == 0) {
-					line[0] = p1;
-					line[1] = p2;
-					n = 2;
-					break;
-				}
-				if(n >= 2) {
-					break;
-				}
-			}
-
-			wxASSERT(n == 2);
-			m_canvas->DrawLine(line[0], line[1], 1.0, RED);
-		}
-	}
-
-	const std::vector<glm::vec2> &pts = p->GetPoints();
-
-	m_canvas->OutlinePoly(pts.data(), pts.size(), 3.0, BLACK);
-
-	if(p == m_edit.GetSelectedPoly()) {
-		m_canvas->OutlinePoly(pts.data(), pts.size(), 1.0, GREEN);
-	} else {
-		m_canvas->OutlinePoly(pts.data(), pts.size(), 1.0, WHITE);
-	}
-
-	if(p->GetTexture() != nullptr) {
-		m_canvas->TexturePoly(*p, WHITE);
-	}
-}
-
-
-IBaseEdit::IBaseEdit(GLCanvas *canvas)
-	: m_canvas(canvas),
-	  m_edit(canvas->GetEditor()),
-	  m_view(canvas->GetView())
-{
-}
-
-
-IBaseEdit::~IBaseEdit()
-{
-
-}
-
-
-void IBaseEdit::OnDraw()
-{
-
-}
-
 
 EditorContext::EditorContext(GLCanvas *canvas)
 	: m_canvas(canvas),
@@ -261,12 +87,13 @@ EditorContext::EditorContext(GLCanvas *canvas)
 	  m_hasfile(false),
 	  m_state(nullptr)
 {
-	// setup default layer
-	m_layers.emplace_back("default");
-	m_curlayer = m_layers.size() - 1;
+	// default layer
+	m_layers.emplace_back(*wxRED);
+	m_selectedlayer = m_layers.size() - 1;
 
 	LayerList *llist = LayerList::GetInstance();
 	llist->SetItemCount(m_layers.size());
+	llist->Refresh(true);
 }
 
 
@@ -286,37 +113,19 @@ EditorContext::~EditorContext()
 void EditorContext::OnDraw()
 {
 	if(m_state != nullptr) {
-		ConvexPolygon *spoly = GetSelectedPoly();
-
 		for(EditorLayer &layer : m_layers) {
-			for(ConvexPolygon &p : layer.GetPolys()) {
-				if(&p != spoly) {
-					m_state->DrawPolygon(&p);
-				}
+			for(size_t &i : layer.GetPolys()) {
+				m_state->DrawPolygon(&m_polys[i]);
 			}
 		}
 
-		if(spoly != nullptr) {
-			m_state->DrawPolygon(spoly);
+		if(m_selectedpoly != -1) {
+			const ConvexPolygon &poly = m_polys[m_selectedpoly];
+			m_state->DrawPolygon(&poly);
 		}
 
 		m_state->OnDraw();
 	}
-}
-
-/* we want our Editor events to be processed before any other event. */
-void EnqueueEventHandler(wxWindowBase *window, wxEvtHandler *handler)
-{
-	wxEvtHandler *last = window->GetEventHandler();
-
-	while(last && last->GetNextHandler() != window) {
-		last = last->GetNextHandler();
-	}
-
-	last->SetNextHandler(handler);
-	handler->SetNextHandler(window);
-	handler->SetPreviousHandler(last);
-	window->SetPreviousHandler(handler);
 }
 
 
@@ -352,26 +161,9 @@ void EditorContext::OnToolSelect(ToolBar::ID id)
 			break;
 		}
 		if(m_state != nullptr) {
-			EnqueueEventHandler(m_canvas, m_state);
+			m_canvas->PushEventHandler(m_state);
 		}
 	}
-}
-
-
-ConvexPolygon *EditorContext::FindPoly(glm::vec2 wpos)
-{
-	EditorLayer *layer = GetSelectedLayer();
-	if(layer == nullptr) {
-		return nullptr;
-	}
-
-	for(ConvexPolygon &p : layer->GetPolys()) {
-		if(p.Contains(wpos)) {
-			return &p;
-		}
-	}
-
-	return nullptr;
 }
 
 
@@ -380,6 +172,8 @@ void EditorContext::ResetPolys()
 	for(EditorLayer &layer : m_layers) {
 		layer.GetPolys().clear();
 	}
+
+	m_polys.clear();
 
 	size_t hindex = m_actions.HistoryIndex();
 	for(size_t i = 0; i < hindex; i++) {
@@ -409,81 +203,123 @@ void EditorContext::Undo()
 	Save();
 }
 
-ConvexPolygon *EditorContext::ApplyAction(const ActData &act)
+void EditorContext::ApplyAction(const ActData &act)
 {
 	ConvexPolygon *poly = nullptr;
+
+	if(act.type == ActType::LAYER) {
+		wxColour col;
+		col.SetRGB(act.layer);
+		m_layers.push_back(col);
+		return;
+	}
+
 	if(act.layer < 0 || act.layer >= m_layers.size()) {
-		return nullptr;
+		return;
 	}
 
 	EditorLayer &layer = m_layers[act.layer];
-	std::vector<ConvexPolygon> &polys = layer.GetPolys();
 
 	switch(act.type) {
 	case ActType::LINE:
-		poly = &polys[act.poly];
+		poly = &m_polys[act.poly];
 		poly->Slice(act.line);
 		poly->PurgePlanes();
 		poly->ResizeAABB();
 		break;
 	case ActType::MOVE:
-		poly = &polys[act.poly];
+		poly = &m_polys[act.poly];
 		poly->Offset(act.move);
 		break;
 	case ActType::SCALE:
-		poly = &polys[act.poly];
+		poly = &m_polys[act.poly];
 		poly->Scale(act.scale.origin, act.scale.numer, act.scale.denom);
 		break;
 	case ActType::RECT:
-		polys.push_back(act.rect);
-		poly = &polys.back();
+		poly = &m_polys.emplace_back(act.rect);
+		layer.AddPoly(act.poly);
 		break;
 	case ActType::DEL:
-		polys.erase(polys.begin() + act.poly);
 		poly = nullptr;
-		return nullptr;
-		break;
+		if(act.poly == -1) {
+			m_layers.erase(m_layers.begin() + act.layer);
+		} else {
+			layer.RemovePoly(act.poly);
+		}
+		return;
 	case ActType::TEXTURE:
-		poly = &polys[act.poly];
+		poly = &m_polys[act.poly];
 		poly->SetTexture(act.texture.index, act.texture.scale);
 		break;
+	case ActType::LAYER:
+		break;
 	}
+
 	wxASSERT(poly);
-	wxASSERT_MSG(act.poly == poly - &polys.front(),
+	wxASSERT_MSG(act.poly == poly - &m_polys.front(),
 		"Polygon indices out of order.");
 
-	return poly;
+	m_selectedpoly = act.poly;
+}
+
+ConvexPolygon *EditorContext::FindPoly(glm::vec2 p)
+{
+	if(m_selectedlayer == -1) {
+		return nullptr;
+	}
+
+	const EditorLayer &layer = m_layers[m_selectedlayer];
+	for(size_t i : layer.GetPolys()) {
+		if(m_polys[i].Contains(p)) {
+			return &m_polys[i];
+		}
+	}
+
+	return nullptr;
 }
 
 
-ConvexPolygon *EditorContext::UndoAction(const ActData &act)
+void EditorContext::DeleteLayer()
+{
+	if(!m_layers.empty() && m_selectedlayer != -1) {
+		m_actions.AddDelete(-1, m_selectedlayer);
+		ActData back;
+		m_actions.GetBack(back);
+		ApplyAction(back);
+	}
+}
+
+
+void EditorContext::UndoAction(const ActData &act)
 {
 	ConvexPolygon *poly = nullptr;
 	EditorLayer &layer = m_layers[act.layer];
-	std::vector<ConvexPolygon> &polys = layer.GetPolys();
 
 	switch(act.type) {
 	case ActType::TEXTURE:
 	case ActType::LINE:
 	case ActType::DEL:
+		/* HACK: completely resets *everything* after each undo.
+		   Instead it would be better to fix broken indices. */
 		ResetPolys();
 		break;
 	case ActType::MOVE:
-		poly = &polys[act.poly];
+		poly = &m_polys[act.poly];
 		poly->Offset(-act.move);
 		break;
 	case ActType::SCALE:
-		poly = &polys[act.poly];
+		poly = &m_polys[act.poly];
 		poly->Scale(act.scale.origin, act.scale.denom, act.scale.numer);
 		break;
 	case ActType::RECT:
-		if(m_selected == act.poly) {
-			m_selected = -1;
-		}
-		polys.erase(polys.begin() + act.poly);
+		m_selectedpoly = -1;
+		layer.RemovePoly(act.poly);
+		break;
+	case ActType::LAYER:
+		m_selectedlayer = -1;
+		m_layers.erase(m_layers.begin() + act.layer);
 		break;
 	}
-	return poly;
 }
 
 
@@ -499,10 +335,10 @@ void EditorContext::AddTexture(const wxFileName &filename)
 	}
 
 	m_textures.push_back(texture);
+	m_selectedtexture = m_textures.size() - 1;
 
 	TextureList *tlist = TextureList::GetInstance();
 	tlist->SetItemCount(m_textures.size());
-	tlist->SetSelected(m_textures.size() - 1);
 	tlist->Refresh();
 }
 
@@ -521,41 +357,54 @@ void EditorContext::Redo()
 
 void EditorContext::AddAction(const ActRect &rect)
 {
-	EditorLayer *layer = GetSelectedLayer();
-	std::vector<ConvexPolygon> &polys = layer->GetPolys();
-
-	m_selected = polys.size();
-
-	m_actions.AddAction(rect, polys.size(), m_curlayer);
+	m_actions.AddAction(rect, m_polys.size(), m_selectedlayer);
 
 	ActData back;
 	m_actions.GetBack(back);
 	ApplyAction(back);
 
+	m_selectedpoly = m_polys.size() - 1;
+
 	Save();
 	m_canvas->Refresh();
 }
+
+void EditorContext::AddAction(const ActLayer &layer)
+{
+	m_selectedpoly = -1;
+	m_selectedlayer = m_layers.size();
+	
+	m_actions.AddAction(layer, m_selectedlayer);
+
+	ActData back;
+	m_actions.GetBack(back);
+	ApplyAction(back);
+	Save();
+
+	LayerList *list = LayerList::GetInstance();
+	list->SetItemCount(m_layers.size());
+
+	m_canvas->Refresh();
+}
+
 
 void EditorContext::AddAction(const ActLine &line)
 {
-	ConvexPolygon *poly = GetSelectedPoly();
-	if(poly == nullptr) {
+	if(m_selectedpoly == -1 || m_selectedlayer == -1) {
 		return;
 	}
 
-	poly->Slice(line);
-	poly->PurgePlanes();
-	poly->ResizeAABB();
-
-	m_actions.AddAction(line, m_selected, m_curlayer);
+	m_actions.AddAction(line, m_selectedpoly, m_selectedlayer);
 
 	ActData back;
 	m_actions.GetBack(back);
-	ApplyAction(back);
 
+	ApplyAction(back);
 	Save();
+
 	m_canvas->Refresh();
 }
+
 
 void EditorContext::AddAction(const ActMove &move)
 {
@@ -566,7 +415,7 @@ void EditorContext::AddAction(const ActMove &move)
 	ActData back;
 	m_actions.GetBack(back);
 
-	if(back.type == ActType::MOVE && back.poly == m_selected) {
+	if(back.type == ActType::MOVE && back.poly == m_selectedpoly) {
 		/* we don't want to spam a move action for each pixel moved */
 		UndoAction(back);
 
@@ -581,7 +430,7 @@ void EditorContext::AddAction(const ActMove &move)
 		m_actions.UpdateBack(back);
 		Save();
 	} else {
-		m_actions.AddAction(move, m_selected, m_curlayer);
+		m_actions.AddAction(move, m_selectedpoly, m_selectedlayer);
 	}
 
 	m_actions.GetBack(back);
@@ -595,11 +444,15 @@ void EditorContext::AddAction(const ActScale &scale)
 {
 	ActData back;
 	bool add_action = true;
+
+	size_t layer = m_selectedlayer;
+	size_t poly = m_selectedpoly;
+
 	if(!m_actions.IsEmpty() && m_actions.HistoryIndex()) {
 		m_actions.GetBack(back);
 		if(back.type == ActType::SCALE &&
-		   back.poly == m_selected &&
-		   back.layer == m_curlayer &&
+		   back.poly == poly &&
+		   back.layer == layer &&
 		   back.scale.origin == scale.origin) {
 
 			UndoAction(back);
@@ -626,7 +479,7 @@ void EditorContext::AddAction(const ActScale &scale)
 	}
 
 	if(add_action) {
-		m_actions.AddAction(scale, m_selected, m_curlayer);
+		m_actions.AddAction(scale, poly, layer);
 	}
 
 	m_actions.GetBack(back);
@@ -638,19 +491,18 @@ void EditorContext::AddAction(const ActScale &scale)
 
 void EditorContext::AddAction(const ActTexture &texture)
 {
-	ConvexPolygon *poly = GetSelectedPoly();
-	if(poly == nullptr) {
+	if(m_selectedpoly == -1 || m_selectedlayer == -1) {
 		return;
 	}
 
-	poly->SetTexture(texture.index, texture.scale);
+	m_polys[m_selectedpoly].SetTexture(texture.index, texture.scale);
 
 	ActData back;
 	if(!m_actions.IsEmpty() && m_actions.HistoryIndex()) {
 		m_actions.GetBack(back);
 		/* don't bother saving repeat texture actions */
 		if(back.type == ActType::TEXTURE) {
-			if(back.poly == m_selected
+			if(back.poly == m_selectedpoly
 				&& texture.index == back.texture.index
 				&& texture.scale == back.texture.scale) {
 				return;
@@ -658,7 +510,7 @@ void EditorContext::AddAction(const ActTexture &texture)
 		}
 	}
 
-	m_actions.AddAction(texture, m_selected, m_curlayer);
+	m_actions.AddAction(texture, m_selectedpoly, m_selectedlayer);
 	Save();
 	m_canvas->Refresh();
 }
@@ -668,9 +520,8 @@ void EditorContext::AddDelete()
 	LayerList *llist = LayerList::GetInstance();
 	llist->Refresh();
 
-	m_actions.AddDelete(m_selected, m_curlayer);
-
-	m_selected = -1;
+	m_actions.AddDelete(m_selectedpoly, m_selectedlayer);
+	m_selectedpoly = -1;
 
 	ActData back;
 	m_actions.GetBack(back);

@@ -2,10 +2,11 @@
 #ifndef _SELECTIONEDIT_HPP
 #define _SELECTIONEDIT_HPP
 
-#include "src/geometry.hpp"
-#include "src/edit/editorcontext.hpp"
 #include <wx/event.h>
 #include <wx/geometry.h>
+
+#include "src/geometry.hpp"
+#include "src/edit/ibaseedit.hpp"
 
 class SelectionEdit : public IBaseEdit
 {

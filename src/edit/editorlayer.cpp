@@ -1,14 +1,21 @@
-#include <cstring>
 #include "src/edit/editorlayer.hpp"
 
 
-EditorLayer::EditorLayer(const char *name)
+EditorLayer::EditorLayer(const wxColour &color)
 {
-	SetName(name);
+	m_color = color;
 }
 
 
-void EditorLayer::SetName(const char *name)
+void EditorLayer::RemovePoly(size_t poly)
 {
-	strncpy(m_name, name, MAX_LAYER_NAME);
+	std::vector<size_t>::iterator pos = std::find(m_polys.begin(), m_polys.end(), poly);
+	if(pos != m_polys.end()) {
+		m_polys.erase(pos);
+	}
+}
+
+void EditorLayer::AddPoly(size_t index)
+{
+	m_polys.push_back(index);
 }

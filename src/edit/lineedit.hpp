@@ -5,7 +5,9 @@
 #include <wx/event.h>
 #include <wx/geometry.h>
 #include <wx/mousestate.h>
-#include "src/edit/editorcontext.hpp"
+
+#include "src/geometry.hpp"
+#include "src/edit/ibaseedit.hpp"
 
 class ConvexPolygon;
 

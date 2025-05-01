@@ -57,4 +57,4 @@ target_sources(lvledit2d PRIVATE
 	"src/layerpanel.cpp"
 	"src/edit/editorlayer.cpp"
 	"src/edit/entityedit.cpp"
- "src/edit/editaction.cpp")
+ "src/edit/editaction.cpp" "src/edit/l2dfile.cpp" "src/singleselectlist.cpp" "src/edit/ibaseedit.cpp")

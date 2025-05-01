@@ -3,21 +3,25 @@
 #include <wx/panel.h>
 #include <wx/listctrl.h>
 
-#include "src/singleton.hpp"
+#include "src/singleselectlist.hpp"
+#include "src/util/singleton.hpp"
 
 class LayerList;
+class wxColourPickerCtrl;
 
 class LayerPanel : public wxPanel,
                    public Singleton<LayerPanel>
 {
 public:
 	LayerPanel(wxWindow *parent);
+	wxColour GetColor() const;
 private:
 	void OnNew(wxCommandEvent &e);
 	void OnDel(wxCommandEvent &e);
+	wxColourPickerCtrl *m_clrpicker;
 };
 
-class LayerList : public wxListCtrl,
+class LayerList : public SingleSelectList,
                   public Singleton<LayerList>
 {
 	enum ColumnID
@@ -30,6 +34,5 @@ public:
 private:
 	wxItemAttr *OnGetItemAttr(long item) const;
 	wxString OnGetItemText(long item, long col) const;
-	void OnFocused(wxListEvent &e);
-	void OnSelected(wxListEvent &e);
+	void OnSetSelected(long item) final;
 };

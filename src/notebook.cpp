@@ -1,4 +1,3 @@
-
 #include "src/edit/editorcontext.hpp"
 #include "src/historylist.hpp"
 #include "src/texturepanel.hpp"
@@ -6,11 +5,11 @@
 #include "src/gl/glcontext.hpp"
 #include "src/mainframe.hpp"
 #include "src/notebook.hpp"
+#include "src/layerpanel.hpp"
 
 
 Notebook::Notebook(wxWindow *parent, HistoryList *hlist)
-	: wxAuiNotebook(parent, wxID_ANY)
-{
+    : wxAuiNotebook(parent, wxID_ANY) {
 	Bind(wxEVT_AUINOTEBOOK_PAGE_CHANGING, &Notebook::OnPageChange, this);
 	Bind(wxEVT_AUINOTEBOOK_PAGE_CLOSED, &Notebook::OnPageClose, this);
 }
@@ -115,7 +114,6 @@ void Notebook::OnPageClose(wxAuiNotebookEvent &e)
 	TextureList *tlist = TextureList::GetInstance();
 
 	if(GetPageCount() <= 0) {
-		tlist->Unselect();
 		hlist->SetItemCount(0);
 		hlist->Refresh();
 		tlist->SetItemCount(0);
@@ -136,6 +134,7 @@ void Notebook::OnPageChange(wxAuiNotebookEvent &e)
 	   it would be much worse if we created a new object for every page */
 	HistoryList *hlist = HistoryList::GetInstance();
 	TextureList *tlist = TextureList::GetInstance();
+	LayerList *llist = LayerList::GetInstance();
 
 	MainFrame::GetInstance()->Sidebook_Show();
 
@@ -143,16 +142,19 @@ void Notebook::OnPageChange(wxAuiNotebookEvent &e)
 		EditorContext &edit = canvas->GetEditor();
 		size_t ntex = edit.GetTextures().size();
 		size_t nact = edit.GetActList().TotalActions();
+		size_t nlay = edit.GetLayers().size();
+		edit.SetSelectedTextureIndex(ntex - 1);
 		tlist->SetItemCount(ntex);
-		tlist->SetSelected(ntex - 1);
 		hlist->SetItemCount(nact);
+		llist->SetItemCount(nlay);
 	}
 	else {
 		hlist->SetItemCount(0);
 		tlist->SetItemCount(0);
-		tlist->Unselect();
+		llist->SetItemCount(0);
 	}
 
 	hlist->Refresh();
 	tlist->Refresh();
+	llist->Refresh();
 }

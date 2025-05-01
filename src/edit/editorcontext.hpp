@@ -11,30 +11,16 @@
 #include "src/edit/editaction.hpp"
 
 class GLCanvas;
-class EditorContext;
-class ViewMatrixBase;
-
-
-class IBaseEdit : public wxEvtHandler
-{
-public:
-	IBaseEdit(GLCanvas *canvas);
-	virtual void DrawPolygon(const ConvexPolygon *p);
-	virtual void OnDraw();
-	virtual ~IBaseEdit();
-protected:
-	GLCanvas *m_canvas;
-	EditorContext &m_edit;
-	const ViewMatrixBase &m_view;
-};
+class IBaseEdit;
 
 class EditorContext : public wxEvtHandler
 {
 public:
 	EditorContext(GLCanvas *parent);
 	~EditorContext();
-	ConvexPolygon *ApplyAction(const ActData &action);
-	ConvexPolygon *UndoAction(const ActData &action);
+	void ApplyAction(const ActData &action);
+	void UndoAction(const ActData &action);
+	void AddAction(const ActLayer &layer);
 	void AddAction(const ActRect &rect);
 	void AddAction(const ActLine &line);
 	void AddAction(const ActMove &move);
@@ -42,25 +28,29 @@ public:
 	void AddAction(const ActTexture &texture);
 	void AddDelete();
 	void AddTexture(const wxFileName &filename);
+	void DeleteLayer();
 	void Undo();
 	void Redo();
 	bool Save();
 	bool Save(const wxFileName &path);
 	bool Load(const wxFileName &path);
-	ConvexPolygon *FindPoly(glm::vec2 wpos);
 	void ResetPolys();
+	ConvexPolygon *FindPoly(glm::vec2 mpos);
 	void OnToolSelect(ToolBar::ID id);
 	void OnDraw();
 private:
 	std::vector<EditorLayer> m_layers;
+	std::vector<ConvexPolygon> m_polys;
 	std::vector<GLTexture> m_textures;
 
+	size_t m_selectedpoly = -1;
+	size_t m_selectedlayer = -1;
+	size_t m_selectedtexture = -1;
 	ActList m_actions;
-	size_t m_selected = -1;
-	size_t m_curlayer = -1;
+
+	wxString m_name;
 
 	// file data
-	wxString m_name;
 	wxString m_path;
 	bool m_hasfile;
 
@@ -69,64 +59,58 @@ private:
 public:
 	inline std::vector<EditorLayer> &GetLayers() { return m_layers; }
 	inline const std::vector<EditorLayer> &GetLayers() const { return m_layers; }
+	inline std::vector<ConvexPolygon> &GetPolys() { return m_polys; }
 
 	inline std::vector<GLTexture> &GetTextures() { return m_textures; }
 	inline const std::vector<GLTexture> &GetTextures() const { return m_textures; }
 
 	inline ActList &GetActList() { return m_actions; }
+	inline const ActList &GetActList() const { return m_actions; }
 
 	inline bool HasFile() { return m_hasfile; }
 	inline wxString &GetName() { return m_name; }
 
-	inline size_t GetSelectedLayerIndex() { return m_curlayer; }
-	inline void SetSelectedLayerIndex(size_t i) { m_curlayer = i; m_selected = -1; }
-
-	inline EditorLayer *GetSelectedLayer()
-	{
-		size_t i = m_curlayer;
-		if(i >= 0 && i < m_layers.size()) {
-			return &m_layers[i];
-		} else {
-			return nullptr;
-		}
-	}
-
 	inline ConvexPolygon *GetSelectedPoly()
 	{
-		size_t i = m_selected;
-		EditorLayer *layer = GetSelectedLayer();
-		if(layer == nullptr) {
+		if(m_selectedpoly == -1) {
 			return nullptr;
-		}
-
-		std::vector<ConvexPolygon> &polys = layer->GetPolys();
-
-		if(i < polys.size()) {
-			return &polys[i];
 		} else {
-			return nullptr;
+			return &m_polys[m_selectedpoly];
 		}
 	}
 
-	inline void SetSelectedPoly(ConvexPolygon *p)
+	inline size_t GetSelectedTextureIndex()
 	{
-		EditorLayer *layer = GetSelectedLayer();
-		wxASSERT(layer);
-		std::vector<ConvexPolygon> &polys = layer->GetPolys();
+		return m_selectedtexture;
+	}
 
-		size_t i = p - polys.data();
-		if(i < polys.size()) {
-			m_selected = i;
-		}
+	inline void SetSelectedTextureIndex(size_t index)
+	{
+		m_selectedtexture = index;
+	}
+
+	inline void SetSelectedPoly(ConvexPolygon *poly)
+	{
+		m_selectedpoly = poly - &m_polys.front();
 	}
 
 	inline void SetSelectedLayer(EditorLayer *layer)
 	{
-		size_t i = layer - m_layers.data();
-		if(i < m_layers.size()) {
-			m_selected = -1;
-			m_curlayer = i;
+		m_selectedlayer = layer - &m_layers.front();
+	}
+
+	inline EditorLayer *GetSelectedLayer()
+	{
+		if(m_selectedlayer == -1 || m_layers.empty()) {
+			return nullptr;
+		} else {
+			return &m_layers[m_selectedlayer];
 		}
+	}
+
+	inline void SetSelectedLayerIndex(size_t index)
+	{
+		m_selectedlayer = index;
 	}
 };
 #endif

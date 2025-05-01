@@ -1,6 +1,7 @@
 
 #include <wx/panel.h>
 #include <wx/sizer.h>
+#include <wx/clrpicker.h>
 
 #include "src/gl/glcanvas.hpp"
 #include "src/edit/editorcontext.hpp"
@@ -19,14 +20,21 @@ LayerPanel::LayerPanel(wxWindow *parent)
 	ctrl->SetSizer(sizer);
 
 	LayerList *list = new LayerList(this);
-
+	m_clrpicker = new wxColourPickerCtrl(this, wxID_ANY);
+	m_clrpicker->SetColour(*wxGREEN);
 	sizer = new wxBoxSizer(wxVERTICAL);
+	sizer->Add(m_clrpicker, 0, wxEXPAND | wxALL);
 	sizer->Add(ctrl, 0, wxEXPAND | wxALL);
 	sizer->Add(list, 1, wxEXPAND);
 	SetSizer(sizer);
 
 	Bind(wxEVT_BUTTON, &LayerPanel::OnNew, this, wxID_NEW);
 	Bind(wxEVT_BUTTON, &LayerPanel::OnDel, this, wxID_DELETE);
+}
+
+wxColour LayerPanel::GetColor() const
+{
+	return m_clrpicker->GetColour();
 }
 
 void LayerPanel::OnNew(wxCommandEvent &e)
@@ -38,58 +46,49 @@ void LayerPanel::OnNew(wxCommandEvent &e)
 
 	EditorContext &edit = canvas->GetEditor();
 
-	std::vector<EditorLayer> &layers = edit.GetLayers();
-	layers.push_back("test");
-
-	LayerList *list = LayerList::GetInstance();
-	list->SetItemCount(layers.size());
-
-	edit.SetSelectedLayer(&layers.back());
+	ActLayer act;
+	act.color = GetColor().GetRGB();
+	edit.AddAction(act);
 
 	Refresh();
 }
 
 void LayerPanel::OnDel(wxCommandEvent &e)
 {
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+	if(canvas == nullptr) {
+		return;
+	}
+
+	EditorContext &edit = canvas->GetEditor();
+	edit.DeleteLayer();
+
+	LayerList *list = LayerList::GetInstance();
+	list->SetItemCount(edit.GetLayers().size());
+
+	canvas->Refresh();
 	Refresh();
 }
 
 LayerList::LayerList(wxWindow *parent)
-	: wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+	: SingleSelectList(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                      wxLC_VIRTUAL | wxLC_REPORT | wxLC_SINGLE_SEL | wxLC_HRULES | wxLC_VRULES)
 {
 	InsertColumn(ColumnID::NAME, "Name", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE_USEHEADER);
 	InsertColumn(ColumnID::POLYGONS, "Polygons", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
 
 	SetItemCount(0);
-
-	Bind(wxEVT_LIST_ITEM_FOCUSED, &LayerList::OnFocused, this);
-	Bind(wxEVT_LIST_ITEM_SELECTED, &LayerList::OnSelected, this);
+	Show();
 }
 
-
-void LayerList::OnSelected(wxListEvent &e)
+void LayerList::OnSetSelected(long item)
 {
-	for(long i = 0; i < GetItemCount(); i++) {
-		if(GetItemState(i, wxLIST_STATE_SELECTED)) {
-			GLCanvas *canvas = GLCanvas::GetCurrent();
-			if(canvas != nullptr) {
-				canvas->GetEditor().SetSelectedLayerIndex(i);
-			}
-		}
-		SetItemState(i, 0, wxLIST_STATE_SELECTED);
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+	if(canvas != nullptr) {
+		EditorContext &edit = canvas->GetEditor();
+		edit.SetSelectedLayerIndex(item);
+		canvas->Refresh();
 	}
-	e.Skip();
-	Refresh(true);
-}
-
-void LayerList::OnFocused(wxListEvent &e)
-{
-	for(long i = 0; i < GetItemCount(); i++) {
-		SetItemState(i, 0, wxLIST_STATE_FOCUSED);
-	}
-	e.Skip();
-	Refresh(true);
 }
 
 wxString LayerList::OnGetItemText(long item, long col) const
@@ -98,15 +97,14 @@ wxString LayerList::OnGetItemText(long item, long col) const
 	if(canvas == nullptr) {
 		return wxEmptyString;
 	}
-
-	EditorLayer &layer = canvas->GetEditor()
-		.GetLayers()[item];
+	const std::vector<EditorLayer> &layers = canvas->GetEditor().GetLayers();
+	const EditorLayer &layer = layers[item];
 
 	wxString s;
 
 	switch(col) {
 	case ColumnID::NAME:
-		s.Printf("%s", layer.GetName());
+		s.Printf("%ld", item);
 		break;
 	case ColumnID::POLYGONS:
 		s.Printf("%llu", layer.GetPolys().size());
@@ -126,7 +124,8 @@ wxItemAttr *LayerList::OnGetItemAttr(long item) const
 
 	GLCanvas *canvas = GLCanvas::GetCurrent();
 	if(canvas != nullptr) {
-		if(item == canvas->GetEditor().GetSelectedLayerIndex()) {
+		EditorContext &edit = canvas->GetEditor();
+		if(edit.GetSelectedLayer() == &edit.GetLayers()[item]) {
 			attr.SetBackgroundColour(sel);
 			attr.SetTextColour(*wxWHITE);
 		}

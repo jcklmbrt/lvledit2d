@@ -3,7 +3,7 @@
 
 #include <wx/listctrl.h>
 
-#include "src/singleton.hpp"
+#include "src/util/singleton.hpp"
 
 class wxWindow;
 class wxItemAttr;

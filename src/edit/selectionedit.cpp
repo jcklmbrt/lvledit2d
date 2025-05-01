@@ -30,7 +30,7 @@ void SelectionEdit::OnMouseRightDown(wxMouseEvent &e)
 
 	if(!m_edit.GetSelectedPoly()) {
 		ConvexPolygon *poly = m_edit.FindPoly(wpos);
-		if(poly) {
+		if(poly != nullptr) {
 			m_edit.SetSelectedPoly(poly);
 		}
 	}
@@ -48,8 +48,7 @@ static void GetOutcodeCorner(const Rect2D &r, int oc, glm::i32vec2 &corner, glm:
 	if(oc & RECT2D_LEFT) {
 		corner.x = r.maxs.x;
 		opposite.x = r.mins.x;
-	}
-	else if(oc & RECT2D_RIGHT) {
+	} else if(oc & RECT2D_RIGHT) {
 		corner.x = r.mins.x;
 		opposite.x = r.maxs.x;
 	}
@@ -57,8 +56,7 @@ static void GetOutcodeCorner(const Rect2D &r, int oc, glm::i32vec2 &corner, glm:
 	if(oc & RECT2D_TOP) {
 		corner.y = r.maxs.y;
 		opposite.y = r.mins.y;
-	}
-	else if(oc & RECT2D_BOTTOM) {
+	} else if(oc & RECT2D_BOTTOM) {
 		corner.y = r.mins.y;
 		opposite.y = r.maxs.y;
 	}
@@ -69,7 +67,11 @@ void SelectionEdit::DrawPolygon(const ConvexPolygon *p)
 {
 	IBaseEdit::DrawPolygon(p);
 
-	if(p != m_edit.GetSelectedPoly()) {
+	if(!m_edit.GetSelectedLayer()) {
+		return;
+	}
+
+	if(m_edit.GetSelectedPoly() != p) {
 		return;
 	}
 
@@ -148,6 +150,11 @@ void SelectionEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	glm::vec2 wpos = m_view.MouseToWorld(e);
 
+	EditorLayer *selectedlayer = m_edit.GetSelectedLayer();
+	if(selectedlayer == nullptr) {
+		return;
+	}
+
 	ConvexPolygon *poly = m_edit.FindPoly(wpos);
 
 	if(poly != nullptr) {
@@ -193,7 +200,8 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 	e.Skip(true);
 
 	EditorLayer *layer = m_edit.GetSelectedLayer();
-	if(layer == nullptr) {
+
+	if(!layer) {
 		return;
 	}
 
@@ -204,6 +212,7 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 	glm::i32vec2 wpos = GLBackgroundGrid::Snap(m_view.MouseToWorld(e));
 
 	ConvexPolygon *selected = m_edit.GetSelectedPoly();
+	const std::vector<ConvexPolygon> &polys = m_edit.GetPolys();
 	glm::i32vec2 delta = wpos - m_editstart;
 
 	if(m_outcode == RECT2D_INSIDE) {
@@ -216,7 +225,8 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		selected->Offset(delta);
 
 		bool intersects = false;
-		for(ConvexPolygon &poly : layer->GetPolys()) {
+		for(size_t i : layer->GetPolys()) {
+			const ConvexPolygon &poly = polys[i];
 			if(&poly != selected && selected->Intersects(poly)) {
 				intersects = true;
 				break;
@@ -276,7 +286,8 @@ void SelectionEdit::OnMouseMotion(wxMouseEvent &e)
 		selected->Scale(m_editstart, numer, denom);
 
 		bool intersects = false;
-		for(ConvexPolygon &poly : layer->GetPolys()) {
+		for(size_t i : layer->GetPolys()) {
+			const ConvexPolygon &poly = polys[i];
 			if(&poly != selected && selected->Intersects(poly)) {
 				intersects = true;
 				break;

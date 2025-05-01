@@ -14,15 +14,25 @@ TextureEdit::TextureEdit(GLCanvas *canvas)
 void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 {
 	glm::vec2 wpos = m_view.MouseToWorld(e);
-	ConvexPolygon *poly = m_edit.FindPoly(wpos);
 	TextureList *tlist = TextureList::GetInstance();
 	TexturePanel *tpanel = TexturePanel::GetInstance();
 
-	m_edit.SetSelectedPoly(poly);
+	ConvexPolygon *poly = m_edit.FindPoly(wpos);
+	if(poly) {
+		m_edit.SetSelectedPoly(poly);
+	} else {
+		poly = m_edit.GetSelectedPoly();
+	}
 
-	if(poly != nullptr && tlist->GetSelected() != -1) {
+	if(poly == nullptr) {
+		return;
+	}
+
+	size_t texture_index = m_edit.GetSelectedTextureIndex();
+
+	if(poly != nullptr && texture_index != -1) {
 		ActTexture act;
-		act.index = tlist->GetSelected();
+		act.index = texture_index;
 		act.scale = tpanel->GetSliderValue();
 		m_edit.AddAction(act);
 	}
@@ -35,8 +45,17 @@ void TextureEdit::OnMouseLeftDown(wxMouseEvent &e)
 void TextureEdit::OnMouseRightDown(wxMouseEvent &e)
 {
 	glm::vec2 wpos = m_view.MouseToWorld(e);
-	ConvexPolygon *poly = m_edit.FindPoly(wpos);
 	TexturePanel *tpanel = TexturePanel::GetInstance();
+
+	if(m_edit.GetSelectedLayer() == nullptr) {
+		return;
+	}
+
+	ConvexPolygon *poly = m_edit.FindPoly(wpos);
+
+	if(m_edit.GetSelectedPoly()) {
+		return;
+	}
 
 	m_edit.SetSelectedPoly(poly);
 

@@ -40,7 +40,7 @@ void Plane2D::Normalize()
 {
 	int32_t g = std::gcd(std::gcd(std::abs(a), std::abs(b)), std::abs(c));
 
-	if (g > 1) {
+	if(g > 1) {
 		a /= g;
 		b /= g;
 		c /= g;
@@ -127,6 +127,7 @@ bool Plane2D::operator==(const Plane2D &other) const
 ConvexPolygon::ConvexPolygon(const Rect2D &rect)
 {
 	m_aabb = rect;
+	m_rect = rect;
 	glm::vec2 lt = rect.mins;
 	glm::vec2 rb = rect.maxs;
 	glm::vec2 lb = { rect.mins.x, rect.maxs.y };

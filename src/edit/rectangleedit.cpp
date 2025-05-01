@@ -25,10 +25,12 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 	}
 
 	bool intersects = false;
+	const std::vector<ConvexPolygon> &polys = m_edit.GetPolys();
 
 	if(m_inedit) {
 		/* 2nd left click */
-		for(ConvexPolygon &poly : layer->GetPolys()) {
+		for(size_t i : layer->GetPolys()) {
+			const ConvexPolygon &poly = polys[i];
 			if(poly.Intersects(m_rect)) {
 				intersects = true;
 				break;
@@ -41,7 +43,8 @@ void RectangleEdit::OnMouseLeftDown(wxMouseEvent &e)
 		}
 	} else {
 		/* 1st left click*/
-		for(ConvexPolygon &poly : layer->GetPolys()) {
+		for(size_t i : layer->GetPolys()) {
+			const ConvexPolygon &poly = polys[i];
 			if(poly.Contains(world_pos)) {
 				intersects = true;
 				break;
@@ -92,13 +95,16 @@ void RectangleEdit::OnDraw()
 	glm::vec4 color = WHITE;
 	glm::i32vec2 mpos = GLBackgroundGrid::Snap(m_canvas->GetMousePos());
 
+	std::vector<ConvexPolygon> &polys = m_edit.GetPolys();
 	EditorLayer *layer = m_edit.GetSelectedLayer();
+
 	if(layer == nullptr) {
 		return;
 	}
 
 	if(m_inedit && !m_onepoint) {
-		for(ConvexPolygon &poly : layer->GetPolys()) {
+		for(size_t i : layer->GetPolys()) {
+			ConvexPolygon &poly = polys[i];
 			if(poly.Intersects(m_rect)) {
 				color = RED;
 			}
@@ -110,7 +116,8 @@ void RectangleEdit::OnDraw()
 
 	if(!m_inedit) {
 		bool intersects = false;
-		for(ConvexPolygon &poly : layer->GetPolys()) {
+		for(size_t i : layer->GetPolys()) {
+			ConvexPolygon &poly = polys[i];
 			if(poly.Contains(mpos)) {
 				intersects = true;
 				break;

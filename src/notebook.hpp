@@ -3,7 +3,7 @@
 
 #include <wx/aui/aui.h>
 #include <wx/filename.h>
-#include "src/singleton.hpp"
+#include "src/util/singleton.hpp"
 
 class HistoryList;
 class wxGLCanvas;

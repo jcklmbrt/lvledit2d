@@ -75,11 +75,6 @@ struct Rect2D
 	glm::i32vec2 mins, maxs;
 };
 
-static bool Intersects(const Rect2D &a, const Rect2D &b)
-{
-	return a.mins.x < b.maxs.x && b.mins.x < a.maxs.x &&
-	       a.mins.y < b.maxs.y && b.mins.y < a.maxs.y;
-}
 
 struct Plane2D
 {
@@ -120,11 +115,12 @@ public:
 	Rect2D GetUV() const;
 	Rect2D GetUV(const Rect2D &aabb) const;
 private:
-	Rect2D m_aabb;
+	Rect2D m_rect;
 	std::vector<Plane2D> m_planes;
-	/* internal representation of polygon */
+	// data for collisions
+	Rect2D m_aabb;
+	// data for rendering
 	std::vector<glm::vec2> m_points;
-
 	size_t m_texindex = -1;
 	int m_texscale;
 public:

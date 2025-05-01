@@ -1,7 +1,7 @@
 #ifndef _TEXTUREEDIT_HPP
 #define _TEXTUREEDIT_HPP
 
-#include "src/edit/editorcontext.hpp"
+#include "src/edit/ibaseedit.hpp"
 
 class TextureEdit : public IBaseEdit
 {

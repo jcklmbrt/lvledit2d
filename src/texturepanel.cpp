@@ -3,6 +3,7 @@
 #include <wx/colour.h>
 #include "src/gl/texture.hpp"
 #include "src/gl/glcanvas.hpp"
+#include "wx/sstream.h"
 #include "src/texturepanel.hpp"
 
 
@@ -14,7 +15,7 @@ static void SetScaleLabel(wxStaticText *label, int scale)
 	} else {
 		s.Printf("Texture Scale: %d x Background Grid", scale);
 	}
-
+	
 	label->SetLabel(s);
 }
 
@@ -22,19 +23,27 @@ static void SetScaleLabel(wxStaticText *label, int scale)
 TexturePanel::TexturePanel(wxWindow *parent) 
 	: wxPanel(parent)
 {
+	wxSizer *sizer = nullptr;
 	wxListCtrl *list = new TextureList(this);
-	wxButton *open = new wxButton(this, wxID_OPEN, "Open");
+
+	wxPanel *buttons = new wxPanel(this);
+	wxButton *open = new wxButton(buttons, wxID_OPEN, "Open");
+	wxButton *del = new wxButton(buttons, wxID_DELETE, "Delete Texture");
+	sizer = new wxBoxSizer(wxHORIZONTAL);
+	sizer->Add(open, 1, wxEXPAND);
+	sizer->Add(del, 1, wxEXPAND);
+	buttons->SetSizer(sizer);
 
 	wxPanel *ctrl = new wxPanel(this);
 	m_text = new wxStaticText(ctrl, wxID_ANY, wxEmptyString);
 	m_slider = new wxSlider(ctrl, wxID_ANY, 0, 0, 10);
-	wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
+	sizer = new wxBoxSizer(wxHORIZONTAL);
 	sizer->Add(m_text, 0, wxEXPAND);
 	sizer->Add(m_slider, 1, wxEXPAND);
 	ctrl->SetSizer(sizer);
 
 	sizer = new wxBoxSizer(wxVERTICAL);
-	sizer->Add(open, 0, wxEXPAND);
+	sizer->Add(buttons, 0, wxEXPAND);
 	sizer->Add(ctrl, 0, wxEXPAND | wxALL);
 	sizer->Add(list, 1, wxEXPAND);
 	SetSizer(sizer);
@@ -71,14 +80,23 @@ void TexturePanel::OnOpen(wxCommandEvent &e)
 	canvas->GetEditor().AddTexture(dialog.GetPath());
 }
 
+void TexturePanel::OnDelete(wxCommandEvent &e)
+{
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+
+	if(canvas == nullptr) {
+		return;
+	}
+}
+
 TextureList::TextureList(wxWindow *parent)
-	: wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-		wxLC_VIRTUAL | wxLC_REPORT | wxLC_NO_HEADER | wxLC_SINGLE_SEL | wxLC_HRULES | wxLC_VRULES)
+	: SingleSelectList(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+		wxLC_VIRTUAL | wxLC_REPORT | wxLC_NO_HEADER | wxLC_SINGLE_SEL)
 {
 	wxImageList *imglist = new wxImageList(ICON_SIZE, ICON_SIZE);
 	AssignImageList(imglist, wxIMAGE_LIST_SMALL);
-	InsertColumn(ColumnID::PREVIEW, "Preview", wxLIST_FORMAT_LEFT, ICON_SIZE + 8);
-	InsertColumn(ColumnID::NAME, "Name", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
+	InsertColumn(ColumnID::PREVIEW, "Preview", wxLIST_FORMAT_CENTRE, wxLIST_AUTOSIZE);
+	InsertColumn(ColumnID::NAME, "Name", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE_USEHEADER);
 	InsertColumn(ColumnID::SIZE, "Size", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
 #ifndef _WIN32
 	wxSize size = GetSize() * 0.7;
@@ -87,33 +105,15 @@ TextureList::TextureList(wxWindow *parent)
 	col.SetWidth(size.GetWidth());
 	SetColumn(ColumnID::NAME, col);
 #endif
-	Bind(wxEVT_LIST_ITEM_FOCUSED, &TextureList::OnFocused, this);
-	Bind(wxEVT_LIST_ITEM_SELECTED, &TextureList::OnSelected, this);
 }
 
 
-void TextureList::OnFocused(wxListEvent &e)
+void TextureList::OnSetSelected(long item)
 {
-	for(long i = 0; i < GetItemCount(); i++) {
-		//if(GetItemState(i, wxLIST_STATE_FOCUSED)) {
-		//	m_selected = i;
-		//}
-		SetItemState(i, 0, wxLIST_STATE_FOCUSED);
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+	if(canvas != nullptr) {
+		canvas->GetEditor().SetSelectedTextureIndex(item);
 	}
-	e.Skip();
-	Refresh(true);
-}
-
-void TextureList::OnSelected(wxListEvent &e)
-{
-	for(long i = 0; i < GetItemCount(); i++) {
-		if(GetItemState(i, wxLIST_STATE_SELECTED)) {
-			m_selected = i;
-		}
-		SetItemState(i, 0, wxLIST_STATE_SELECTED);
-	}
-	e.Skip();
-	Refresh(true);
 }
 
 
@@ -141,17 +141,21 @@ wxString TextureList::OnGetItemText(long item, long col) const
 	return wxEmptyString;
 };
 
+
 wxItemAttr *TextureList::OnGetItemAttr(long item) const 
 {
 	static wxItemAttr attr;
 	wxColor sel = wxColor(100, 100, 255);
-	if(item == m_selected) {
+
+	GLCanvas *canvas = GLCanvas::GetCurrent();
+	if(canvas && canvas->GetEditor().GetSelectedTextureIndex() == item) {
 		attr.SetBackgroundColour(sel);
 		attr.SetTextColour(*wxWHITE);
 	} else {
 		attr.SetBackgroundColour(*wxWHITE);
 		attr.SetTextColour(*wxBLACK);
 	}
+
 	return &attr;
 }
 

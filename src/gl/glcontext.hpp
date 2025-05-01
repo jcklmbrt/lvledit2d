@@ -5,7 +5,7 @@
 #include <wx/glcanvas.h>
 
 #include "src/geometry.hpp"
-#include "src/singleton.hpp"
+#include "src/util/singleton.hpp"
 #include "src/gl/texture.hpp"
 #include "src/gl/glsolidgeometry.hpp"
 #include "src/gl/gltexturegeometry.hpp"

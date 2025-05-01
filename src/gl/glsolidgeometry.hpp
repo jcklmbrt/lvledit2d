@@ -2,7 +2,7 @@
 #define _GLSOLIDGEOMETRY_HPP
 
 #include <glad/gl.h>
-#include "src/singleton.hpp"
+#include "src/util/singleton.hpp"
 #include "src/geometry.hpp"
 
 struct SolidVertex

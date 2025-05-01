@@ -1,8 +1,8 @@
-#ifndef _CRECTANGLEDIT_HPP
-#define _CRECTANGEEDIT_HPP
+#ifndef _RECTANGLEDIT_HPP
+#define _RECTANGLEDIT_HPP
 
 #include "src/geometry.hpp"
-#include "src/edit/editorcontext.hpp"
+#include "src/edit/ibaseedit.hpp"
 
 class RectangleEdit : public IBaseEdit
 {

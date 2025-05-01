@@ -3,7 +3,7 @@
 
 #include <glad/gl.h>
 #include <wx/filename.h>
-#include "src/singleton.hpp"
+#include "src/util/singleton.hpp"
 #include "src/geometry.hpp"
 
 struct TextureVertex

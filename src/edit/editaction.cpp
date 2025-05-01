@@ -1,20 +1,22 @@
+#include "src/edit/l2dfile.hpp"
+#include "src/edit/editorlayer.hpp"
+
 #include "src/edit/editaction.hpp"
 
-struct Lump 
+struct ActLayerName : L2dLump
 {
-	uint32_t size, ofs;
 };
 
 struct ActListHeader
 {
 	uint8_t magic[2];
 	uint32_t history;
-	Lump rects;
-	Lump lines;
-	Lump moves;
-	Lump scales;
-	Lump textures;
-	Lump indices;
+	L2dLump rects;
+	L2dLump lines;
+	L2dLump moves;
+	L2dLump scales;
+	L2dLump textures;
+	L2dLump indices;
 };
 
 bool ActList::Undo(ActData &act)
@@ -51,6 +53,7 @@ void ActList::PopBack()
 	case ActType::MOVE: RemoveAction(idx, m_moves); break;
 	case ActType::SCALE: RemoveAction(idx, m_scales); break;
 	case ActType::TEXTURE: RemoveAction(idx, m_textures); break;
+	case ActType::DEL: /* */ break;
 	}
 }
 
@@ -65,6 +68,8 @@ bool ActList::GetBack(ActData &act)
 
 void ActList::UpdateBack(const ActData &act)
 {
+	ClearFuture();
+
 	wxASSERT(!m_indices.empty());
 	ActIndex idx = m_indices.back();
 	wxASSERT(idx.type == act.type && idx.poly == act.poly && idx.layer == act.layer);
@@ -74,6 +79,9 @@ void ActList::UpdateBack(const ActData &act)
 	case ActType::MOVE: m_moves[idx.index] = act.move; break;
 	case ActType::SCALE: m_scales[idx.index] = act.scale; break;
 	case ActType::TEXTURE: m_textures[idx.index] = act.texture; break;
+	case ActType::DEL:
+        case ActType::LAYER:
+		break;
 	}
 
 	HistoryList *hlist = HistoryList::GetInstance();
@@ -88,7 +96,7 @@ void ActList::ClearFuture()
 	}
 }
 
-bool ActList::GetAction(size_t i, ActData &act)
+bool ActList::GetAction(size_t i, ActData &act) const
 {
 	if(i < 0 || i >= m_indices.size()) {
 		return false;
@@ -98,7 +106,7 @@ bool ActList::GetAction(size_t i, ActData &act)
 	return true;
 }
 
-void ActList::GetAction(const ActIndex &idx, ActData &act)
+void ActList::GetAction(const ActIndex &idx, ActData &act) const
 {
 	act.type = idx.type;
 	act.poly = idx.poly;
@@ -109,6 +117,7 @@ void ActList::GetAction(const ActIndex &idx, ActData &act)
 	case ActType::MOVE: act.move = m_moves[idx.index]; break;
 	case ActType::SCALE: act.scale = m_scales[idx.index]; break;
 	case ActType::TEXTURE:  act.texture = m_textures[idx.index]; break;
+	case ActType::LAYER:
 	case ActType::DEL: /* */ break;
 	}
 }
@@ -138,6 +147,11 @@ void ActList::AddAction(const ActTexture &texture, size_t poly, size_t layer)
 	AddAction<ActTexture, ActType::TEXTURE>(m_textures, texture, poly, layer);
 }
 
+void ActList::AddAction(const ActLayer &act, size_t layer)
+{
+	AddAction<ActLayer, ActType::LAYER>(m_layers, act, -1, layer);
+}
+
 void ActList::AddDelete(size_t poly, size_t layer)
 {
 	ClearFuture();
@@ -152,8 +166,8 @@ void ActList::AddDelete(size_t poly, size_t layer)
 	hlist->Refresh();
 }
 
-size_t ActList::BinSize()
 
+size_t ActList::BinSize() const
 {
 	return m_rects.size() * sizeof(ActRect) +
 		m_lines.size() * sizeof(ActLine) +
@@ -164,8 +178,9 @@ size_t ActList::BinSize()
 		sizeof(ActListHeader);
 }
 
+
 template<typename T>
-static bool ReadLump(std::vector<T> &vec, const Lump &lump, unsigned char *bytes)
+static bool ReadLump(std::vector<T> &vec, const L2dLump &lump, const uint8_t *bytes)
 {
 	if(lump.size % sizeof(T) != 0) {
 		return false;
@@ -177,51 +192,71 @@ static bool ReadLump(std::vector<T> &vec, const Lump &lump, unsigned char *bytes
 }
 
 
-bool ActList::Deserialize(unsigned char *bytes, size_t nbytes)
+bool ActList::Deserialize(const std::vector<uint8_t> &bytes,
+                          const std::vector<uint8_t> &strings)
 {
 	ActListHeader hdr;
-	memcpy(&hdr, bytes, sizeof(ActListHeader));
+	if(bytes.size() < sizeof(ActListHeader)) {
+		return false;
+	}
+
+	memcpy(&hdr, bytes.data(), sizeof(ActListHeader));
 	if(hdr.magic[0] != 'E' || hdr.magic[1] != 'A') {
 		return false;
 	}
 
 	m_history = hdr.history;
 
-	if(!ReadLump(m_rects, hdr.rects, bytes)) return false;
-	if(!ReadLump(m_lines, hdr.lines, bytes)) return false;
-	if(!ReadLump(m_moves, hdr.moves, bytes)) return false;
-	if(!ReadLump(m_scales, hdr.scales, bytes)) return false;
-	if(!ReadLump(m_textures, hdr.textures, bytes)) return false;
-	if(!ReadLump(m_indices, hdr.indices, bytes)) return false;
+	std::vector<L2dLump> layer_strings;
+
+	if(!ReadLump(m_rects, hdr.rects, bytes.data())) return false;
+	if(!ReadLump(m_lines, hdr.lines, bytes.data())) return false;
+	if(!ReadLump(m_moves, hdr.moves, bytes.data())) return false;
+	if(!ReadLump(m_scales, hdr.scales, bytes.data())) return false;
+	if(!ReadLump(m_textures, hdr.textures, bytes.data())) return false;
+	if(!ReadLump(m_indices, hdr.indices, bytes.data())) return false;
 	
 	return true;
 }
 
-template<typename T>
-static void WriteLump(const std::vector<T> &vec, Lump &lump, unsigned char *bytes, size_t &ofs)
-{
-	size_t nbytes = vec.size() * sizeof(T);
-	lump.size = nbytes;
-	lump.ofs = ofs;
-	memcpy(bytes + ofs, vec.data(), nbytes);
-	ofs += nbytes;
-}
 
-
-void ActList::Seralize(unsigned char *bytes, size_t nbytes)
+void ActList::Seralize(std::vector<uint8_t> &bytes,
+                       std::vector<uint8_t> &strings) const
 {
-	wxASSERT(nbytes >= BinSize());
 	ActListHeader hdr;
 	hdr.magic[0] = 'E';
 	hdr.magic[1] = 'A';
 	hdr.history = m_history;
 
-	size_t ofs = 0;
-	WriteLump(m_rects, hdr.rects, bytes, ofs);
-	WriteLump(m_lines, hdr.lines, bytes, ofs);
-	WriteLump(m_moves, hdr.moves, bytes, ofs);
-	WriteLump(m_scales, hdr.scales, bytes, ofs);
-	WriteLump(m_textures, hdr.textures, bytes, ofs);
-	WriteLump(m_indices, hdr.indices, bytes, ofs);
-	memcpy(bytes, &hdr, sizeof(ActListHeader));
+	hdr.rects.ofs = sizeof(ActListHeader);
+	hdr.rects.size = m_rects.size() * sizeof(ActRect);
+
+	hdr.lines.ofs = hdr.rects.ofs + hdr.rects.size;
+	hdr.lines.size = m_lines.size() * sizeof(ActLine);
+
+	hdr.moves.ofs = hdr.lines.ofs + hdr.lines.size;
+	hdr.moves.size = m_moves.size() * sizeof(ActMove);
+
+	hdr.scales.ofs = hdr.moves.ofs + hdr.moves.size;
+	hdr.scales.size = m_scales.size() * sizeof(ActScale);
+
+	hdr.textures.ofs = hdr.scales.ofs + hdr.scales.size;
+	hdr.textures.size = m_textures.size() * sizeof(ActTexture);
+
+	hdr.indices.ofs = hdr.textures.ofs + hdr.textures.size;
+	hdr.indices.size = m_indices.size() * sizeof(ActIndex);
+
+	if(bytes.size() < BinSize()) {
+		bytes.resize(BinSize());
+	}
+
+	memcpy(bytes.data(), &hdr, sizeof(ActListHeader));
+	memcpy(bytes.data() + hdr.rects.ofs, m_rects.data(), hdr.rects.size);
+	memcpy(bytes.data() + hdr.lines.ofs, m_lines.data(), hdr.lines.size);
+	memcpy(bytes.data() + hdr.moves.ofs, m_moves.data(), hdr.moves.size);
+	memcpy(bytes.data() + hdr.scales.ofs, m_scales.data(), hdr.scales.size);
+	memcpy(bytes.data() + hdr.textures.ofs, m_textures.data(), hdr.textures.size);
+	memcpy(bytes.data() + hdr.indices.ofs, m_indices.data(), hdr.indices.size);
+
+	wxASSERT(hdr.indices.ofs + hdr.indices.size <= bytes.size());
 }

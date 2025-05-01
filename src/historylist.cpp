@@ -60,24 +60,13 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 		};
 		if(col == ColumnID::ACTION) {
 			switch(act.type) {
-			case ActType::LINE:
-				s.Printf("LINE");
-				break;
-			case ActType::RECT:
-				s.Printf("RECT");
-				break;
-			case ActType::MOVE:
-				s.Printf("MOVE");
-				break;
-			case ActType::SCALE:
-				s.Printf("SCALE");
-				break;
-			case ActType::TEXTURE:
-				s.Printf("TEXTURE");
-				break;
-			case ActType::DEL:
-				s.Printf("DEL");
-				break;
+			case ActType::LINE: s.Printf("LINE"); break;
+			case ActType::RECT: s.Printf("RECT"); break;
+			case ActType::MOVE: s.Printf("MOVE"); break;
+			case ActType::SCALE: s.Printf("SCALE"); break;
+			case ActType::TEXTURE: s.Printf("TEXTURE"); break;
+			case ActType::DEL: s.Printf("DEL"); break;
+			case ActType::LAYER: s.Printf("LAYER"); break;
 			}
 		} else if(col == ColumnID::VALUE) {
 			switch(act.type) {
@@ -98,17 +87,23 @@ wxString HistoryList::OnGetItemText(long item, long col) const
 					 act.scale.numer.y, act.scale.denom.y);
 				break;
 			case ActType::TEXTURE:
-				s.Printf("index: %d, scale: %d", act.texture.index,
-					 act.texture.scale);
+				s.Printf("index: %d, scale: %d", 
+					act.texture.index,
+					act.texture.scale);
 				break;
+			case ActType::LAYER:
 			case ActType::DEL:
 				break;
 			}
 		} else if(col == ColumnID::POLY) {
-			s.Printf("%llu", act.poly);
+			if(act.type != ActType::LAYER && act.poly != -1) {
+				s.Printf("%u", act.poly);
+			} else {
+				s = wxEmptyString;
+			}
 		} else if(col == ColumnID::LAYER) {
-			EditorLayer &layer = edit.GetLayers()[act.layer];
-			s.Printf("%s", layer.GetName());
+			s.Printf("%u", act.layer);
+
 		}
 	}
 	return s;

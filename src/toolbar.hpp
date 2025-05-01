@@ -1,7 +1,7 @@
 #ifndef _TOOLBAR_HPP
 #define _TOOLBAR_HPP
 
-#include "src/singleton.hpp"
+#include "src/util/singleton.hpp"
 #include <wx/wx.h>
 
 
