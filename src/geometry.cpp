@@ -5,24 +5,22 @@
 #include <cmath>
 #include <glm/glm.hpp>
 #include <limits>
-#include <wx/debug.h>
 
-#include "src/layerpanel.hpp"
-#include "src/gl/glcanvas.hpp"
-#include "src/gl/glbackgroundgrid.hpp"
+#include "src/edit/editorcontext.hpp"
+#include "src/gl/glcontext.hpp"
 #include "src/geometry.hpp"
 
 
-Plane2D::Plane2D(const glm::i32vec2 &start, const glm::i32vec2 &end)
+iline2d::iline2d(const glm::i32vec2 &start, const glm::i32vec2 &end)
 {
 	a = end.y - start.y;
 	b = start.x - end.x;
 	c = -(a * start.x + b * start.y);
-	Normalize();
+	normalize();
 }
 
 
-void Plane2D::Flip()
+void iline2d::flip()
 {
 	a = -a;
 	b = -b;
@@ -30,13 +28,13 @@ void Plane2D::Flip()
 }
 
 
-void Plane2D::Offset(const glm::i32vec2 &pt)
+void iline2d::offset(const glm::i32vec2 &pt)
 {
 	c -= a * pt.x + b * pt.y;
-	Normalize();
+	normalize();
 }
 
-void Plane2D::Normalize()
+void iline2d::normalize()
 {
 	int32_t g = std::gcd(std::gcd(std::abs(a), std::abs(b)), std::abs(c));
 
@@ -48,7 +46,7 @@ void Plane2D::Normalize()
 }
 
 
-void Plane2D::Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom)
+void iline2d::scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom)
 {
 	int64_t px = numer.x;
 	int64_t qx = denom.x;
@@ -72,7 +70,7 @@ void Plane2D::Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const
 		c_prime /= g;
 	}
 
-	wxASSERT(a_prime < INT32_MAX && b_prime < INT32_MAX && c_prime < INT32_MAX);
+	assert(a_prime < INT32_MAX && b_prime < INT32_MAX && c_prime < INT32_MAX);
 
 	a = a_prime;
 	b = b_prime;
@@ -80,15 +78,15 @@ void Plane2D::Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const
 }
 
 
-void Plane2D::Clip(const std::vector<glm::vec2> &points, std::vector<glm::vec2> &out) {
+void iline2d::clip(const std::vector<glm::vec2> &points, std::vector<glm::vec2> &out) {
 
 	size_t npoints = points.size();
 	for(size_t i = 0; i < npoints; i++) {
 		glm::vec2 a = points[i];
 		glm::vec2 b = points[(i + 1) % npoints];
 
-		float da = SignedDistance(a);
-		float db = SignedDistance(b);
+		float da = distnumer(a);
+		float db = distnumer(b);
 
 		/* only "forward" side */
 		if(da >= 0) {
@@ -106,28 +104,27 @@ void Plane2D::Clip(const std::vector<glm::vec2> &points, std::vector<glm::vec2> 
 }
 
 
-float Plane2D::SignedDistance(const glm::vec2 &p) const
+float iline2d::distnumer(const glm::vec2 &p) const
 {
 	return static_cast<float>(a) * p.x + static_cast<float>(b) * p.y + static_cast<float>(c);
 }
 
 
-int32_t Plane2D::SignedDistance(const glm::i32vec2 &p) const
+int32_t iline2d::distnumer(const glm::i32vec2 &p) const
 {
 	return a * p.x + b * p.y + c;
 }
 
 
-bool Plane2D::operator==(const Plane2D &other) const
+bool iline2d::operator==(const iline2d &other) const
 {
 	return other.a == a && other.b == b && other.c == c;
 }
 
 
-ConvexPolygon::ConvexPolygon(const Rect2D &rect)
+poly2d::poly2d(const irect2d &rect)
 {
 	m_aabb = rect;
-	m_rect = rect;
 	glm::vec2 lt = rect.mins;
 	glm::vec2 rb = rect.maxs;
 	glm::vec2 lb = { rect.mins.x, rect.maxs.y };
@@ -140,10 +137,10 @@ ConvexPolygon::ConvexPolygon(const Rect2D &rect)
 	m_points.push_back(lb);
 }
 
-void ConvexPolygon::Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom)
+void poly2d::scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer, const glm::i32vec2 &denom)
 {
-	for(Plane2D &plane : m_planes) {
-		plane.Scale(origin, numer, denom);
+	for(iline2d &plane : m_lines) {
+		plane.scale(origin, numer, denom);
 	}
 
 	for(glm::vec2 &point : m_points) {
@@ -155,10 +152,10 @@ void ConvexPolygon::Scale(const glm::i32vec2 &origin, const glm::i32vec2 &numer,
 }
 
 
-void ConvexPolygon::Offset(const glm::i32vec2 &delta)
+void poly2d::offset(const glm::i32vec2 &delta)
 {
-	for(Plane2D &plane : m_planes) {
-		plane.Offset(delta);
+	for(iline2d &plane : m_lines) {
+		plane.offset(delta);
 	}
 
 	for(glm::vec2 &point : m_points) {
@@ -170,35 +167,34 @@ void ConvexPolygon::Offset(const glm::i32vec2 &delta)
 }
 
 
-bool ConvexPolygon::AllPointsBehind(const Plane2D &plane, const glm::vec2 points[], size_t npoints)
+bool poly2d::allptsbehind(const iline2d &plane, const glm::vec2 points[], size_t npoints)
 {
 	for(size_t i = 0; i < npoints; i++) {
-		if(plane.SignedDistance(points[i]) > 0.0) {
+		if(plane.distnumer(points[i]) > 0.0) {
 			return false;
 		}
 	}
 	return true;
 }
 
-bool ConvexPolygon::AllPointsBehind(const Plane2D &plane, const glm::i32vec2 points[], size_t npoints)
+bool poly2d::allptsbehind(const iline2d &plane, const glm::i32vec2 points[], size_t npoints)
 {
 	for(size_t i = 0; i < npoints; i++) {
-		if(plane.SignedDistance(points[i]) > 0.0) {
+		if(plane.distnumer(points[i]) > 0.0) {
 			return false;
 		}
 	}
 	return true;
 }
 
-bool ConvexPolygon::AllPointsBehind(const Plane2D &plane) const
+bool poly2d::allptsbehind(const iline2d &plane) const
 {
-	return AllPointsBehind(plane, m_points.data(), m_points.size());
+	return allptsbehind(plane, m_points.data(), m_points.size());
 }
 
-void Rect2D::FitPoints(const glm::vec2 pts[], size_t npts)
+void irect2d::fit(const glm::vec2 pts[], size_t npts)
 {
-	wxASSERT_MSG(npts >= 2,
-		"Cannot construct a rect from less than two points.");
+	assert(npts >= 2, "Cannot construct a rect from less than two points.");
 
 	mins = floor(pts[0]);
 	maxs = ceil(pts[0]);
@@ -210,21 +206,21 @@ void Rect2D::FitPoints(const glm::vec2 pts[], size_t npts)
 		maxs = max(c, maxs);
 	}
 
-	wxASSERT_MSG(mins.x < maxs.x && mins.y < maxs.y,
+	assert(mins.x < maxs.x && mins.y < maxs.y,
 		"Cannot construct a rect from equal points.");
 }
 
 
-void ConvexPolygon::ResizeAABB()
+void poly2d::fitaabb()
 {
-	m_aabb.FitPoints(m_points.data(), m_points.size());
+	m_aabb.fit(m_points.data(), m_points.size());
 }
 
 
-bool ConvexPolygon::Intersects(const Rect2D &rect) const 
+bool poly2d::intersects(const irect2d &rect) const 
 {
 	/* Broad phase */
-	if(!m_aabb.Intersects(rect)) {
+	if(!m_aabb.intersects(rect)) {
 		return false;
 	}
 
@@ -235,8 +231,8 @@ bool ConvexPolygon::Intersects(const Rect2D &rect) const
 		glm::vec2(rect.maxs.x, rect.maxs.y)
 	};
 
-	for(const Plane2D &plane : m_planes) {
-		if(AllPointsBehind(plane, points.data(), points.size())) {
+	for(const iline2d &plane : m_lines) {
+		if(allptsbehind(plane, points.data(), points.size())) {
 			return false;
 		}
 	}
@@ -245,14 +241,14 @@ bool ConvexPolygon::Intersects(const Rect2D &rect) const
 }
 
 
-bool ConvexPolygon::Contains(const glm::vec2 &pt) const
+bool poly2d::contains(const glm::vec2 &pt) const
 {
-	if(!m_aabb.Contains(pt)) {
+	if(!m_aabb.contains(pt)) {
 		return false;
 	}
 
-	for(const Plane2D &plane : m_planes) {
-		if(plane.SignedDistance(pt) <= 0.0) {
+	for(const iline2d &plane : m_lines) {
+		if(plane.distnumer(pt) <= 0.0) {
 			return false;
 		}
 	}
@@ -261,20 +257,20 @@ bool ConvexPolygon::Contains(const glm::vec2 &pt) const
 }
 
 
-bool ConvexPolygon::Intersects(const ConvexPolygon &other) const
+bool poly2d::intersects(const poly2d &other) const
 {
-	if(!m_aabb.Intersects(other.m_aabb)) {
+	if(!m_aabb.intersects(other.m_aabb)) {
 		return false;
 	}
 
-	for(const Plane2D &plane : other.m_planes) {
-		if(AllPointsBehind(plane)) {
+	for(const iline2d &plane : other.m_lines) {
+		if(allptsbehind(plane)) {
 			return false;
 		}
 	}
 
-	for(const Plane2D &plane : m_planes) {
-		if(other.AllPointsBehind(plane)) {
+	for(const iline2d &plane : m_lines) {
+		if(other.allptsbehind(plane)) {
 			return false;
 		}
 	}
@@ -283,57 +279,60 @@ bool ConvexPolygon::Intersects(const ConvexPolygon &other) const
 }
 
 
-void ConvexPolygon::PurgePlanes()
+void poly2d::fitlines()
 {
 	/* remove all planes that aren't touching any points */
-	m_planes.erase(std::remove_if(m_planes.begin(), m_planes.end(), [this](Plane2D plane) {
+	m_lines.erase(std::remove_if(m_lines.begin(), m_lines.end(), [this](iline2d plane) {
 		constexpr float EPSILON = 0.001f;
 		for(const glm::vec2 &pt : m_points) {
-			if(plane.SignedDistance(pt) < EPSILON) {
+			if(plane.distnumer(pt) < EPSILON) {
 				return false;
 			}
 		}
 		return true;
-	}), m_planes.end());
+	}), m_lines.end());
 }
 
 
-void ConvexPolygon::Slice(Plane2D plane)
+void poly2d::slice(iline2d plane)
 {
-	m_planes.push_back(plane);
+	m_lines.push_back(plane);
 
 	std::vector<glm::vec2> new_points;
-	ImposePlane(plane, new_points);
+	addline(plane, new_points);
 
 	m_points = new_points;
 }
 
 
-void ConvexPolygon::ImposePlane(Plane2D plane, std::vector<glm::vec2> &out) const
+void poly2d::addline(iline2d plane, std::vector<glm::vec2> &out) const
 {
-	plane.Clip(m_points, out);
+	plane.clip(m_points, out);
 }
 
 
-GLTexture *ConvexPolygon::GetTexture() const 
+gl::texture *poly2d::texture() const 
 {
-	GLCanvas *canvas = GLCanvas::GetCurrent();
-	if(canvas == nullptr) { 
+	/*
+	l2d::editor *editor = l2d::editor::current();
+	if(editor == nullptr) { 
 		return nullptr;
 	}
-	if(m_texindex == -1) {
+	if(texindex == -1) {
 		return nullptr;
 	}
 
-	return &canvas->GetEditor().GetTextures()[m_texindex];
+	return &editor->textures()[texindex];
+	*/
+	return nullptr;
 }
 
 
-Rect2D ConvexPolygon::GetUV(const Rect2D &aabb) const
+irect2d poly2d::uv(const irect2d &aabb) const
 {
-	Rect2D rect = aabb;
-	if(m_texscale != 0) {
-		float scale = static_cast<float>(m_texscale * GLBackgroundGrid::SPACING);
+	irect2d rect = aabb;
+	if(texscale != 0) {
+		float scale = static_cast<float>(texscale * gl::ctx::GRID_SPACING);
 		glm::vec2 mins = { 0.0f, 0.0f };
 		glm::vec2 maxs = { scale, scale };
 
@@ -344,7 +343,7 @@ Rect2D ConvexPolygon::GetUV(const Rect2D &aabb) const
 }
 
 
-Rect2D ConvexPolygon::GetUV() const
+irect2d poly2d::uv() const
 {
-	return GetUV(m_aabb);
+	return uv(m_aabb);
 }

@@ -2,36 +2,76 @@
 #define _GLCONTEXT_HPP
 
 #include <glad/gl.h>
-#include <wx/glcanvas.h>
+#include <GLFW/glfw3.h>
+#include <stb_truetype.h>
 
 #include "src/geometry.hpp"
-#include "src/util/singleton.hpp"
 #include "src/gl/texture.hpp"
-#include "src/gl/glsolidgeometry.hpp"
-#include "src/gl/gltexturegeometry.hpp"
-#include "src/gl/glbackgroundgrid.hpp"
 
-class wxFileName;
+#include "res/icon_atlas.png.hpp"
 
-class GLContext : public wxGLContext,
-                  public Singleton<GLContext>
-{
-public:
-	GLContext(wxGLCanvas *parent);
-	void ClearBuffers();
-	void CopyBuffers();
-	void Clear(const glm::vec4 &color);
-	void SetMatrices(const glm::mat4 &proj, const glm::mat4 &view);
-	void DrawElements();
-	void AddRect(const glm::vec2 &mins, const glm::vec2 &maxs, const glm::vec4 &color);
-	void AddLine(const glm::vec2 &a, const glm::vec2 &b, float thickness, const glm::vec4 &color);
-	void AddPolygon(const ConvexPolygon &poly, const glm::vec4 &color);
-	void AddPolygon(const glm::vec2 pts[], size_t npts, const Rect2D &uv, GLTexture &texture, const glm::vec4 &color);
-	static GLuint CompileShaders(const char *fs_src, const char *vs_src);
-private:
-	GLBackgroundGrid m_grid;
-	GLSolidGeometry m_solid;
-	GLTextureGeometry m_texture;
+namespace gl {
+struct vtx {
+	glm::vec2 pos;
+	glm::vec2 uv;
+	glm::vec4 color;
 };
+
+struct texturebatch {
+	std::vector<vtx> vtx;
+	std::vector<GLuint> idx;
+};
+
+struct ctx {
+	ctx();
+	~ctx();
+	void clear(const glm::vec4 &color);
+	void setmatrices(const glm::mat4 &proj, const glm::mat4 &view);
+	void drawgrid();
+	void begin();
+	void end();
+	void quad(const glm::vec2 q[4], const glm::vec4 &color);
+	void rect(const glm::vec2 &mins, const glm::vec2 &maxs, const glm::vec4 &color);
+	void line(const glm::vec2 &a, const glm::vec2 &b, float thickness, const glm::vec4 &color);
+	void poly(const glm::vec2 pts[], size_t npts, const irect2d &uv, gl::texture &texture, const glm::vec4 &color);
+	void icon(const glm::vec2 &pos, icon_atlas::position uv, const glm::vec4 &color);
+	void puts(const glm::vec2 &pos, const glm::vec4 color, const char *s);
+private:
+	// gl objects for backgroud grid
+	GLuint m_grid_program;
+	GLuint m_grid_vtxbuf;
+	GLuint m_grid_vao;
+
+	// gl objects for rendering solid geometry
+	GLuint m_solid_program;
+	std::vector<vtx> m_solid_vtx;
+	std::vector<GLuint> m_solid_idx;
+
+	GLuint m_icon_atlas;
+	int m_icon_atlas_width;
+	int m_icon_atlas_height;
+
+	GLuint m_font_atlas;
+	int m_font_atlas_width;
+	int m_font_atlas_height;
+
+	// gl object for rendering textured geometry
+	GLuint m_texture_program;
+	std::unordered_map<GLuint, texturebatch> m_texture_batches;
+
+	GLuint m_vtxbuf;
+	GLuint m_idxbuf;
+	GLuint m_vao;
+public:
+	constexpr static int GRID_SPACING = 1;
+	[[nodiscard]] static glm::i32vec2 snaptogrid(const glm::vec2 &pt)
+	{
+		int32_t x = round(pt.x / GRID_SPACING) * GRID_SPACING;
+		int32_t y = round(pt.y / GRID_SPACING) * GRID_SPACING;
+
+		return glm::i32vec2(x, y);
+	}
+};
+}
 
 #endif

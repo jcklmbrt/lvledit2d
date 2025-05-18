@@ -1,13 +1,14 @@
 #include <cstring>
-#include <wx/bitmap.h>
-#include <wx/filename.h>
-#include <wx/image.h>
+
+#include <stb_image.h>
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include <stb_image_resize2.h>
+
 #include "src/edit/editorcontext.hpp"
 #include "src/gl/texture.hpp"
-#include "src/texturepanel.hpp"
 
 
-static uint32_t FNV1A(unsigned char *data, size_t size)
+static uint32_t fnv1a(unsigned char *data, size_t size)
 {
 	static constexpr uint32_t OFFSET_BASIS = 0x811C9DC5;
 	static constexpr uint32_t PRIME = 0x01000193;
@@ -22,7 +23,8 @@ static uint32_t FNV1A(unsigned char *data, size_t size)
 	return hash;
 }
 
-static int BitCeil512(int n)
+
+static int bitceil512(int n)
 {
 	n = std::min(n, 512);
 	int i = 1;
@@ -32,7 +34,8 @@ static int BitCeil512(int n)
 	return i;
 }
 
-void GLTexture::AddToFile(L2dTexInfo &info, std::vector<unsigned char> &data, std::vector<unsigned char> &strings) const
+
+void gl::texture::serialize(l2d::texinfo &info, std::vector<unsigned char> &data, std::vector<unsigned char> &strings) const
 {
 	info.name_ofs = strings.size();
 	info.name_size = m_name.size();
@@ -49,95 +52,56 @@ void GLTexture::AddToFile(L2dTexInfo &info, std::vector<unsigned char> &data, st
 
 }
 
-void GLTexture::Load(size_t width, size_t height, size_t pixelwidth, const char *name, unsigned char *data)
+void gl::texture::load(size_t width, size_t height, size_t pixelwidth, const char *name, unsigned char *data)
 {
 	m_name = name;
-
-	wxImage img(width, height, data);
-	wxBitmap bmp(img);
-	TextureList *tlist = TextureList::GetInstance();
-	wxImageList *ilist = tlist->GetImageList(wxIMAGE_LIST_SMALL);
-
-	int size = TextureList::ICON_SIZE;
-
-	wxBitmap::Rescale(bmp, wxSize(size, size));
-	m_thumb = ilist->Add(bmp);
-
-	size_t nbytes = width * height * pixelwidth;
-
 	m_width = width;
 	m_height = height;
 	m_pixelwidth = pixelwidth;
-
-	/* We have to force a copy here. ~wxBitMapData() will delete our data. WTF. */
-	m_data = new unsigned char[nbytes];
-	memcpy(m_data, data, nbytes);
-
-	m_hash = FNV1A(m_data, nbytes);
+	m_hash = fnv1a(m_data, width * height * pixelwidth);
 }
 
-void GLTexture::Load(const wxFileName &filename)
+
+bool gl::texture::load(const char *path)
 {
-	wxASSERT(filename.IsOk() && filename.Exists());
+	int w, h, nchan;
+	unsigned char *data = stbi_load(path, &w, &h, &nchan, 0);
 
-	wxImage img(filename.GetFullPath());
-
-	wxASSERT(img.IsOk());
-
-	wxSize size = img.GetSize();
-	size.x = BitCeil512(size.x);
-	size.y = BitCeil512(size.y);
-	img.Rescale(size.x, size.y);
-
-	if(img.HasAlpha()) {
-		m_pixelwidth = 4;
-	} else {
-		m_pixelwidth = 3;
+	if(data == nullptr) {
+		return false;
 	}
 
-	m_width = img.GetWidth();
-	m_height = img.GetHeight();
-	size_t npix = m_width * m_height;
+	size_t width  = bitceil512(w);
+	size_t height = bitceil512(h);
 
-	unsigned char *alpha = img.GetAlpha();
-	unsigned char *rgb = img.GetData();
+	unsigned char *new_data = new unsigned char[width * height * nchan];
 
-	m_data = new unsigned char[npix * m_pixelwidth];
+	m_data = stbir_resize_uint8_linear(data, w, h, w * nchan, 
+		new_data, width, height, m_width * nchan, (stbir_pixel_layout)nchan);
 
-	wxString name = filename.GetName();
+	assert(m_data == new_data);
 
-	for(size_t i = 0; i < npix; i++) {
-		m_data[i * m_pixelwidth + 0] = rgb[i * 3 + 0];
-		m_data[i * m_pixelwidth + 1] = rgb[i * 3 + 1];
-		m_data[i * m_pixelwidth + 2] = rgb[i * 3 + 2];
-		if(m_pixelwidth == 4) {
-			m_data[i * 4 + 3] = alpha[i];
-		}
-	}
+	load(width, height, nchan, path, m_data);
 
-	Load(m_width, m_height, m_pixelwidth, name.c_str(), m_data);
+	stbi_image_free(data);
 }
 
 
-void GLTexture::InitTextureObject()
+void gl::texture::init_gltex()
 {
 	glGenTextures(1, &m_gltex);
 	glBindTexture(GL_TEXTURE_2D, m_gltex);
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	if(m_pixelwidth == 4) {
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0,
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_width, m_height, 0,
 			GL_RGBA, GL_UNSIGNED_BYTE, m_data);
-	}
-	else {
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_width, m_height, 0,
+	} else {
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, m_width, m_height, 0,
 			GL_RGB, GL_UNSIGNED_BYTE, m_data);
 	}
 
@@ -145,9 +109,9 @@ void GLTexture::InitTextureObject()
 }
 
 
-bool GLTexture::operator==(const GLTexture &other)
+bool gl::texture::operator==(const texture &other)
 {
-	/* broad phase */
+	// broad phase
 	if(m_hash != other.m_hash) {
 		return false;
 	}
@@ -158,12 +122,12 @@ bool GLTexture::operator==(const GLTexture &other)
 		return false;
 	}
 
-	/* narrow phase */
+	// narrow phase
 	return memcmp(m_data, other.m_data, nbytes) == 0;
 }
 
 
-void GLTexture::Delete()
+void gl::texture::free()
 {
 	if(glIsTexture(m_gltex)) {
 		glDeleteTextures(1, &m_gltex);
