@@ -11,14 +11,14 @@
 #include "res/icon_atlas.png.hpp"
 
 namespace gl {
-struct vtx {
+struct vertex {
 	glm::vec2 pos;
 	glm::vec2 uv;
 	glm::vec4 color;
 };
 
 struct texturebatch {
-	std::vector<vtx> vtx;
+	std::vector<vertex> vtx;
 	std::vector<GLuint> idx;
 };
 
@@ -44,7 +44,7 @@ private:
 
 	// gl objects for rendering solid geometry
 	GLuint m_solid_program;
-	std::vector<vtx> m_solid_vtx;
+	std::vector<vertex> m_solid_vtx;
 	std::vector<GLuint> m_solid_idx;
 
 	GLuint m_icon_atlas;

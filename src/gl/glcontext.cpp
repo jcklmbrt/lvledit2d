@@ -109,7 +109,7 @@ void gl::ctx::end()
 	glBindVertexArray(m_vao);
 	for(auto &[texid, vtc] : m_texture_batches) {
 		glBindBuffer(GL_ARRAY_BUFFER, m_vtxbuf);
-		glBufferData(GL_ARRAY_BUFFER, vtc.vtx.size() * sizeof(vtx), vtc.vtx.data(), GL_STREAM_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, vtc.vtx.size() * sizeof(vertex), vtc.vtx.data(), GL_STREAM_DRAW);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_idxbuf);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, vtc.idx.size() * sizeof(GLuint), vtc.idx.data(), GL_STREAM_DRAW);
 
@@ -121,7 +121,7 @@ void gl::ctx::end()
 	glBindTexture(GL_TEXTURE_2D, m_font_atlas);
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_vtxbuf);
-	glBufferData(GL_ARRAY_BUFFER, m_solid_vtx.size() * sizeof(vtx), m_solid_vtx.data(), GL_STREAM_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, m_solid_vtx.size() * sizeof(vertex), m_solid_vtx.data(), GL_STREAM_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_idxbuf);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_solid_idx.size() * sizeof(GLuint), m_solid_idx.data(), GL_STREAM_DRAW);
 
@@ -142,7 +142,7 @@ void gl::ctx::begin()
 
 void gl::ctx::quad(const glm::vec2 q[4], const glm::vec4 &color)
 {
-	gl::vtx vtx;
+	gl::vertex vtx;
 	vtx.color = color;
 
 	begin();
@@ -192,12 +192,12 @@ void gl::ctx::line(const glm::vec2 &a, const glm::vec2 &b, float thickness, cons
 	quad(q, color);
 }
 
-static gl::vtx setvtx(const glm::vec2 &pt, const glm::vec4 &color, const irect2d &aabb)
+static gl::vertex setvtx(const glm::vec2 &pt, const glm::vec4 &color, const irect2d &aabb)
 {
 	glm::vec2 mins = aabb.mins;
 	glm::vec2 size = aabb.maxs - aabb.mins;
 
-	gl::vtx vtx;
+	gl::vertex vtx;
 	vtx.pos = pt;
 	vtx.color = color;
 	vtx.uv = (pt - mins) / size;
@@ -213,7 +213,7 @@ void gl::ctx::poly(const glm::vec2 pts[], size_t npts, const irect2d &uv, gl::te
 		texture.init_gltex();
 	}
 
-	vtx start = setvtx(pts[0], color, uv);
+	vertex start = setvtx(pts[0], color, uv);
 
 	texturebatch &vtc = m_texture_batches[texture.gltex()];
 
@@ -255,7 +255,7 @@ void gl::ctx::icon(const glm::vec2 &pos, ia::position uv, const glm::vec4 &color
 	begin();
 	texturebatch &vtc = m_texture_batches[m_icon_atlas];
 
-	gl::vtx vtx;
+	gl::vertex vtx;
 	vtx.color = color;
 
 	// top left
@@ -305,7 +305,7 @@ void gl::ctx::puts(const glm::vec2 &pos, const glm::vec4 color, const char *ch)
 
 		tahoma12::position uv = tahoma12::pc[*s];
 
-		gl::vtx vtx;
+		gl::vertex vtx;
 		vtx.color = color;
 
 		dpos.x += uv.left;
@@ -475,11 +475,11 @@ gl::ctx::ctx()
 	glBindVertexArray(m_vao);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vtxbuf);
 
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(gl::vtx), (void *)offsetof(gl::vtx, pos));
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(gl::vertex), (void *)offsetof(gl::vertex, pos));
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(gl::vtx), (void *)offsetof(gl::vtx, color));
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(gl::vertex), (void *)offsetof(gl::vertex, color));
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(gl::vtx), (void *)offsetof(gl::vtx, uv));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(gl::vertex), (void *)offsetof(gl::vertex, uv));
 	glEnableVertexAttribArray(2);
 
 	// setup texture geometry objects

@@ -20,6 +20,7 @@ constexpr glm::vec2 MIN_PAN = { -1000.0f, -1000.0f };
 constexpr float MAX_ZOOM = 150.0f;
 constexpr float MIN_ZOOM = 5.0f;
 
+constexpr size_t ACTSTR_LEN = 128;
 
 namespace act {
 enum class type : int32_t {
@@ -93,7 +94,7 @@ struct editor {
 		LINE_SLICE = LINE | (1 << 4)
 	};
 
-	bool actstr(long i, int col, char buf[256]);
+	bool actstr(long i, int col, char buf[ACTSTR_LEN]);
 
 	void enact(size_t i);
 	void unact(size_t i);
@@ -128,7 +129,7 @@ struct editor {
 
 	// ui overlay
 	void ui_draw();
-	bool ui_findtool(state *tool = nullptr);
+	bool ui_findtool(bool set_state = false);
 	bool ui_lmousedown();
 	bool ui_mmotion();
 
@@ -181,7 +182,7 @@ private:
 	uint32_t m_history = 0;
 
 	// current tool
-	state m_state;
+	uint32_t m_state;
 
 	// tool vars
 	glm::i32vec2 m_start;
@@ -205,37 +206,6 @@ private:
 
 	static gl::ctx *s_gl;
 };
-
-constexpr editor::state operator&(editor::state a, editor::state b)
-{
-	uint32_t ai = static_cast<uint32_t>(a);
-	uint32_t bi = static_cast<uint32_t>(b);
-	return static_cast<editor::state>(ai & bi);
-}
-
-constexpr editor::state operator|(editor::state a, editor::state b)
-{
-	uint32_t ai = static_cast<uint32_t>(a);
-	uint32_t bi = static_cast<uint32_t>(b);
-	return static_cast<editor::state>(ai | bi);
-}
-
-constexpr editor::state operator&=(editor::state &a, editor::state b) 
-{
-	return a = a & b;
-}
-
-constexpr editor::state operator|=(editor::state &a, editor::state b)
-{
-	return a = a | b;
-}
-
-constexpr editor::state operator~(editor::state a)
-{
-	uint32_t ai = static_cast<uint32_t>(a);
-	return static_cast<editor::state>(~ai);
-}
-
 };
 
 #endif

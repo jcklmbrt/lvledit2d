@@ -1,10 +1,6 @@
-#include <array>
 #include <numeric>
-#include <algorithm>
-#include <cfloat>
-#include <cmath>
+#include <cassert>
 #include <glm/glm.hpp>
-#include <limits>
 
 #include "src/edit/editorcontext.hpp"
 #include "src/gl/glcontext.hpp"
@@ -194,7 +190,7 @@ bool poly2d::allptsbehind(const iline2d &plane) const
 
 void irect2d::fit(const glm::vec2 pts[], size_t npts)
 {
-	assert(npts >= 2, "Cannot construct a rect from less than two points.");
+	assert(npts >= 2);
 
 	mins = floor(pts[0]);
 	maxs = ceil(pts[0]);
@@ -206,8 +202,7 @@ void irect2d::fit(const glm::vec2 pts[], size_t npts)
 		maxs = max(c, maxs);
 	}
 
-	assert(mins.x < maxs.x && mins.y < maxs.y,
-		"Cannot construct a rect from equal points.");
+	assert(mins.x < maxs.x && mins.y < maxs.y);
 }
 
 

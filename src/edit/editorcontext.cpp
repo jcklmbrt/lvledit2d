@@ -1,6 +1,6 @@
-#include <array>
-#include <cstdio>
 #include <numeric>
+#include <cstring>
+#include <cstdio>
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -349,6 +349,7 @@ void l2d::editor::mmotion(double x, double y)
 	}
 
 	glm::i32vec2 gpos = s_gl->snaptogrid(m_wpos);
+	glm::i32vec2 delta = gpos - m_start;
 
 	switch(m_state) {
 	// visually update on mouse movement 
@@ -372,16 +373,12 @@ void l2d::editor::mmotion(double x, double y)
 			break;
 		}
 
-		poly2d &selected = m_polys[m_selectedpoly];
-
-		glm::i32vec2 delta = gpos - m_start;
 		if(delta.x == 0 && delta.y == 0) {
 			return;
 		}
 
 		if(m_outcode == irect2d::INSIDE) {
-
-		
+			poly2d &selected = m_polys[m_selectedpoly];
 			m_start = gpos;
 
 			selected.offset(delta);
@@ -413,6 +410,7 @@ void l2d::editor::mmotion(double x, double y)
 				selected.offset(-delta);
 			}
 		} else {
+			poly2d &selected = m_polys[m_selectedpoly];
 			irect2d aabb = selected.aabb();
 			int outcode = aabb.outcode(m_wpos);
 
@@ -511,6 +509,8 @@ void l2d::editor::mmotion(double x, double y)
 			}
 		}
 		break;
+	default:
+		break;
 	}
 }
 
@@ -567,7 +567,7 @@ void l2d::editor::paint()
 	glm::vec2 mpos = s_gl->snaptogrid(m_wpos);
 
 	switch(m_state) {
-	case state::RECT | state::IN_EDIT:
+	case state::RECT | state::IN_EDIT: {
 		if(m_selectedlayer == -1) {
 			break;
 		}
@@ -586,9 +586,10 @@ void l2d::editor::paint()
 		drawpoint(m_start, color);
 		drawpoint(m_end, color);
 		break;
+	}
 	case state::RECT | state::IN_EDIT | state::ONE_POINT:
 		color = RED;
-		[[fallthrough]];
+		/* FALLTHROUGH */
 	case state::RECT:
 		if(m_selectedlayer == -1) {
 			break;
@@ -901,11 +902,13 @@ void l2d::editor::lmouseup()
 	case state::SELECT | state::IN_EDIT:
 		m_state &= ~state::IN_EDIT;
 		break;
+	default:
+		break;
 	}
 }
 
 
-bool l2d::editor::actstr(long i, int col, char buf[256])
+bool l2d::editor::actstr(long i, int col, char buf[ACTSTR_LEN])
 {
 	glm::i32vec2 lt, rb;
 
@@ -923,7 +926,7 @@ bool l2d::editor::actstr(long i, int col, char buf[256])
 	} else if(col == 1) {
 		switch(index.type) {
 		case act::type::LINE:
-			snprintf(buf, sizeof(buf), "%dx + %dy + %d", 
+			snprintf(buf, ACTSTR_LEN, "%dx + %dy + %d", 
 			         m_lines[index.index].a, 
 			         m_lines[index.index].b,
 			         m_lines[index.index].c);
@@ -931,23 +934,23 @@ bool l2d::editor::actstr(long i, int col, char buf[256])
 		case act::type::RECT:
 			lt = m_rects[index.index].mins;
 			rb = m_rects[index.index].maxs;
-			snprintf(buf, sizeof(buf), "%d %d %d %d", 
+			snprintf(buf, ACTSTR_LEN, "%d %d %d %d", 
 			         lt.x, lt.y, lt.x + rb.x, lt.y + rb.y);
 			break;
 		case act::type::MOVE:
-			snprintf(buf, sizeof(buf), "%d %d", 
+			snprintf(buf, ACTSTR_LEN, "%d %d", 
 			         m_moves[index.index].x, 
 			         m_moves[index.index].y);
 			break;
 		case act::type::SCALE:
-			snprintf(buf, sizeof(buf), "%d/%d %d/%d",
+			snprintf(buf, ACTSTR_LEN, "%d/%d %d/%d",
 				m_scales[index.index].numer.x, 
 				m_scales[index.index].denom.x,
 				m_scales[index.index].numer.y, 
 				m_scales[index.index].denom.y);
 			break;
 		case act::type::TEXTURE:
-			snprintf(buf, sizeof(buf), "%d x %d",
+			snprintf(buf, ACTSTR_LEN, "%d x %d",
 			         m_acttextures[index.index].index,
 			         m_acttextures[index.index].scale);
 			break;
@@ -957,13 +960,13 @@ bool l2d::editor::actstr(long i, int col, char buf[256])
 		}
 	} else if(col == 2) {
 		if(index.type != act::type::LAYER && index.poly != -1) {
-			snprintf(buf, sizeof(buf), "%u", index.poly);
+			snprintf(buf, ACTSTR_LEN, "%u", index.poly);
 		} else {
 			buf[0] = '\0';
 			return false;
 		}
 	} else if(col == 3) {
-		snprintf(buf, sizeof(buf), "%u", index.layer);
+		snprintf(buf, ACTSTR_LEN, "%u", index.layer);
 	}
 
 	return true;
@@ -1071,7 +1074,7 @@ void l2d::editor::lmousedown()
 		}
 		break;
 
-	case state::RECT | state::IN_EDIT: // 2nd click
+	case state::RECT | state::IN_EDIT: { // 2nd click
 		irect2d r = irect2d(m_start, m_end);
 		for(size_t i : m_layers[m_selectedlayer].polys) {
 			const poly2d &poly = m_polys[i];
@@ -1090,7 +1093,7 @@ void l2d::editor::lmousedown()
 			m_start = s_gl->snaptogrid(m_wpos);
 		}
 		break;
-
+	}
 	case state::LINE_START_POINT:
 		if(m_selectedpoly == -1) {
 			break;
@@ -1184,6 +1187,8 @@ void l2d::editor::rmousedown()
 		selected = &m_polys[m_selectedpoly];
 		selected->addline(m_plane, m_points);
 		break;
+	default:
+		break;
 	}
 }
 
@@ -1200,7 +1205,7 @@ void l2d::editor::key(int key, int scancode, int action, int mods)
 }
 
 
-bool l2d::editor::ui_findtool(state *out)
+bool l2d::editor::ui_findtool(bool set_state)
 {
 	static constexpr int PAD_X = 4;
 	static constexpr int PAD_Y = 4;
@@ -1214,8 +1219,8 @@ bool l2d::editor::ui_findtool(state *out)
 		irect2d r{ mins, maxs };
 
 		if(r.contains(m_mpos)) {
-			if(out) {
-				*out = static_cast<state>(i);
+			if(set_state) {
+				m_state = i;
 			}
 			return true;
 		}

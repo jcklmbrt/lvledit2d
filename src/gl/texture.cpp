@@ -84,6 +84,8 @@ bool gl::texture::load(const char *path)
 	load(width, height, nchan, path, m_data);
 
 	stbi_image_free(data);
+
+	return true;
 }
 
 
