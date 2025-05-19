@@ -719,7 +719,7 @@ void l2d::editor::resetpolys()
 
 void l2d::editor::resetpoly(size_t i) 
 {
-	for(size_t a = 0; a < m_indices.size(); a++) {
+	for(size_t a = 0; a < m_history; a++) {
 		if(m_indices[a].poly == i) {
 			enact(a);
 		}
@@ -759,8 +759,7 @@ void l2d::editor::enact(size_t i)
 			// initial action
 			act.poly = m_polys.size();
 			m_polys.emplace_back(m_rects[act.index]);
-		}
-		else {
+		} else {
 			// redo action
 			m_polys[act.poly] = m_rects[act.index];
 		}
@@ -1195,11 +1194,21 @@ void l2d::editor::rmousedown()
 
 void l2d::editor::key(int key, int scancode, int action, int mods)
 {
-	if(key == GLFW_KEY_DELETE && action == GLFW_PRESS) {
+	if(action != GLFW_PRESS) {
+		return;
+	}
+
+	if(key == GLFW_KEY_DELETE) {
 		if(m_selectedpoly != -1 && m_selectedlayer != -1) {
 			addindex(act::type::DEL, m_selectedpoly, m_selectedlayer, -1);
 			enact(m_indices.size() - 1);
 			m_selectedpoly = -1;
+		}
+	} else if(mods & GLFW_MOD_CONTROL) {
+		switch(key) {
+		case GLFW_KEY_Z: undo(); break;
+		case GLFW_KEY_Y: redo(); break;
+		default: break;
 		}
 	}
 }
@@ -1313,13 +1322,14 @@ void l2d::editor::ui_draw()
 	char buf[256];
 	for(size_t i = 0; i < m_indices.size(); i++) {
 		dy = m_indices.size() - i;
+		glm::vec4 color = i >= m_history ? RED : BLACK;
 		actstr(i, 0, buf);
-		s_gl->puts({ xofs + HLIST_PAD_X,       HLIST_PAD_Y + dy * 14 }, BLACK, buf);
+		s_gl->puts({ xofs + HLIST_PAD_X,       HLIST_PAD_Y + dy * 14 }, color, buf);
 		actstr(i, 2, buf);
-		s_gl->puts({ xofs + HLIST_PAD_X + 60,  HLIST_PAD_Y + dy * 14 }, BLACK, buf);
+		s_gl->puts({ xofs + HLIST_PAD_X + 60,  HLIST_PAD_Y + dy * 14 }, color, buf);
 		actstr(i, 3, buf);
-		s_gl->puts({ xofs + HLIST_PAD_X + 100, HLIST_PAD_Y + dy * 14 }, BLACK, buf);
+		s_gl->puts({ xofs + HLIST_PAD_X + 100, HLIST_PAD_Y + dy * 14 }, color, buf);
 		actstr(i, 1, buf);
-		s_gl->puts({ xofs + HLIST_PAD_X + 140, HLIST_PAD_Y + dy * 14 }, BLACK, buf);
+		s_gl->puts({ xofs + HLIST_PAD_X + 140, HLIST_PAD_Y + dy * 14 }, color, buf);
 	}
 }

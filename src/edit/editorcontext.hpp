@@ -12,9 +12,6 @@
 #include "src/gl/glcontext.hpp"
 #include "src/geometry.hpp"
 
-class wxGLCanvas;
-class Notebook;
-
 constexpr glm::vec2 MAX_PAN = { 1000.0f,  1000.0f };
 constexpr glm::vec2 MIN_PAN = { -1000.0f, -1000.0f };
 constexpr float MAX_ZOOM = 150.0f;
@@ -52,7 +49,6 @@ struct index {
 };
 struct layer {
 	glm::vec4 color;
-	//uint32_t color;
 };
 };
 
@@ -62,11 +58,7 @@ struct layer {
 		: color(color), polys() {}
 	void rmpoly(size_t i)
 	{
-		std::vector<size_t>::iterator it;
-		it = std::find(polys.begin(), polys.end(), i);
-		if(it != polys.end()) {
-			polys.erase(it);
-		}
+		polys.erase(std::remove(polys.begin(), polys.end(), i), polys.end());
 	}
 	glm::vec4 color;
 	std::vector<size_t> polys;
